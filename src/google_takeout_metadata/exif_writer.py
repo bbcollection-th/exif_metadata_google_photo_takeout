@@ -51,7 +51,9 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
             f"-IPTC:Keywords+={person}",
         ]
 
-    # Dates EXIF
+    # Set standard EXIF date fields:
+    # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
+    # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
         args.append(f"-DateTimeOriginal={s}")
     base_ts = meta.created_at or meta.taken_at
