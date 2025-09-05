@@ -57,7 +57,13 @@ def build_exiftool_args(meta: SidecarData) -> List[str]:
             ]
         )
         if meta.altitude is not None:
-            args.append(f"-GPSAltitude={meta.altitude}")
+            alt_ref = "1" if meta.altitude < 0 else "0"
+            args.extend(
+                [
+                    f"-GPSAltitude={abs(meta.altitude)}",
+                    f"-GPSAltitudeRef={alt_ref}",
+                ]
+            )
 
     return args
 
