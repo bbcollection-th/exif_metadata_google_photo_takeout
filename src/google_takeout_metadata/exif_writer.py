@@ -12,10 +12,27 @@ import tempfile
 from .sidecar import SidecarData
 
 
-def build_exiftool_args(meta: SidecarData) -> List[str]:
+def _is_video_file(path: Path) -> bool:
+    """Check if the file is a video file based on extension."""
+    return path.suffix.lower() in {".mp4", ".mov"}
+
+
+def build_exiftool_args(meta: SidecarData, image_path: Path | None = None) -> List[str]:
     """Return a list of arguments for ``exiftool`` based on ``meta``."""
 
     args: List[str] = []
+
+    # Add charset parameters for Unicode/accent support
+    args.extend([
+        "-charset", "filename=UTF8",
+        "-charset", "iptc=UTF8", 
+        "-charset", "exif=UTF8",
+        "-charset", "XMP=UTF8",
+    ])
+    
+    # Add QuickTime UTC API option for video files
+    if image_path and _is_video_file(image_path):
+        args.extend(["-api", "QuickTimeUTC=1"])
 
     if meta.description:
         # Quote the description to handle spaces and special characters
@@ -27,6 +44,12 @@ def build_exiftool_args(meta: SidecarData) -> List[str]:
                 f"-IPTC:Caption-Abstract={quoted_desc}",
             ]
         )
+        # Add video-specific title/description tags if it's a video file
+        if image_path and _is_video_file(image_path):
+            args.extend([
+                f"-Keys:Title={quoted_desc}",
+                f"-Keys:Description={quoted_desc}",
+            ])
 
     for person in meta.people:
         # Quote person names to handle spaces and special characters
@@ -53,6 +76,13 @@ def build_exiftool_args(meta: SidecarData) -> List[str]:
         # Quote datetime to handle spaces
         quoted_datetime = shlex.quote(formatted)
         args.extend([f"-CreateDate={quoted_datetime}", f"-ModifyDate={quoted_datetime}"])
+        
+        # Add video-specific date tags if it's a video file
+        if image_path and _is_video_file(image_path):
+            args.extend([
+                f"-QuickTime:CreateDate={quoted_datetime}",
+                f"-QuickTime:ModifyDate={quoted_datetime}",
+            ])
 
     if meta.latitude is not None and meta.longitude is not None:
         lat_ref = "N" if meta.latitude >= 0 else "S"
@@ -73,6 +103,13 @@ def build_exiftool_args(meta: SidecarData) -> List[str]:
                     f"-GPSAltitudeRef={alt_ref}",
                 ]
             )
+        
+        # Add video-specific GPS tags if it's a video file
+        if image_path and _is_video_file(image_path):
+            args.extend([
+                f"-Keys:Location={meta.latitude},{meta.longitude}",
+                f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}",
+            ])
 
     return args
 
@@ -86,7 +123,7 @@ def write_metadata(image_path: Path, meta: SidecarData) -> None:
         If ``exiftool`` exits with a non-zero status.
     """
 
-    args = build_exiftool_args(meta)
+    args = build_exiftool_args(meta, image_path)
     if not args:
         return
 

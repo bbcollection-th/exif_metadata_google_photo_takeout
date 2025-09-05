@@ -46,7 +46,9 @@ def parse_sidecar(path: Path) -> SidecarData:
         )
 
     description = data.get("description")
-    people = [p["name"] for p in data.get("people", []) if "name" in p]
+    # Extract people names, strip whitespace, and deduplicate
+    people_raw = [p["name"].strip() for p in data.get("people", []) if "name" in p and p["name"].strip()]
+    people = list(dict.fromkeys(people_raw))  # Remove duplicates while preserving order
 
     def get_ts(key: str) -> Optional[int]:
         ts = data.get(key, {}).get("timestamp")
