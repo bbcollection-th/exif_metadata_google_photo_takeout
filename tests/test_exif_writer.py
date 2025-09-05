@@ -92,9 +92,9 @@ def test_build_args_localtime():
     )
 
     # Test UTC (default)
-    args_utc = build_exiftool_args(meta, use_localtime=False)
+    args_utc = build_exiftool_args(meta, Path("a.jpg"), use_localtime=False)
     # Test local time
-    args_local = build_exiftool_args(meta, use_localtime=True)
+    args_local = build_exiftool_args(meta, Path("a.jpg"), use_localtime=True)
     
     # The datetime strings will be different (unless running in UTC timezone)
     # but both should contain some form of DateTimeOriginal
