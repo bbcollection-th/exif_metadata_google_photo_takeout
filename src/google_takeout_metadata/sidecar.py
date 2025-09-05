@@ -66,8 +66,7 @@ def parse_sidecar(path: Path) -> SidecarData:
     altitude = geo.get("altitude")
     lat_span = geo.get("latitudeSpan")
     lon_span = geo.get("longitudeSpan")
-    if all(
-        v in (0, 0.0, None) for v in (latitude, longitude, altitude, lat_span, lon_span)
+        v in (0, 0.0, None) for v in (latitude, longitude)
     ):
         latitude = longitude = altitude = None
 
