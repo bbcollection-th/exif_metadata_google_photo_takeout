@@ -1,0 +1,51 @@
+from pathlib import Path
+import json
+import subprocess
+from PIL import Image
+
+from google_takeout_metadata.processor import process_directory
+
+
+from pathlib import Path
+import json
+import subprocess
+import shutil
+import pytest
+from PIL import Image
+
+@pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
+def test_end_to_end(tmp_path: Path) -> None:
+    # create dummy image
+    img_path = tmp_path / "sample.jpg"
+    Image.new("RGB", (10, 10), color="red").save(img_path)
+    # create matching sidecar
+    data = {
+        "title": "sample.jpg",
+        "description": 'Magicien "en" or',
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "people": [{"name": "anthony vincent"}],
+    }
+    (tmp_path / "sample.jpg.json").write_text(json.dumps(data), encoding="utf-8")
+
+    process_directory(tmp_path)
+
+    exe = shutil.which("exiftool") or "exiftool"
+    result = subprocess.run(
+        [
+            exe,
+            "-j",
+            "-XMP-iptcExt:PersonInImage",
+            "-XMP-dc:Subject",
+            "-IPTC:Keywords",
+            "-EXIF:ImageDescription",
+            str(img_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    tags = json.loads(result.stdout)[0]
+    assert tags.get("PersonInImage") == ["anthony vincent"]
+    assert tags.get("Subject") == ["anthony vincent"]
+    assert tags.get("Keywords") == ["anthony vincent"]
+    assert tags.get("ImageDescription") == 'Magicien "en" or'
