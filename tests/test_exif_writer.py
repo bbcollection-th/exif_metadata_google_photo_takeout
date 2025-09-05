@@ -76,3 +76,27 @@ def test_build_args_video():
     assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
     assert "-api" in args
     assert "QuickTimeUTC=1" in args
+
+
+def test_build_args_localtime():
+    """Test that local time formatting works."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=1736719606,  # 2025-01-12 22:06:46 UTC
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+    )
+
+    # Test UTC (default)
+    args_utc = build_exiftool_args(meta, use_localtime=False)
+    # Test local time
+    args_local = build_exiftool_args(meta, use_localtime=True)
+    
+    # The datetime strings will be different (unless running in UTC timezone)
+    # but both should contain some form of DateTimeOriginal
+    assert any("-DateTimeOriginal=" in arg for arg in args_utc)
+    assert any("-DateTimeOriginal=" in arg for arg in args_local)

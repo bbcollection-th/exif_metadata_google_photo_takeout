@@ -17,7 +17,7 @@ def _is_video_file(path: Path) -> bool:
     return path.suffix.lower() in {".mp4", ".mov"}
 
 
-def build_exiftool_args(meta: SidecarData, image_path: Path | None = None) -> List[str]:
+def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False) -> List[str]:
     """Return a list of arguments for ``exiftool`` based on ``meta``."""
 
     args: List[str] = []
@@ -63,7 +63,10 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None) -> Li
         )
 
     if meta.taken_at is not None:
-        dt = datetime.fromtimestamp(meta.taken_at, tz=timezone.utc)
+        if use_localtime:
+            dt = datetime.fromtimestamp(meta.taken_at)  # local time
+        else:
+            dt = datetime.fromtimestamp(meta.taken_at, tz=timezone.utc)
         formatted = dt.strftime("%Y:%m:%d %H:%M:%S")
         # Quote datetime to handle spaces
         quoted_datetime = shlex.quote(formatted)
@@ -71,7 +74,10 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None) -> Li
 
     base_ts = meta.created_at or meta.taken_at
     if base_ts is not None:
-        dt = datetime.fromtimestamp(base_ts, tz=timezone.utc)
+        if use_localtime:
+            dt = datetime.fromtimestamp(base_ts)  # local time
+        else:
+            dt = datetime.fromtimestamp(base_ts, tz=timezone.utc)
         formatted = dt.strftime("%Y:%m:%d %H:%M:%S")
         # Quote datetime to handle spaces
         quoted_datetime = shlex.quote(formatted)
@@ -114,7 +120,7 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None) -> Li
     return args
 
 
-def write_metadata(image_path: Path, meta: SidecarData) -> None:
+def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False) -> None:
     """Write ``meta`` into ``image_path``.
 
     Raises
@@ -123,7 +129,7 @@ def write_metadata(image_path: Path, meta: SidecarData) -> None:
         If ``exiftool`` exits with a non-zero status.
     """
 
-    args = build_exiftool_args(meta, image_path)
+    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime)
     if not args:
         return
 

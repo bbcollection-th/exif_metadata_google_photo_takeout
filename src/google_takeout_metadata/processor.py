@@ -14,27 +14,48 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".mp4", ".mov"}
 
 
 def _is_sidecar_file(path: Path) -> bool:
+    """Check if a file could be a Google Photos sidecar JSON file.
+    
+    This function uses a permissive approach since parse_sidecar() does
+    strong validation by matching the title field with the expected filename.
+    """
+    if not path.suffix.lower() == ".json":
+        return False
+    
     suffixes = [s.lower() for s in path.suffixes]
-    return len(suffixes) >= 2 and suffixes[-1] == ".json" and suffixes[-2] in IMAGE_EXTS
+    
+    # Standard pattern: photo.jpg.json
+    if len(suffixes) >= 2 and suffixes[-2] in IMAGE_EXTS:
+        return True
+    
+    # Older pattern: photo.json (less specific but validated later)
+    # Only consider this if the base name without .json could be an image
+    stem_parts = path.stem.split('.')
+    if len(stem_parts) >= 2:
+        potential_ext = '.' + stem_parts[-1].lower()
+        if potential_ext in IMAGE_EXTS:
+            return True
+    
+    return False
 
 
-def process_sidecar_file(json_path: Path) -> None:
+def process_sidecar_file(json_path: Path, use_localtime: bool = False) -> None:
     """Process a single ``.json`` sidecar file."""
 
     meta = parse_sidecar(json_path)
     image_path = json_path.with_name(meta.filename)
     if not image_path.exists():
         raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
-    write_metadata(image_path, meta)
+    write_metadata(image_path, meta, use_localtime=use_localtime)
 
 
-def process_directory(root: Path) -> None:
+def process_directory(root: Path, use_localtime: bool = False) -> None:
     """Recursively process all sidecar files under ``root``."""
 
     for json_file in root.rglob("*.json"):
         if not _is_sidecar_file(json_file):
             continue
         try:
-            process_sidecar_file(json_file)
+            process_sidecar_file(json_file, use_localtime=use_localtime)
         except (FileNotFoundError, ValueError, RuntimeError) as exc:  # pragma: no cover - logging
             logger.warning("Failed to process %s: %s", json_file, exc, exc_info=True)
