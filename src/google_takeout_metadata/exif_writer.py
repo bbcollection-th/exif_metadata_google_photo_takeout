@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import List
 import subprocess
 import tempfile
-import shlex
 
 from .sidecar import SidecarData
 
