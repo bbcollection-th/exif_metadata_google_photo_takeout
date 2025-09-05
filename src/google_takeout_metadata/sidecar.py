@@ -66,8 +66,10 @@ def parse_sidecar(path: Path) -> SidecarData:
     altitude = geo.get("altitude")
     lat_span = geo.get("latitudeSpan")
     lon_span = geo.get("longitudeSpan")
-        v in (0, 0.0, None) for v in (latitude, longitude)
-    ):
+    
+    # Clear coordinates if both latitude and longitude are None
+    # Keep actual 0.0 coordinates as they may be valid (like equator/prime meridian)
+    if latitude is None or longitude is None:
         latitude = longitude = altitude = None
 
     return SidecarData(

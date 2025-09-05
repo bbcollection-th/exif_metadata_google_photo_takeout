@@ -28,7 +28,7 @@ def test_build_args() -> None:
 def test_write_metadata_error(tmp_path, monkeypatch):
     meta = SidecarData(
         filename="a.jpg",
-        description=None,
+        description="test",  # Add description to ensure args are generated
         people=[],
         taken_at=None,
         created_at=None,
