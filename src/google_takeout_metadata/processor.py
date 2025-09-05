@@ -36,5 +36,5 @@ def process_directory(root: Path) -> None:
             continue
         try:
             process_sidecar_file(json_file)
-        except Exception as exc:  # pragma: no cover - logging
-            logger.warning("Failed to process %s: %s", json_file, exc)
+        except (FileNotFoundError, ValueError, RuntimeError) as exc:  # pragma: no cover - logging
+            logger.warning("Failed to process %s: %s", json_file, exc, exc_info=True)
