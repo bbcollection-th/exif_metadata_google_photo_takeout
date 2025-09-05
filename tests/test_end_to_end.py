@@ -29,9 +29,11 @@ def test_end_to_end(tmp_path: Path) -> None:
 
     process_directory(tmp_path)
 
+    exe = shutil.which("exiftool") or "exiftool"
     result = subprocess.run(
         [
-            "exiftool",
+            exe,
+            "-j",
             "-XMP-iptcExt:PersonInImage",
             "-XMP-dc:Subject",
             "-IPTC:Keywords",
@@ -42,12 +44,8 @@ def test_end_to_end(tmp_path: Path) -> None:
         text=True,
         check=True,
     )
-
-    lines = {
-        line.split(":", 1)[0].strip(): line.split(":", 1)[1].strip()
-        for line in result.stdout.strip().splitlines()
-    }
-    assert lines.get("Person In Image") == "anthony vincent"
-    assert lines.get("Subject") == "anthony vincent"
-    assert lines.get("Keywords") == "anthony vincent"
-    assert lines.get("Image Description") == 'Magicien "en" or'
+    tags = json.loads(result.stdout)[0]
+    assert tags.get("PersonInImage") == ["anthony vincent"]
+    assert tags.get("Subject") == ["anthony vincent"]
+    assert tags.get("Keywords") == ["anthony vincent"]
+    assert tags.get("ImageDescription") == 'Magicien "en" or'
