@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 import subprocess
 import tempfile
+import shlex
 
 from .sidecar import SidecarData
 
@@ -17,33 +18,41 @@ def build_exiftool_args(meta: SidecarData) -> List[str]:
     args: List[str] = []
 
     if meta.description:
+        # Quote the description to handle spaces and special characters
+        quoted_desc = shlex.quote(meta.description)
         args.extend(
             [
-                f"-EXIF:ImageDescription={meta.description}",
-                f"-XMP-dc:Description={meta.description}",
-                f"-IPTC:Caption-Abstract={meta.description}",
+                f"-EXIF:ImageDescription={quoted_desc}",
+                f"-XMP-dc:Description={quoted_desc}",
+                f"-IPTC:Caption-Abstract={quoted_desc}",
             ]
         )
 
     for person in meta.people:
+        # Quote person names to handle spaces and special characters
+        quoted_person = shlex.quote(person)
         args.extend(
             [
-                f"-XMP-iptcExt:PersonInImage+={person}",
-                f"-XMP-dc:Subject+={person}",
-                f"-IPTC:Keywords+={person}",
+                f"-XMP-iptcExt:PersonInImage+={quoted_person}",
+                f"-XMP-dc:Subject+={quoted_person}",
+                f"-IPTC:Keywords+={quoted_person}",
             ]
         )
 
     if meta.taken_at is not None:
         dt = datetime.fromtimestamp(meta.taken_at, tz=timezone.utc)
         formatted = dt.strftime("%Y:%m:%d %H:%M:%S")
-        args.append(f"-DateTimeOriginal={formatted}")
+        # Quote datetime to handle spaces
+        quoted_datetime = shlex.quote(formatted)
+        args.append(f"-DateTimeOriginal={quoted_datetime}")
 
     base_ts = meta.created_at or meta.taken_at
     if base_ts is not None:
         dt = datetime.fromtimestamp(base_ts, tz=timezone.utc)
         formatted = dt.strftime("%Y:%m:%d %H:%M:%S")
-        args.extend([f"-CreateDate={formatted}", f"-ModifyDate={formatted}"])
+        # Quote datetime to handle spaces
+        quoted_datetime = shlex.quote(formatted)
+        args.extend([f"-CreateDate={quoted_datetime}", f"-ModifyDate={quoted_datetime}"])
 
     if meta.latitude is not None and meta.longitude is not None:
         lat_ref = "N" if meta.latitude >= 0 else "S"
