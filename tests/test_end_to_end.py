@@ -6,11 +6,18 @@ from PIL import Image
 from google_takeout_metadata.processor import process_directory
 
 
+from pathlib import Path
+import json
+import subprocess
+import shutil
+import pytest
+from PIL import Image
+
+@pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
 def test_end_to_end(tmp_path: Path) -> None:
     # create dummy image
     img_path = tmp_path / "sample.jpg"
     Image.new("RGB", (10, 10), color="red").save(img_path)
-
     # create matching sidecar
     data = {
         "title": "sample.jpg",
