@@ -6,7 +6,7 @@ from typing import List
 
 from .sidecar import SidecarData
 
-VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}  # un peu plus large
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}  # broader set of video extensions
 
 def _is_video_file(path: Path) -> bool:
     return path.suffix.lower() in VIDEO_EXTS
