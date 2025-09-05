@@ -52,3 +52,24 @@ def test_zero_coordinates(tmp_path: Path) -> None:
     assert meta.latitude == 0.0
     assert meta.longitude == 0.0
     assert meta.altitude == 10.0
+
+
+def test_people_deduplication(tmp_path: Path) -> None:
+    """Test that people names are deduplicated and trimmed."""
+    sample = {
+        "title": "a.jpg",
+        "people": [
+            {"name": "alice"},
+            {"name": " alice "},  # with spaces
+            {"name": "alice"},   # duplicate
+            {"name": "bob"},
+            {"name": "  "},      # empty after strip
+            {"name": "charlie"},
+            {"name": " bob "},   # another duplicate with spaces
+        ]
+    }
+    json_path = tmp_path / "a.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    # Should have deduplicated and trimmed: ["alice", "bob", "charlie"]
+    assert meta.people == ["alice", "bob", "charlie"]

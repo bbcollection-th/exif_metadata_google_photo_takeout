@@ -46,7 +46,9 @@ def parse_sidecar(path: Path) -> SidecarData:
         )
 
     description = data.get("description")
-    people = [p["name"] for p in data.get("people", []) if "name" in p]
+    # Extract people names, strip whitespace, and deduplicate
+    people_raw = [p["name"].strip() for p in data.get("people", []) if "name" in p and p["name"].strip()]
+    people = list(dict.fromkeys(people_raw))  # Remove duplicates while preserving order
 
     def get_ts(key: str) -> Optional[int]:
         ts = data.get(key, {}).get("timestamp")
@@ -66,8 +68,10 @@ def parse_sidecar(path: Path) -> SidecarData:
     altitude = geo.get("altitude")
     lat_span = geo.get("latitudeSpan")
     lon_span = geo.get("longitudeSpan")
-        v in (0, 0.0, None) for v in (latitude, longitude)
-    ):
+    
+    # Clear coordinates if both latitude and longitude are None
+    # Keep actual 0.0 coordinates as they may be valid (like equator/prime meridian)
+    if latitude is None or longitude is None:
         latitude = longitude = altitude = None
 
     return SidecarData(
