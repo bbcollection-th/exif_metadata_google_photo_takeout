@@ -78,13 +78,17 @@ def write_metadata(image_path: Path, meta: SidecarData) -> None:
     """
 
     args = build_exiftool_args(meta)
+    if not args:
+        return
+
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as fh:
         fh.write("\n".join(args))
         arg_path = fh.name
     cmd = ["exiftool", "-overwrite_original", "-@", arg_path, str(image_path)]
     try:
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
     except FileNotFoundError as exc:  # pragma: no cover - depends on system
+        ...
         raise RuntimeError("exiftool not found") from exc
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
