@@ -82,24 +82,23 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     # GPS
     if meta.latitude is not None and meta.longitude is not None:
-        gps_tag = "=" if not append_only else "-="
         lat_ref = "N" if meta.latitude >= 0 else "S"
         lon_ref = "E" if meta.longitude >= 0 else "W"
         args += [
-            f"-GPSLatitude{gps_tag}{abs(meta.latitude)}",
-            f"-GPSLatitudeRef{gps_tag}{lat_ref}",
-            f"-GPSLongitude{gps_tag}{abs(meta.longitude)}",
-            f"-GPSLongitudeRef{gps_tag}{lon_ref}",
+            f"-GPSLatitude={abs(meta.latitude)}",
+            f"-GPSLatitudeRef={lat_ref}",
+            f"-GPSLongitude={abs(meta.longitude)}",
+            f"-GPSLongitudeRef={lon_ref}",
         ]
         if meta.altitude is not None:
             alt_ref = "1" if meta.altitude < 0 else "0"
-            args += [f"-GPSAltitude{gps_tag}{abs(meta.altitude)}", f"-GPSAltitudeRef{gps_tag}{alt_ref}"]
+            args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
 
         if image_path and _is_video_file(image_path):
             # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-            args += [f"-QuickTime:GPSCoordinates{gps_tag}{meta.latitude},{meta.longitude}"]
-            # Keys:Location est peu standardisé ; garde-le si ça t'aide dans ton écosystème
-            args += [f"-Keys:Location{gps_tag}{meta.latitude},{meta.longitude}"]
+            args += [f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
+            # Keys:Location est peu standardisé ; garde-le si ça t’aide dans ton écosystème
+            args += [f"-Keys:Location={meta.latitude},{meta.longitude}"]
 
     return args
 

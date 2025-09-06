@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
     
-    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only, clean_sidecars=args.clean_sidecars)
+    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry

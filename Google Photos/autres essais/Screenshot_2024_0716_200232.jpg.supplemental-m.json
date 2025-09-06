@@ -1,0 +1,32 @@
+{
+  "title": "Screenshot_2024_0716_200232.jpg",
+  "description": "",
+  "imageViews": "0",
+  "creationTime": {
+    "timestamp": "1723076367",
+    "formatted": "8 août 2024, 00:19:27 UTC"
+  },
+  "photoTakenTime": {
+    "timestamp": "1721134952",
+    "formatted": "16 juil. 2024, 13:02:32 UTC"
+  },
+  "geoData": {
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "altitude": 0.0,
+    "latitudeSpan": 0.0,
+    "longitudeSpan": 0.0
+  },
+  "people": [{
+    "name": "Anthony"
+  }],
+  "url": "https://photos.google.com/photo/AF1QipOrpx1LmvOV0LNxDFIopfJGojtXr2KSiQXK0gG3",
+  "googlePhotosOrigin": {
+    "mobileUpload": {
+      "deviceFolder": {
+        "localFolderName": ""
+      },
+      "deviceType": "ANDROID_PHONE"
+    }
+  }
+}

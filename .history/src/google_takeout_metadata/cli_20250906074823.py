@@ -28,10 +28,6 @@ def main(argv: list[str] | None = None) -> None:
         help="Only add metadata fields if they are absent (avoid overwriting existing data)"
     )
     parser.add_argument(
-        "--clean-sidecars", action="store_true",
-        help="Delete JSON sidecar files after successful metadata transfer"
-    )
-    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable verbose logging (DEBUG level)"
     )
@@ -44,7 +40,7 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
     
-    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only, clean_sidecars=args.clean_sidecars)
+    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry

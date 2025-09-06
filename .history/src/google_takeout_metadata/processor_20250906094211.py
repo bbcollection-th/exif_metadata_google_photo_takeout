@@ -139,11 +139,11 @@ def _is_sidecar_file(path: Path) -> bool:
     suffixes = [s.lower() for s in path.suffixes]
     
     # New Google Takeout format: photo.jpg.supplemental-metadata.json
-    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in ALL_MEDIA_EXTS:
+    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in IMAGE_EXTS:
         return True
     
     # Legacy pattern: photo.jpg.json
-    if len(suffixes) >= 2 and suffixes[-2] in ALL_MEDIA_EXTS:
+    if len(suffixes) >= 2 and suffixes[-2] in IMAGE_EXTS:
         return True
     
     # Older pattern: photo.json (less specific but validated later)
@@ -151,7 +151,7 @@ def _is_sidecar_file(path: Path) -> bool:
     stem_parts = path.stem.split('.')
     if len(stem_parts) >= 2:
         potential_ext = '.' + stem_parts[-1].lower()
-        if potential_ext in ALL_MEDIA_EXTS:
+        if potential_ext in IMAGE_EXTS:
             return True
     
     return False

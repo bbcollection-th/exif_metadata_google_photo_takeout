@@ -140,7 +140,10 @@ def parse_sidecar(path: Path) -> SidecarData:
         favorite=favorite,
         lat_span=lat_span,
         lon_span=lon_span,
+        image_views=image_views,
         archived=archived,
+        trashed=trashed,
+        google_photos_url=google_photos_url,
     )
 
 

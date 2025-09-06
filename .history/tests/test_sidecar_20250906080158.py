@@ -256,58 +256,6 @@ def test_find_albums_for_directory_no_metadata(tmp_path: Path) -> None:
     assert albums == []
 
 
-def test_find_albums_french_metadata_format(tmp_path: Path) -> None:
-    """Test finding albums with French metadata file format."""
-    from google_takeout_metadata.sidecar import find_albums_for_directory
-    
-    # Create French album metadata
-    album_data = {"title": "Mon Album Français"}
-    metadata_path = tmp_path / "métadonnées.json"
-    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
-    
-    albums = find_albums_for_directory(tmp_path)
-    assert albums == ["Mon Album Français"]
-
-
-def test_find_albums_french_numbered_metadata(tmp_path: Path) -> None:
-    """Test finding albums with numbered French metadata files."""
-    from google_takeout_metadata.sidecar import find_albums_for_directory
-    
-    # Create multiple French metadata files
-    album_data1 = {"title": "Album 1"}
-    metadata_path1 = tmp_path / "métadonnées.json"
-    metadata_path1.write_text(json.dumps(album_data1), encoding="utf-8")
-    
-    album_data2 = {"title": "Album 2"}
-    metadata_path2 = tmp_path / "métadonnées(1).json"
-    metadata_path2.write_text(json.dumps(album_data2), encoding="utf-8")
-    
-    album_data3 = {"title": "Album 3"}
-    metadata_path3 = tmp_path / "métadonnées(2).json" 
-    metadata_path3.write_text(json.dumps(album_data3), encoding="utf-8")
-    
-    albums = find_albums_for_directory(tmp_path)
-    assert set(albums) == {"Album 1", "Album 2", "Album 3"}
-
-
-def test_find_albums_mixed_formats(tmp_path: Path) -> None:
-    """Test finding albums with mixed English and French metadata files."""
-    from google_takeout_metadata.sidecar import find_albums_for_directory
-    
-    # Create English metadata
-    album_data_en = {"title": "English Album"}
-    metadata_path_en = tmp_path / "metadata.json"
-    metadata_path_en.write_text(json.dumps(album_data_en), encoding="utf-8")
-    
-    # Create French metadata
-    album_data_fr = {"title": "Album Français"}
-    metadata_path_fr = tmp_path / "métadonnées.json"
-    metadata_path_fr.write_text(json.dumps(album_data_fr), encoding="utf-8")
-    
-    albums = find_albums_for_directory(tmp_path)
-    assert set(albums) == {"Album Français", "English Album"}
-
-
 def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
     """Test that albums are added from directory metadata when processing sidecars."""
     from google_takeout_metadata.processor import process_sidecar_file

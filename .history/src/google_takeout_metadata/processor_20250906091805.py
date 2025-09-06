@@ -12,10 +12,7 @@ from .exif_writer import write_metadata
 
 logger = logging.getLogger(__name__)
 
-# Séparer les extensions images et vidéos pour une meilleure cohérence
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".avif"}
-VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}
-ALL_MEDIA_EXTS = IMAGE_EXTS | VIDEO_EXTS
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", "heif", ".avif", ".mp4", ".mov", "m4v", ".3gp"}
 
 
 def detect_file_type(file_path: Path) -> str | None:
@@ -139,11 +136,11 @@ def _is_sidecar_file(path: Path) -> bool:
     suffixes = [s.lower() for s in path.suffixes]
     
     # New Google Takeout format: photo.jpg.supplemental-metadata.json
-    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in ALL_MEDIA_EXTS:
+    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in IMAGE_EXTS:
         return True
     
     # Legacy pattern: photo.jpg.json
-    if len(suffixes) >= 2 and suffixes[-2] in ALL_MEDIA_EXTS:
+    if len(suffixes) >= 2 and suffixes[-2] in IMAGE_EXTS:
         return True
     
     # Older pattern: photo.json (less specific but validated later)
@@ -151,7 +148,7 @@ def _is_sidecar_file(path: Path) -> bool:
     stem_parts = path.stem.split('.')
     if len(stem_parts) >= 2:
         potential_ext = '.' + stem_parts[-1].lower()
-        if potential_ext in ALL_MEDIA_EXTS:
+        if potential_ext in IMAGE_EXTS:
             return True
     
     return False
@@ -177,45 +174,16 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     if not image_path.exists():
         raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
     
-    # Try to write metadata to image
-    try:
-        write_metadata(image_path, meta, use_localtime=use_localtime, append_only=append_only)
-        current_json_path = json_path
-    except RuntimeError as exc:
-        # Check if this might be an extension mismatch error
-        error_msg = str(exc).lower()
-        if ("not a valid png" in error_msg and "looks more like a jpeg" in error_msg) or \
-           ("not a valid jpeg" in error_msg and "looks more like a png" in error_msg) or \
-           ("charset option" in error_msg):
-            
-            logger.info("Attempting to fix file extension mismatch for %s", image_path)
-            
-            # Try to fix the extension mismatch
-            fixed_image_path, fixed_json_path = fix_file_extension_mismatch(image_path, json_path)
-            
-            if fixed_image_path != image_path:
-                # Files were renamed, re-parse the updated JSON and retry
-                meta = parse_sidecar(fixed_json_path)
-                directory_albums = find_albums_for_directory(fixed_json_path.parent)
-                meta.albums.extend(directory_albums)
-                
-                write_metadata(fixed_image_path, meta, use_localtime=use_localtime, append_only=append_only)
-                current_json_path = fixed_json_path
-                logger.info("Successfully processed %s after fixing extension", fixed_image_path)
-            else:
-                # Extension fix failed, re-raise original error
-                raise
-        else:
-            # Not an extension mismatch error, re-raise
-            raise
+    # Write metadata to image
+    write_metadata(image_path, meta, use_localtime=use_localtime, append_only=append_only)
     
     # Clean up sidecar file if requested and write was successful
     if clean_sidecars:
         try:
-            current_json_path.unlink()
-            logger.info("Deleted sidecar file: %s", current_json_path)
+            json_path.unlink()
+            logger.info("Deleted sidecar file: %s", json_path)
         except OSError as exc:
-            logger.warning("Failed to delete sidecar file %s: %s", current_json_path, exc)
+            logger.warning("Failed to delete sidecar file %s: %s", json_path, exc)
 
 
 def process_directory(root: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:

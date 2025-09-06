@@ -24,7 +24,10 @@ class SidecarData:
     lat_span: Optional[float] = None
     lon_span: Optional[float] = None
     albums: List[str] = None
+    image_views: Optional[int] = None
     archived: bool = False
+    trashed: bool = False
+    google_photos_url: Optional[str] = None
 
     def __post_init__(self):
         """Initialize albums as empty list if None."""
@@ -125,8 +128,17 @@ def parse_sidecar(path: Path) -> SidecarData:
     else:
         favorite = False
 
-    # Extract archived status
+    # Extract additional metadata
+    image_views = data.get("imageViews")
+    if image_views is not None:
+        try:
+            image_views = int(image_views)
+        except (TypeError, ValueError):
+            image_views = None
+    
     archived = bool(data.get("archived", False))
+    trashed = bool(data.get("trashed", False))
+    google_photos_url = data.get("url")
 
     return SidecarData(
         filename=title,
@@ -140,7 +152,6 @@ def parse_sidecar(path: Path) -> SidecarData:
         favorite=favorite,
         lat_span=lat_span,
         lon_span=lon_span,
-        archived=archived,
     )
 
 

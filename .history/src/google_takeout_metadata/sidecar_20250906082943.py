@@ -24,7 +24,10 @@ class SidecarData:
     lat_span: Optional[float] = None
     lon_span: Optional[float] = None
     albums: List[str] = None
+    image_views: Optional[int] = None
     archived: bool = False
+    trashed: bool = False
+    google_photos_url: Optional[str] = None
 
     def __post_init__(self):
         """Initialize albums as empty list if None."""
@@ -97,11 +100,7 @@ def parse_sidecar(path: Path) -> SidecarData:
     taken_at = get_ts("photoTakenTime")
     created_at = get_ts("creationTime")
 
-    # Extract geographical data - prefer geoData, fallback to geoDataExif
     geo = data.get("geoData", {})
-    if not geo or not geo.get("latitude"):
-        geo = data.get("geoDataExif", {})
-    
     latitude = geo.get("latitude")
     longitude = geo.get("longitude")
     altitude = geo.get("altitude")
@@ -114,19 +113,8 @@ def parse_sidecar(path: Path) -> SidecarData:
     if any(v in (0, 0.0, None) for v in (latitude, longitude)):
         latitude = longitude = altitude = None
 
-    # Extract favorite status - support both formats
-    favorited_data = data.get("favorited")
-    if isinstance(favorited_data, bool):
-        # Direct boolean format: "favorited": true
-        favorite = favorited_data
-    elif isinstance(favorited_data, dict):
-        # Object format: "favorited": {"value": true}
-        favorite = bool(favorited_data.get("value", False))
-    else:
-        favorite = False
-
-    # Extract archived status
-    archived = bool(data.get("archived", False))
+    # Extract favorite status
+    favorite = bool(data.get("favorited", {}).get("value", False))
 
     return SidecarData(
         filename=title,
@@ -140,7 +128,6 @@ def parse_sidecar(path: Path) -> SidecarData:
         favorite=favorite,
         lat_span=lat_span,
         lon_span=lon_span,
-        archived=archived,
     )
 
 

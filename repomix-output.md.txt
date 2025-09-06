@@ -1,0 +1,2079 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+# File Summary
+
+## Purpose
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+## Notes
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+# Directory Structure
+```
+pyproject.toml
+pytest.ini
+README.md
+requirements.txt
+src/google_takeout_metadata/__init__.py
+src/google_takeout_metadata/cli.py
+src/google_takeout_metadata/exif_writer.py
+src/google_takeout_metadata/processor.py
+src/google_takeout_metadata/sidecar.py
+test_albums_demo.sh
+test_features.sh
+tests/test_end_to_end.py
+tests/test_exif_writer.py
+tests/test_integration.py
+tests/test_processor.py
+tests/test_sidecar.py
+```
+
+# Files
+
+## File: pyproject.toml
+````toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "google_takeout_metadata"
+version = "0.1.0"
+description = "Merge Google Takeout metadata into images"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Anthony", email = "anthony@example.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "pillow"]
+
+[project.scripts]
+tk = "google_takeout_metadata.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (requiring exiftool)",
+]
+````
+
+## File: requirements.txt
+````
+pillow
+pytest
+````
+
+## File: src/google_takeout_metadata/__init__.py
+````python
+"""Utilities to merge Google Takeout sidecar metadata into image files."""
+
+__all__ = [
+    "sidecar",
+    "exif_writer",
+    "processor",
+]
+````
+
+## File: test_albums_demo.sh
+````bash
+#!/bin/bash
+
+# Script de démonstration complète des fonctionnalités avec albums
+
+echo "=== Démonstration complète des fonctionnalités avec support albums ==="
+
+# Créer un répertoire de test temporaire
+TEST_DIR="/tmp/test_google_takeout_albums"
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR/Vacances_2024/Plage"
+
+echo "1. Création de la structure de test avec albums..."
+
+# Créer une image de test dans le sous-dossier
+cat > "$TEST_DIR/Vacances_2024/Plage/photo_plage.jpg" << 'EOF'
+FFD8FFE000104A46494600010101006000600000FFDB004300080606070605080707070909080A0C140D0C0B0B0C1912130F141D1A1F1E1D1A1C1C20242E2720222C231C1C2837292C30313434341F27393D38323C2E333432FFDB0043010909090C0B0C180D0D1832211C213232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232FFC0001108006400640301220002110103110101FFC4001F0000010501010101010100000000000000000102030405060708090A0BFFC400B5100002010303020403050504040000017D01020300041105122131410613516107227114328191A1082342B1C11552D1F02433627282090A161718191A25262728292A3435363738393A434445464748494A535455565758595A636465666768696A737475767778797A838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE1E2E3E4E5E6E7E8E9EAF1F2F3F4F5F6F7F8F9FAFFC4001F0100030101010101010101010000000000000102030405060708090A0BFFC400B51100020102040403040705040400010277000102031104052131061241510761711322328108144291A1B1C109233352F0156272D10A162434E125F11718191A262728292A35363738393A434445464748494A535455565758595A636465666768696A737475767778797A82838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE2E3E4E5E6E7E8E9EAF2F3F4F5F6F7F8F9FAFFDA000C03010002110311003F00FFD9
+EOF
+
+# Créer le metadata.json pour l'album principal "Vacances 2024"
+cat > "$TEST_DIR/Vacances_2024/metadata.json" << 'EOF'
+{
+  "title": "Vacances Été 2024",
+  "description": "Album des vacances d'été 2024 en famille",
+  "albums": [
+    {"title": "Souvenirs Famille"},
+    "Vacances"
+  ]
+}
+EOF
+
+# Créer le metadata.json pour le sous-album "Plage"
+cat > "$TEST_DIR/Vacances_2024/Plage/metadata.json" << 'EOF'
+{
+  "title": "Photos de Plage",
+  "description": "Journée à la plage"
+}
+EOF
+
+# Créer le fichier sidecar avec toutes les métadonnées
+cat > "$TEST_DIR/Vacances_2024/Plage/photo_plage.jpg.json" << 'EOF'
+{
+  "title": "photo_plage.jpg",
+  "description": "Belle journée ensoleillée à la plage 🏖️☀️",
+  "favorited": {
+    "value": true
+  },
+  "people": [
+    {"name": "Alice Dupont"},
+    {"name": "Bob Martin"},
+    {"name": "Sophie Wilson"}
+  ],
+  "photoTakenTime": {
+    "timestamp": "1736719606"
+  },
+  "geoData": {
+    "latitude": 43.7102,
+    "longitude": 7.2620,
+    "altitude": 5.0
+  }
+}
+EOF
+
+echo "2. Structure créée:"
+echo "=================================="
+find "$TEST_DIR" -type f | sort
+echo "=================================="
+
+echo ""
+echo "3. Contenu du metadata.json principal:"
+echo "=================================="
+cat "$TEST_DIR/Vacances_2024/metadata.json"
+echo -e "\n=================================="
+
+echo ""
+echo "4. Contenu du metadata.json sous-dossier:"
+echo "=================================="
+cat "$TEST_DIR/Vacances_2024/Plage/metadata.json"  
+echo -e "\n=================================="
+
+echo ""
+echo "5. Contenu du sidecar photo:"
+echo "=================================="
+cat "$TEST_DIR/Vacances_2024/Plage/photo_plage.jpg.json"
+echo -e "\n=================================="
+
+echo ""
+echo "6. Cette photo devrait avoir les métadonnées suivantes après traitement:"
+echo "- Description: 'Belle journée ensoleillée à la plage 🏖️☀️'"
+echo "- Personnes: Alice Dupont, Bob Martin, Sophie Wilson"
+echo "- Rating: 5 (car favorited = true)"
+echo "- GPS: 43.7102, 7.2620, alt 5m (Côte d'Azur)"
+echo "- Albums détectés automatiquement:"
+echo "  * Album: Vacances Été 2024 (dossier parent)"
+echo "  * Album: Souvenirs Famille (album secondaire)"
+echo "  * Album: Vacances (album simple)" 
+echo "  * Album: Photos de Plage (sous-dossier)"
+
+echo ""
+echo "7. Commande pour traiter:"
+echo "google-takeout-metadata '$TEST_DIR'"
+
+echo ""
+echo "8. Pour vérifier les résultats après traitement:"
+echo "exiftool -json -Keywords -Subject -Rating -GPSLatitude -GPSLongitude -Description '$TEST_DIR/Vacances_2024/Plage/photo_plage.jpg'"
+
+echo ""
+echo "=== Fonctionnalités complètement implémentées ==="
+echo "✅ Option --localtime"
+echo "✅ Option --append-only" 
+echo "✅ Support des favoris -> Rating=5"
+echo "✅ Support des albums (metadata.json de dossier)"
+echo "✅ Tests unitaires complets"
+echo "✅ Tests d'intégration E2E complets"
+echo "✅ Déduplication des personnes"
+echo "✅ Filtrage des coordonnées 0/0"
+echo "✅ Support Unicode complet (accents, émojis)"
+echo "✅ Support photos et vidéos"
+
+echo ""
+echo "=== Test terminé ==="
+echo "Répertoire de test: $TEST_DIR"
+````
+
+## File: test_features.sh
+````bash
+#!/bin/bash
+
+# Script de test manuel pour démontrer les nouvelles fonctionnalités
+
+echo "=== Test des nouvelles fonctionnalités de google-takeout-metadata ==="
+
+# Créer un répertoire de test temporaire
+TEST_DIR="/tmp/test_google_takeout"
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR"
+
+# Créer une image de test simple
+echo "1. Création d'une image de test..."
+cat > "$TEST_DIR/test.jpg" << 'EOF'
+FFD8FFE000104A46494600010101006000600000FFDB004300080606070605080707070909080A0C140D0C0B0B0C1912130F141D1A1F1E1D1A1C1C20242E2720222C231C1C2837292C30313434341F27393D38323C2E333432FFDB0043010909090C0B0C180D0D1832211C213232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232FFC0001108006400640301220002110103110101FFC4001F0000010501010101010100000000000000000102030405060708090A0BFFC400B5100002010303020403050504040000017D01020300041105122131410613516107227114328191A1082342B1C11552D1F02433627282090A161718191A25262728292A3435363738393A434445464748494A535455565758595A636465666768696A737475767778797A838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE1E2E3E4E5E6E7E8E9EAF1F2F3F4F5F6F7F8F9FAFFC4001F0100030101010101010101010000000000000102030405060708090A0BFFC400B51100020102040403040705040400010277000102031104052131061241510761711322328108144291A1B1C109233352F0156272D10A162434E125F11718191A262728292A35363738393A434445464748494A535455565758595A636465666768696A737475767778797A82838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE2E3E4E5E6E7E8E9EAF2F3F4F5F6F7F8F9FAFFDA000C03010002110311003F00FFD9
+EOF
+
+# Créer le fichier sidecar JSON avec toutes les nouvelles fonctionnalités
+echo "2. Création du fichier sidecar avec métadonnées complètes..."
+cat > "$TEST_DIR/test.jpg.json" << 'EOF'
+{
+  "title": "test.jpg",
+  "description": "Photo de test avec émojis 🎉 et caractères spéciaux: ñ, é, ü",
+  "favorited": {
+    "value": true
+  },
+  "people": [
+    {"name": "Alice Dupont"},
+    {"name": "Bob Martin"},
+    {"name": " Alice Dupont "},
+    {"name": "Charlie Wilson"}
+  ],
+  "photoTakenTime": {
+    "timestamp": "1736719606"
+  },
+  "creationTime": {
+    "timestamp": "1736719600"
+  },
+  "geoData": {
+    "latitude": 48.8566,
+    "longitude": 2.3522,
+    "altitude": 35.0,
+    "latitudeSpan": 0.001,
+    "longitudeSpan": 0.001
+  }
+}
+EOF
+
+echo "3. Affichage du contenu du sidecar:"
+echo "=================================="
+cat "$TEST_DIR/test.jpg.json"
+echo -e "\n=================================="
+
+echo "4. Test de la commande avec les nouvelles options:"
+echo ""
+echo "Usage normal:"
+echo "google-takeout-metadata $TEST_DIR"
+echo ""
+echo "Avec heure locale:"
+echo "google-takeout-metadata --localtime $TEST_DIR"  
+echo ""
+echo "En mode append-only:"
+echo "google-takeout-metadata --append-only $TEST_DIR"
+echo ""
+echo "Avec les deux options:"
+echo "google-takeout-metadata --localtime --append-only $TEST_DIR"
+
+echo ""
+echo "5. Fonctionnalités implémentées:"
+echo "✅ Option --localtime (déjà existante)"
+echo "✅ Option --append-only (nouvelle)"
+echo "✅ Support des favoris -> Rating=5"
+echo "✅ Tests unitaires complets"
+echo "✅ Tests d'intégration E2E"
+echo "✅ Déduplication des personnes"
+echo "✅ Filtrage des coordonnées 0/0"
+echo ""
+echo "6. Prochaines étapes possibles:"
+echo "⏳ Support des albums (metadata.json de dossier)"
+echo "⏳ Installation d'exiftool pour les tests d'intégration"
+
+echo ""
+echo "=== Test terminé ==="
+echo "Répertoire de test: $TEST_DIR"
+````
+
+## File: tests/test_integration.py
+````python
+"""Integration tests that actually run exiftool and verify metadata is written correctly."""
+
+from pathlib import Path
+import json
+import subprocess
+import tempfile
+import pytest
+from PIL import Image
+
+from google_takeout_metadata.processor import process_sidecar_file
+from google_takeout_metadata.sidecar import SidecarData
+
+
+def _run_exiftool_read(image_path: Path) -> dict:
+    """Run exiftool to read metadata from an image file."""
+    cmd = [
+        "exiftool", 
+        "-json",
+        "-charset", "filename=UTF8",
+        "-charset", "iptc=UTF8", 
+        "-charset", "exif=UTF8",
+        "-charset", "XMP=UTF8",
+        str(image_path)
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
+        data = json.loads(result.stdout)
+        return data[0] if data else {}
+    except FileNotFoundError:
+        pytest.skip("exiftool not found - skipping integration tests")
+    except subprocess.CalledProcessError as e:
+        pytest.fail(f"exiftool failed: {e.stderr}")
+
+
+@pytest.mark.integration
+def test_write_and_read_description(tmp_path: Path) -> None:
+    """Test that description is written and can be read back."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='red')
+    img.save(image_path)
+    
+    # Create sidecar JSON
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "Test photo with ñ and émojis 🎉"
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify description was written
+    assert metadata.get("Description") == "Test photo with ñ and émojis 🎉"
+    assert metadata.get("ImageDescription") == "Test photo with ñ and émojis 🎉"
+
+
+@pytest.mark.integration
+def test_write_and_read_people(tmp_path: Path) -> None:
+    """Test that people names are written and can be read back."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='blue')
+    img.save(image_path)
+    
+    # Create sidecar JSON with people
+    sidecar_data = {
+        "title": "test.jpg",
+        "people": [
+            {"name": "Alice Dupont"},
+            {"name": "Bob Martin"}
+        ]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify people were written
+    keywords = metadata.get("Keywords", [])
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    
+    assert "Alice Dupont" in keywords
+    assert "Bob Martin" in keywords
+
+
+@pytest.mark.integration 
+def test_write_and_read_gps(tmp_path: Path) -> None:
+    """Test that GPS coordinates are written and can be read back."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='green')
+    img.save(image_path)
+    
+    # Create sidecar JSON with GPS data
+    sidecar_data = {
+        "title": "test.jpg",
+        "geoData": {
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+            "altitude": 35.0
+        }
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify GPS data was written
+    # exiftool returns GPS coordinates in human-readable format, so we need to check differently
+    gps_lat = metadata.get("GPSLatitude")
+    gps_lon = metadata.get("GPSLongitude")
+    
+    # Check that GPS fields exist and contain expected degree values
+    assert gps_lat is not None, "GPSLatitude should be set"
+    assert gps_lon is not None, "GPSLongitude should be set"
+    assert "48 deg" in str(gps_lat), f"Expected 48 degrees in latitude, got: {gps_lat}"
+    assert "2 deg" in str(gps_lon), f"Expected 2 degrees in longitude, got: {gps_lon}"
+    
+    # GPS references can be "N"/"North" and "E"/"East" depending on exiftool version
+    lat_ref = metadata.get("GPSLatitudeRef")
+    lon_ref = metadata.get("GPSLongitudeRef")
+    assert lat_ref in ["N", "North"], f"Expected N or North for latitude ref, got: {lat_ref}"
+    assert lon_ref in ["E", "East"], f"Expected E or East for longitude ref, got: {lon_ref}"
+
+
+@pytest.mark.integration
+def test_write_and_read_favorite(tmp_path: Path) -> None:
+    """Test that favorite status is written as rating."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='yellow')
+    img.save(image_path)
+    
+    # Create sidecar JSON with favorite
+    sidecar_data = {
+        "title": "test.jpg",
+        "favorited": {"value": True}
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify rating was written
+    assert int(metadata.get("Rating", 0)) == 5
+
+
+@pytest.mark.integration
+def test_append_only_mode(tmp_path: Path) -> None:
+    """Test that append-only mode doesn't overwrite existing description."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='purple')
+    img.save(image_path)
+    
+    # First, manually add a description
+    cmd = [
+        "exiftool", 
+        "-overwrite_original",
+        "-EXIF:ImageDescription=Original description",
+        str(image_path)
+    ]
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
+    except FileNotFoundError:
+        pytest.skip("exiftool not found - skipping integration tests")
+    
+    # Create sidecar JSON with different description
+    sidecar_data = {
+        "title": "test.jpg", 
+        "description": "New description from sidecar"
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar in append-only mode
+    process_sidecar_file(json_path, append_only=True)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # In append-only mode, original description should be preserved
+    # Note: exiftool's -= operator doesn't overwrite if field exists
+    assert metadata.get("ImageDescription") == "Original description"
+
+
+@pytest.mark.integration
+def test_datetime_formats(tmp_path: Path) -> None:
+    """Test that datetime is written in correct format."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='orange')
+    img.save(image_path)
+    
+    # Create sidecar JSON with timestamp
+    sidecar_data = {
+        "title": "test.jpg",
+        "photoTakenTime": {"timestamp": "1736719606"}  # Unix timestamp
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify datetime format (should be YYYY:MM:DD HH:MM:SS)
+    date_original = metadata.get("DateTimeOriginal")
+    assert date_original is not None
+    assert ":" in date_original
+    # Should match EXIF datetime format
+    import re
+    assert re.match(r'\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}', date_original)
+
+
+@pytest.mark.integration
+def test_write_and_read_albums(tmp_path: Path) -> None:
+    """Test that albums are written and can be read back."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='cyan')
+    img.save(image_path)
+    
+    # Create album metadata.json
+    album_data = {"title": "Vacances Été 2024"}
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    # Create sidecar JSON
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "Photo de vacances"
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify album was written as keyword
+    keywords = metadata.get("Keywords", [])
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    
+    assert "Album: Vacances Été 2024" in keywords
+    
+    # Also check Subject field
+    subjects = metadata.get("Subject", [])
+    if isinstance(subjects, str):
+        subjects = [subjects]
+    
+    assert "Album: Vacances Été 2024" in subjects
+
+
+@pytest.mark.integration  
+def test_albums_and_people_combined(tmp_path: Path) -> None:
+    """Test that albums and people can coexist in keywords."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='magenta')
+    img.save(image_path)
+    
+    # Create album metadata.json
+    album_data = {"title": "Album Famille"}
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    # Create sidecar JSON with people
+    sidecar_data = {
+        "title": "test.jpg",
+        "people": [{"name": "Alice"}, {"name": "Bob"}]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process the sidecar
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    metadata = _run_exiftool_read(image_path)
+    
+    # Verify both album and people were written
+    keywords = metadata.get("Keywords", [])
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    
+    # Check that we have both people and album
+    assert "Alice" in keywords
+    assert "Bob" in keywords
+    assert "Album: Album Famille" in keywords
+````
+
+## File: pytest.ini
+````
+[pytest]
+addopts = -ra
+pythonpath = src
+markers =
+    integration: marks tests as integration tests requiring exiftool
+````
+
+## File: tests/test_processor.py
+````python
+from pathlib import Path
+
+from google_takeout_metadata.processor import process_directory, _is_sidecar_file
+
+
+def test_ignore_non_sidecar(tmp_path: Path) -> None:
+    (tmp_path / "data.json").write_text("{}", encoding="utf-8")
+    process_directory(tmp_path)
+
+
+def test_is_sidecar_file_standard_pattern() -> None:
+    """Test standard pattern: photo.jpg.json"""
+    assert _is_sidecar_file(Path("photo.jpg.json"))
+    assert _is_sidecar_file(Path("video.mp4.json"))
+    assert _is_sidecar_file(Path("image.PNG.JSON"))  # case insensitive
+
+
+def test_is_sidecar_file_supplemental_metadata_pattern() -> None:
+    """Test new Google Takeout format: photo.jpg.supplemental-metadata.json"""
+    assert _is_sidecar_file(Path("IMG_001.jpg.supplemental-metadata.json"))
+    assert _is_sidecar_file(Path("video.mp4.supplemental-metadata.json"))
+    assert _is_sidecar_file(Path("image.PNG.SUPPLEMENTAL-METADATA.JSON"))  # case insensitive
+    assert _is_sidecar_file(Path("photo.heic.supplemental-metadata.json"))
+
+
+def test_is_sidecar_file_older_pattern() -> None:
+    """Test older pattern: photo.json"""
+    assert _is_sidecar_file(Path("IMG_1234.jpg.json"))  # this should work with the new logic
+    # Note: photo.json without extension in name would not be detected
+    # as it's ambiguous, but that's fine since parse_sidecar() validates
+
+
+def test_is_sidecar_file_negative() -> None:
+    """Test files that should not be detected as sidecars"""
+    assert not _is_sidecar_file(Path("data.json"))  # no image extension
+    assert not _is_sidecar_file(Path("photo.txt"))  # not json
+    assert not _is_sidecar_file(Path("photo.jpg"))  # not json
+    assert not _is_sidecar_file(Path("metadata.json"))  # album metadata, not sidecar
+    assert not _is_sidecar_file(Path("métadonnées.json"))  # album metadata, not sidecar
+````
+
+## File: README.md
+````markdown
+# exif_metadata_google_photo_takeout
+
+Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par Google Takeout dans les photos correspondantes.
+
+## Fonctionnalités
+
+✅ **Métadonnées supportées:**
+- Descriptions/légendes
+- Personnes identifiées (avec déduplication automatique)
+- Dates de prise de vue et de création
+- Coordonnées GPS (filtrage automatique des coordonnées 0/0 peu fiables)
+- Favoris (mappés sur Rating=5)
+- **Albums** (détectés depuis les fichiers metadata.json de dossier et ajoutés comme mots-clés "Album: <nom>")
+
+✅ **Options avancées:**
+- `--localtime`: Conversion des timestamps en heure locale au lieu d'UTC
+- `--append-only`: Ajoute uniquement les métadonnées manquantes (évite d'écraser l'existant)
+
+✅ **Qualité:**
+- Tests unitaires complets
+- Tests d'intégration E2E avec exiftool
+- Support des formats photo et vidéo
+
+## Installation
+
+Prérequis: `exiftool` doit être installé et accessible dans le PATH.
+
+```bash
+pip install -e .
+```
+
+## Utilisation
+
+### Utilisation basique
+```bash
+tk /chemin/vers/le/dossier
+```
+
+### Avec options
+```bash
+# Utiliser l'heure locale pour les timestamps
+tk --localtime /chemin/vers/le/dossier
+
+# Mode sécurisé: n'ajouter que les métadonnées manquantes
+tk --append-only /chemin/vers/le/dossier
+
+# Combiner les deux options
+tk --localtime --append-only /chemin/vers/le/dossier
+```
+
+Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` et écrit les informations pertinentes dans les fichiers image correspondants à l'aide d'`exiftool`.
+
+## Tests
+
+```bash
+# Tests unitaires
+pytest tests/ -m "not integration"
+
+# Tests complets (nécessite exiftool)
+pytest tests/
+
+# Tests d'intégration uniquement
+pytest tests/ -m "integration"
+```
+
+Les tests comprennent:
+- **Tests unitaires**: Parsing des sidecars, génération des arguments exiftool
+- **Tests d'intégration**: Écriture et relecture effective des métadonnées avec exiftool
+````
+
+## File: src/google_takeout_metadata/cli.py
+````python
+"""Command line interface."""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import shutil
+import sys
+from pathlib import Path
+
+from .processor import process_directory
+
+
+def main(argv: list[str] | None = None) -> None:
+    # Vérifier que exiftool est disponible
+    if shutil.which("exiftool") is None:
+        logging.error("exiftool not found. Please install it to use this script.")
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(description="Merge Google Takeout metadata into images")
+    parser.add_argument("path", type=Path, help="Directory to scan recursively")
+    parser.add_argument(
+        "--localtime", action="store_true",
+        help="Convert timestamps to local time instead of UTC (default: UTC)"
+    )
+    parser.add_argument(
+        "--append-only", action="store_true",
+        help="Only add metadata fields if they are absent (avoid overwriting existing data)"
+    )
+    parser.add_argument(
+        "--clean-sidecars", action="store_true",
+        help="Delete JSON sidecar files after successful metadata transfer"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="Enable verbose logging (DEBUG level)"
+    )
+    args = parser.parse_args(argv)
+
+    # Configuration du logging avec le niveau approprié
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level, 
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    
+    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only, clean_sidecars=args.clean_sidecars)
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry
+    main()
+````
+
+## File: tests/test_sidecar.py
+````python
+from pathlib import Path
+import json
+import pytest
+
+from google_takeout_metadata.sidecar import parse_sidecar
+
+
+def test_parse_sidecar(tmp_path: Path) -> None:
+    sample = {
+        "title": "1729436788572.jpg",
+        "description": "Magicien en or",
+        "creationTime": {"timestamp": "1736719606"},
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "geoData": {"latitude": 0.0, "longitude": 0.0, "altitude": 0.0},
+        "people": [{"name": "anthony vincent"}],
+    }
+
+    json_path = tmp_path / "1729436788572.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+
+    meta = parse_sidecar(json_path)
+    assert meta.filename == "1729436788572.jpg"
+    assert meta.description == "Magicien en or"
+    assert meta.people == ["anthony vincent"]
+    assert meta.taken_at == 1736719606
+    assert meta.created_at == 1736719606
+
+
+def test_title_mismatch(tmp_path: Path) -> None:
+    data = {"title": "other.jpg"}
+    json_path = tmp_path / "sample.jpg.json"
+    json_path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        parse_sidecar(json_path)
+
+
+def test_parse_sidecar_supplemental_metadata_format(tmp_path: Path) -> None:
+    """Test parsing new Google Takeout format: IMG_001.jpg.supplemental-metadata.json"""
+    sample = {
+        "title": "IMG_001.jpg",
+        "description": "Test photo with new format",
+        "creationTime": {"timestamp": "1736719606"},
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "people": [{"name": "test user"}],
+    }
+
+    json_path = tmp_path / "IMG_001.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+
+    meta = parse_sidecar(json_path)
+    assert meta.filename == "IMG_001.jpg"
+    assert meta.description == "Test photo with new format"
+    assert meta.people == ["test user"]
+    assert meta.taken_at == 1736719606
+    assert meta.created_at == 1736719606
+
+
+def test_title_mismatch_supplemental_metadata(tmp_path: Path) -> None:
+    """Test title validation with supplemental-metadata format."""
+    data = {"title": "wrong_name.jpg"}
+    json_path = tmp_path / "IMG_001.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="Sidecar title.*does not match expected filename"):
+        parse_sidecar(json_path)
+
+
+def test_invalid_json(tmp_path: Path) -> None:
+    json_path = tmp_path / "bad.jpg.json"
+    json_path.write_text("not json", encoding="utf-8")
+    with pytest.raises(ValueError):
+        parse_sidecar(json_path)
+
+
+def test_zero_coordinates(tmp_path: Path) -> None:
+    sample = {
+        "title": "a.jpg",
+        "geoData": {"latitude": 0.0, "longitude": 0.0, "altitude": 10.0, "latitudeSpan": 1, "longitudeSpan": 1},
+    }
+    json_path = tmp_path / "a.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    # 0/0 coordinates should be filtered out as unreliable
+    assert meta.latitude is None
+    assert meta.longitude is None
+    assert meta.altitude is None
+
+
+def test_people_deduplication(tmp_path: Path) -> None:
+    """Test that people names are deduplicated and trimmed."""
+    sample = {
+        "title": "a.jpg",
+        "people": [
+            {"name": "alice"},
+            {"name": " alice "},  # with spaces
+            {"name": "alice"},   # duplicate
+            {"name": "bob"},
+            {"name": "  "},      # empty after strip
+            {"name": "charlie"},
+            {"name": " bob "},   # another duplicate with spaces
+        ]
+    }
+    json_path = tmp_path / "a.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    # Should have deduplicated and trimmed: ["alice", "bob", "charlie"]
+    assert meta.people == ["alice", "bob", "charlie"]
+
+
+def test_parse_favorite_true(tmp_path: Path) -> None:
+    """Test parsing favorited photo."""
+    sample = {
+        "title": "favorite.jpg",
+        "favorited": {"value": True}
+    }
+    json_path = tmp_path / "favorite.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.favorite is True
+
+
+def test_parse_favorite_false(tmp_path: Path) -> None:
+    """Test parsing non-favorited photo."""
+    sample = {
+        "title": "not_favorite.jpg",
+        "favorited": {"value": False}
+    }
+    json_path = tmp_path / "not_favorite.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.favorite is False
+
+
+def test_parse_no_favorite_field(tmp_path: Path) -> None:
+    """Test parsing photo without favorite field."""
+    sample = {
+        "title": "no_fav.jpg",
+        "description": "Test photo"
+    }
+    json_path = tmp_path / "no_fav.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.favorite is False
+
+
+def test_parse_zero_geo_coordinates(tmp_path: Path) -> None:
+    """Test that 0/0 coordinates are filtered out as unreliable."""
+    sample = {
+        "title": "geo_zero.jpg",
+        "geoData": {"latitude": 0.0, "longitude": 0.0, "altitude": 100.0}
+    }
+    json_path = tmp_path / "geo_zero.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    # 0/0 coordinates should be filtered out
+    assert meta.latitude is None
+    assert meta.longitude is None
+    assert meta.altitude is None
+
+
+def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
+    """Test that valid coordinates are preserved."""
+    sample = {
+        "title": "geo_valid.jpg",
+        "geoData": {"latitude": 48.8566, "longitude": 2.3522, "altitude": 35.0}
+    }
+    json_path = tmp_path / "geo_valid.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.latitude == 48.8566
+    assert meta.longitude == 2.3522
+    assert meta.altitude == 35.0
+
+
+def test_parse_people_nested_format(tmp_path: Path) -> None:
+    """Test parsing people in nested format: [{"person": {"name": "X"}}]."""
+    sample = {
+        "title": "nested_people.jpg",
+        "people": [
+            {"person": {"name": "alice"}},
+            {"person": {"name": "bob"}},
+            {"name": "charlie"}  # mixed format
+        ]
+    }
+    json_path = tmp_path / "nested_people.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.people == ["alice", "bob", "charlie"]
+
+
+def test_parse_missing_timestamps(tmp_path: Path) -> None:
+    """Test parsing when timestamps are missing."""
+    sample = {
+        "title": "no_dates.jpg",
+        "description": "Photo without dates"
+    }
+    json_path = tmp_path / "no_dates.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.taken_at is None
+    assert meta.created_at is None
+
+
+def test_parse_album_metadata(tmp_path: Path) -> None:
+    """Test parsing album metadata from metadata.json files."""
+    from google_takeout_metadata.sidecar import parse_album_metadata
+    
+    # Test basic album metadata
+    album_data = {
+        "title": "Vacances 2024",
+        "description": "Photos des vacances d'été"
+    }
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    albums = parse_album_metadata(metadata_path)
+    assert albums == ["Vacances 2024"]
+
+
+def test_parse_album_metadata_multiple_albums(tmp_path: Path) -> None:
+    """Test parsing multiple album references."""
+    from google_takeout_metadata.sidecar import parse_album_metadata
+    
+    album_data = {
+        "title": "Album Principal",
+        "albums": [
+            {"title": "Sous-album 1"},
+            {"title": "Sous-album 2"},
+            "Album Simple"
+        ]
+    }
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    albums = parse_album_metadata(metadata_path)
+    assert set(albums) == {"Album Principal", "Album Simple", "Sous-album 1", "Sous-album 2"}
+
+
+def test_find_albums_for_directory(tmp_path: Path) -> None:
+    """Test finding albums for a directory."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create album metadata
+    album_data = {"title": "Mon Album"}
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert albums == ["Mon Album"]
+
+
+def test_find_albums_for_directory_no_metadata(tmp_path: Path) -> None:
+    """Test finding albums when no metadata exists."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert albums == []
+
+
+def test_find_albums_french_metadata_format(tmp_path: Path) -> None:
+    """Test finding albums with French metadata file format."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create French album metadata
+    album_data = {"title": "Mon Album Français"}
+    metadata_path = tmp_path / "métadonnées.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert albums == ["Mon Album Français"]
+
+
+def test_find_albums_french_numbered_metadata(tmp_path: Path) -> None:
+    """Test finding albums with numbered French metadata files."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create multiple French metadata files
+    album_data1 = {"title": "Album 1"}
+    metadata_path1 = tmp_path / "métadonnées.json"
+    metadata_path1.write_text(json.dumps(album_data1), encoding="utf-8")
+    
+    album_data2 = {"title": "Album 2"}
+    metadata_path2 = tmp_path / "métadonnées(1).json"
+    metadata_path2.write_text(json.dumps(album_data2), encoding="utf-8")
+    
+    album_data3 = {"title": "Album 3"}
+    metadata_path3 = tmp_path / "métadonnées(2).json" 
+    metadata_path3.write_text(json.dumps(album_data3), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert set(albums) == {"Album 1", "Album 2", "Album 3"}
+
+
+def test_find_albums_mixed_formats(tmp_path: Path) -> None:
+    """Test finding albums with mixed English and French metadata files."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create English metadata
+    album_data_en = {"title": "English Album"}
+    metadata_path_en = tmp_path / "metadata.json"
+    metadata_path_en.write_text(json.dumps(album_data_en), encoding="utf-8")
+    
+    # Create French metadata
+    album_data_fr = {"title": "Album Français"}
+    metadata_path_fr = tmp_path / "métadonnées.json"
+    metadata_path_fr.write_text(json.dumps(album_data_fr), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert set(albums) == {"Album Français", "English Album"}
+
+
+def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
+    """Test that albums are added from directory metadata when processing sidecars."""
+    from google_takeout_metadata.processor import process_sidecar_file
+    from google_takeout_metadata.sidecar import parse_sidecar
+    
+    # Create album metadata
+    album_data = {"title": "Album Test"}
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    # Create a dummy image file
+    image_path = tmp_path / "test.jpg"
+    with open(image_path, 'wb') as f:
+        f.write(b'\xFF\xD8\xFF\xE0')  # Minimal JPEG header
+    
+    # Create sidecar
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "Test photo"
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Parse the sidecar - albums should be empty initially
+    meta = parse_sidecar(json_path)
+    assert meta.albums == []
+    
+    # Note: We can't test process_sidecar_file without exiftool
+    # but we can test the album finding logic separately
+````
+
+## File: src/google_takeout_metadata/processor.py
+````python
+"""High level processing of directories of Google Takeout metadata."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import logging
+import json
+import subprocess
+
+from .sidecar import parse_sidecar, find_albums_for_directory
+from .exif_writer import write_metadata
+
+logger = logging.getLogger(__name__)
+
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", "heif", ".avif", ".mp4", ".mov", "m4v", ".3gp"}
+
+
+def detect_file_type(file_path: Path) -> str | None:
+    """Detect the actual file type using file command or magic bytes.
+    
+    Returns:
+        The correct file extension (with dot) or None if detection fails
+    """
+    try:
+        # Try using file command first (available on most systems)
+        result = subprocess.run(
+            ["file", str(file_path)], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+        if result.returncode == 0:
+            output = result.stdout.lower()
+            if "jpeg" in output or "jfif" in output:
+                return ".jpg"
+            elif "png" in output:
+                return ".png"
+            elif "gif" in output:
+                return ".gif"
+            elif "webp" in output:
+                return ".webp"
+            elif "heic" in output or "heif" in output:
+                return ".heic"
+            elif "mp4" in output:
+                return ".mp4"
+            elif "quicktime" in output or "mov" in output:
+                return ".mov"
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    
+    # Fallback: Try reading magic bytes
+    try:
+        with open(file_path, "rb") as f:
+            header = f.read(16)
+            if header.startswith(b'\xff\xd8\xff'):
+                return ".jpg"
+            elif header.startswith(b'\x89PNG\r\n\x1a\n'):
+                return ".png"
+            elif header.startswith(b'GIF8'):
+                return ".gif"
+            elif header.startswith(b'RIFF') and b'WEBP' in header:
+                return ".webp"
+            elif header[4:8] == b'ftyp':
+                if b'heic' in header[:16] or b'mif1' in header[:16]:
+                    return ".heic"
+                elif b'mp4' in header[:16] or b'isom' in header[:16]:
+                    return ".mp4"
+    except (OSError, IOError):
+        pass
+    
+    return None
+
+
+def fix_file_extension_mismatch(image_path: Path, json_path: Path) -> tuple[Path, Path]:
+    """Fix file extension mismatch by renaming files and updating JSON content.
+    
+    Args:
+        image_path: Path to the image/video file
+        json_path: Path to the corresponding JSON sidecar file
+        
+    Returns:
+        Tuple of (new_image_path, new_json_path)
+    """
+    # Detect the actual file type
+    actual_ext = detect_file_type(image_path)
+    if not actual_ext or actual_ext == image_path.suffix.lower():
+        # No mismatch detected or detection failed
+        return image_path, json_path
+    
+    # Create new paths with correct extension
+    new_image_path = image_path.with_suffix(actual_ext)
+    new_json_path = json_path.with_name(new_image_path.name + ".supplemental-metadata.json")
+    
+    logger.info("Detected extension mismatch for %s: should be %s", image_path, actual_ext)
+    
+    try:
+        # Rename the image file
+        image_path.rename(new_image_path)
+        logger.info("Renamed %s to %s", image_path, new_image_path)
+        
+        # Update JSON content and rename JSON file
+        with open(json_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        
+        # Update the title field
+        json_data['title'] = new_image_path.name
+        
+        # Write updated JSON to new location
+        with open(new_json_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        
+        # Remove old JSON file
+        json_path.unlink()
+        logger.info("Updated and renamed JSON: %s to %s", json_path, new_json_path)
+        
+        return new_image_path, new_json_path
+        
+    except (OSError, IOError, json.JSONDecodeError) as exc:
+        logger.warning("Failed to fix extension mismatch for %s: %s", image_path, exc)
+        return image_path, json_path
+
+
+def _is_sidecar_file(path: Path) -> bool:
+    """Check if a file could be a Google Photos sidecar JSON file.
+    
+    This function uses a permissive approach since parse_sidecar() does
+    strong validation by matching the title field with the expected filename.
+    
+    Supports both formats:
+    - New format: photo.jpg.supplemental-metadata.json
+    - Legacy format: photo.jpg.json
+    """
+    if not path.suffix.lower() == ".json":
+        return False
+    
+    suffixes = [s.lower() for s in path.suffixes]
+    
+    # New Google Takeout format: photo.jpg.supplemental-metadata.json
+    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in IMAGE_EXTS:
+        return True
+    
+    # Legacy pattern: photo.jpg.json
+    if len(suffixes) >= 2 and suffixes[-2] in IMAGE_EXTS:
+        return True
+    
+    # Older pattern: photo.json (less specific but validated later)
+    # Only consider this if the base name without .json could be an image
+    stem_parts = path.stem.split('.')
+    if len(stem_parts) >= 2:
+        potential_ext = '.' + stem_parts[-1].lower()
+        if potential_ext in IMAGE_EXTS:
+            return True
+    
+    return False
+
+
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
+    """Process a single ``.json`` sidecar file.
+    
+    Args:
+        json_path: Path to the JSON sidecar file
+        use_localtime: Convert timestamps to local time instead of UTC
+        append_only: Only add metadata fields if they are absent
+        clean_sidecars: Delete the JSON file after successful processing
+    """
+
+    meta = parse_sidecar(json_path)
+    
+    # Find albums for this directory
+    directory_albums = find_albums_for_directory(json_path.parent)
+    meta.albums.extend(directory_albums)
+    
+    image_path = json_path.with_name(meta.filename)
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
+    
+    # Try to write metadata to image
+    try:
+        write_metadata(image_path, meta, use_localtime=use_localtime, append_only=append_only)
+        current_json_path = json_path
+    except RuntimeError as exc:
+        # Check if this might be an extension mismatch error
+        error_msg = str(exc).lower()
+        if ("not a valid png" in error_msg and "looks more like a jpeg" in error_msg) or \
+           ("not a valid jpeg" in error_msg and "looks more like a png" in error_msg) or \
+           ("charset option" in error_msg):
+            
+            logger.info("Attempting to fix file extension mismatch for %s", image_path)
+            
+            # Try to fix the extension mismatch
+            fixed_image_path, fixed_json_path = fix_file_extension_mismatch(image_path, json_path)
+            
+            if fixed_image_path != image_path:
+                # Files were renamed, re-parse the updated JSON and retry
+                meta = parse_sidecar(fixed_json_path)
+                directory_albums = find_albums_for_directory(fixed_json_path.parent)
+                meta.albums.extend(directory_albums)
+                
+                write_metadata(fixed_image_path, meta, use_localtime=use_localtime, append_only=append_only)
+                current_json_path = fixed_json_path
+                logger.info("Successfully processed %s after fixing extension", fixed_image_path)
+            else:
+                # Extension fix failed, re-raise original error
+                raise
+        else:
+            # Not an extension mismatch error, re-raise
+            raise
+    
+    # Clean up sidecar file if requested and write was successful
+    if clean_sidecars:
+        try:
+            current_json_path.unlink()
+            logger.info("Deleted sidecar file: %s", current_json_path)
+        except OSError as exc:
+            logger.warning("Failed to delete sidecar file %s: %s", current_json_path, exc)
+
+
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
+    """Recursively process all sidecar files under ``root``.
+    
+    Args:
+        root: Root directory to scan recursively
+        use_localtime: Convert timestamps to local time instead of UTC
+        append_only: Only add metadata fields if they are absent
+        clean_sidecars: Delete JSON files after successful processing
+    """
+    count = 0
+    cleaned_count = 0
+    
+    for json_file in root.rglob("*.json"):
+        
+        if not _is_sidecar_file(json_file):
+            continue
+        count += 1
+        try:
+            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, clean_sidecars=clean_sidecars)
+            if clean_sidecars:
+                cleaned_count += 1
+        except (FileNotFoundError, ValueError, RuntimeError) as exc:  # pragma: no cover - logging
+            logger.warning("Failed to process %s: %s", json_file, exc, exc_info=True)
+    
+    logger.info("Processed %d sidecar files under %s", count, root)
+    if clean_sidecars and cleaned_count > 0:
+        logger.info("Cleaned up %d sidecar files", cleaned_count)
+    if count == 0:
+        logger.warning("No sidecar files found under %s", root)
+````
+
+## File: tests/test_end_to_end.py
+````python
+from pathlib import Path
+import json
+import subprocess
+import shutil
+import pytest
+from PIL import Image
+
+from google_takeout_metadata.processor import process_directory
+
+
+@pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
+def test_end_to_end(tmp_path: Path) -> None:
+    # create dummy image
+    img_path = tmp_path / "sample.jpg"
+    Image.new("RGB", (10, 10), color="red").save(img_path)
+    # create matching sidecar
+    data = {
+        "title": "sample.jpg",
+        "description": 'Magicien "en" or',
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "people": [{"name": "anthony vincent"}],
+    }
+    (tmp_path / "sample.jpg.json").write_text(json.dumps(data), encoding="utf-8")
+
+    process_directory(tmp_path)
+
+    exe = shutil.which("exiftool") or "exiftool"
+    result = subprocess.run(
+        [
+            exe,
+            "-j",
+            "-XMP-iptcExt:PersonInImage",
+            "-XMP-dc:Subject",
+            "-IPTC:Keywords",
+            "-EXIF:ImageDescription",
+            str(img_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    tags = json.loads(result.stdout)[0]
+    
+    # exiftool returns single values as strings, multiple values as lists
+    # Normalize to lists for comparison
+    def normalize_to_list(value):
+        if value is None:
+            return []
+        elif isinstance(value, list):
+            return value
+        else:
+            return [value]
+    
+    assert normalize_to_list(tags.get("PersonInImage")) == ["anthony vincent"]
+    assert normalize_to_list(tags.get("Subject")) == ["anthony vincent"]
+    assert normalize_to_list(tags.get("Keywords")) == ["anthony vincent"]
+    assert tags.get("ImageDescription") == 'Magicien "en" or'
+````
+
+## File: src/google_takeout_metadata/sidecar.py
+````python
+from __future__ import annotations
+
+"""Parsing of Google Takeout JSON sidecar files."""
+
+from dataclasses import dataclass
+from pathlib import Path
+import json
+from typing import List, Optional
+
+
+@dataclass
+class SidecarData:
+    """Selected metadata extracted from a Google Photos sidecar JSON."""
+
+    filename: str
+    description: Optional[str]
+    people: List[str]
+    taken_at: Optional[int]
+    created_at: Optional[int]
+    latitude: Optional[float]
+    longitude: Optional[float]
+    altitude: Optional[float]
+    favorite: bool = False
+    lat_span: Optional[float] = None
+    lon_span: Optional[float] = None
+    albums: List[str] = None
+    archived: bool = False
+
+    def __post_init__(self):
+        """Initialize albums as empty list if None."""
+        if self.albums is None:
+            self.albums = []
+
+
+def parse_sidecar(path: Path) -> SidecarData:
+    """Parse ``path`` and return :class:`SidecarData`.
+
+    The function validates that the embedded ``title`` field matches the sidecar
+    filename to avoid applying metadata to the wrong image.
+    
+    Supports both formats:
+    - New format: photo.jpg.supplemental-metadata.json -> title should be "photo.jpg"
+    - Legacy format: photo.jpg.json -> title should be "photo.jpg"
+    """
+
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError as exc:  # pragma: no cover - simple wrapper
+        raise FileNotFoundError(f"Sidecar not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {path}") from exc
+
+    title = data.get("title")
+    if not title:
+        raise ValueError(f"Missing 'title' in {path}")
+    
+    # Extract expected filename from sidecar path
+    # For new format: IMG_001.jpg.supplemental-metadata.json -> expected title: IMG_001.jpg
+    # For legacy format: IMG_001.jpg.json -> expected title: IMG_001.jpg
+    if path.name.endswith(".supplemental-metadata.json"):
+        expected_title = path.name[:-len(".supplemental-metadata.json")]
+    elif path.name.endswith(".json"):
+        expected_title = path.stem
+    else:
+        expected_title = path.stem
+    
+    if expected_title != title:
+        raise ValueError(
+            f"Sidecar title {title!r} does not match expected filename {expected_title!r} from {path.name!r}"
+        )
+
+    description = data.get("description")
+    # Extract people names, strip whitespace, and deduplicate
+    # people peut être [{ "name": "X" }] ou parfois [{ "person": { "name": "X" } }]
+    raw_people = data.get("people", []) or []
+    people = []
+    for p in raw_people:
+        if isinstance(p, dict):
+            if isinstance(p.get("name"), str):
+                people.append(p["name"].strip())
+            elif isinstance(p.get("person"), dict) and isinstance(p["person"].get("name"), str):
+                people.append(p["person"]["name"].strip())
+    # déduplication
+    people = sorted(set(filter(None, people)))
+
+
+    def get_ts(key: str) -> Optional[int]:
+        ts = data.get(key, {}).get("timestamp")
+        if ts is None:
+            return None
+        try:
+            return int(ts)
+        except (TypeError, ValueError):
+            return None
+
+    taken_at = get_ts("photoTakenTime")
+    created_at = get_ts("creationTime")
+
+    # Extract geographical data - prefer geoData, fallback to geoDataExif
+    geo = data.get("geoData", {})
+    if not geo or not geo.get("latitude"):
+        geo = data.get("geoDataExif", {})
+    
+    latitude = geo.get("latitude")
+    longitude = geo.get("longitude")
+    altitude = geo.get("altitude")
+    lat_span = geo.get("latitudeSpan")
+    lon_span = geo.get("longitudeSpan")
+    
+    # Clear coordinates if both latitude and longitude are None
+    # Keep actual 0.0 coordinates as they may be valid (like equator/prime meridian)
+    # Google met parfois 0/0 quand pas de géo fiable → on nettoie
+    if any(v in (0, 0.0, None) for v in (latitude, longitude)):
+        latitude = longitude = altitude = None
+
+    # Extract favorite status - support both formats
+    favorited_data = data.get("favorited")
+    if isinstance(favorited_data, bool):
+        # Direct boolean format: "favorited": true
+        favorite = favorited_data
+    elif isinstance(favorited_data, dict):
+        # Object format: "favorited": {"value": true}
+        favorite = bool(favorited_data.get("value", False))
+    else:
+        favorite = False
+
+    # Extract archived status
+    archived = bool(data.get("archived", False))
+
+    return SidecarData(
+        filename=title,
+        description=description,
+        people=people,
+        taken_at=taken_at,
+        created_at=created_at,
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,
+        favorite=favorite,
+        lat_span=lat_span,
+        lon_span=lon_span,
+        archived=archived,
+    )
+
+
+def parse_album_metadata(path: Path) -> List[str]:
+    """Parse album metadata.json file and return list of album names.
+    
+    Google Takeout album metadata.json files typically contain:
+    {
+        "title": "Album Name",
+        "description": "...",
+        ...
+    }
+    
+    Returns a list of album names found in the file.
+    """
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+    
+    albums = []
+    
+    # Primary album name from title field
+    title = data.get("title")
+    if title and isinstance(title, str):
+        albums.append(title.strip())
+    
+    # Some metadata.json files might have multiple album references
+    # Check if there are album references in other fields
+    album_refs = data.get("albums", [])
+    if isinstance(album_refs, list):
+        for album_ref in album_refs:
+            if isinstance(album_ref, dict) and "title" in album_ref:
+                album_name = album_ref["title"]
+                if isinstance(album_name, str):
+                    albums.append(album_name.strip())
+            elif isinstance(album_ref, str):
+                albums.append(album_ref.strip())
+    
+    # Remove duplicates and empty strings
+    albums = sorted(set(filter(None, albums)))
+    
+    return albums
+
+
+def find_albums_for_directory(directory: Path) -> List[str]:
+    """Find all album names that apply to photos in the given directory.
+    
+    Looks for metadata.json files in the directory and parent directories
+    to collect album information.
+    
+    Supports multiple metadata file patterns:
+    - metadata.json (English)
+    - métadonnées.json (French)
+    - métadonnées(1).json, métadonnées(2).json, etc. (French with duplicates)
+    - album_metadata.json, folder_metadata.json (legacy)
+    """
+    albums = []
+    
+    # Check current directory for various metadata file patterns
+    metadata_patterns = [
+        "metadata.json",
+        "métadonnées.json", 
+        "album_metadata.json", 
+        "folder_metadata.json"
+    ]
+    
+    for pattern in metadata_patterns:
+        metadata_file = directory / pattern
+        if metadata_file.exists():
+            albums.extend(parse_album_metadata(metadata_file))
+    
+    # Also check for numbered variations like métadonnées(1).json, métadonnées(2).json, etc.
+    for metadata_file in directory.glob("métadonnées*.json"):
+        if metadata_file.name not in ["métadonnées.json"]:  # already checked above
+            albums.extend(parse_album_metadata(metadata_file))
+    
+    return sorted(set(albums))
+````
+
+## File: tests/test_exif_writer.py
+````python
+from google_takeout_metadata.sidecar import SidecarData
+from google_takeout_metadata.exif_writer import build_exiftool_args, write_metadata
+import subprocess
+import pytest
+from pathlib import Path
+
+
+def test_build_args() -> None:
+    meta = SidecarData(
+        filename="a.jpg",
+        description="desc",
+        people=["alice"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=-1.0,
+        longitude=2.0,
+        altitude=3.0,
+        favorite=False,
+    )
+
+    args = build_exiftool_args(meta)
+    assert "-EXIF:ImageDescription=desc" in args
+    assert "-XMP-iptcExt:PersonInImage+=alice" in args
+    assert "-GPSLatitude=1.0" in args
+    assert "-GPSLatitudeRef=S" in args
+    assert "-GPSLongitudeRef=E" in args
+    assert "-GPSAltitude=3.0" in args
+    # Check charset parameters
+    assert "-charset" in args
+    assert "filename=UTF8" in args
+
+
+def test_write_metadata_error(tmp_path, monkeypatch):
+    meta = SidecarData(
+        filename="a.jpg",
+        description="test",  # Add description to ensure args are generated
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+    img = tmp_path / "a.jpg"
+    img.write_bytes(b"data")
+
+    def fake_run(*args, **kwargs):
+        raise subprocess.CalledProcessError(1, "exiftool", stderr="bad")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError):
+        write_metadata(img, meta)
+
+
+def test_build_args_video():
+    """Test video-specific tags are added for MP4/MOV files."""
+    meta = SidecarData(
+        filename="video.mp4",
+        description="Video description",
+        people=["alice"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=None,
+        favorite=False,
+    )
+    
+    video_path = Path("video.mp4")
+    args = build_exiftool_args(meta, video_path)
+    
+    # Check video-specific tags
+    assert "-Keys:Description=Video description" in args
+    assert any("-QuickTime:CreateDate=" in arg for arg in args)
+    assert any("-QuickTime:ModifyDate=" in arg for arg in args)
+    assert "-Keys:Location=48.8566,2.3522" in args
+    assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
+    assert "-api" in args
+    assert "QuickTimeUTC=1" in args
+
+
+def test_build_args_localtime():
+    """Test that local time formatting works."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=1736719606,  # 2025-01-12 22:06:46 UTC
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+
+    # Test UTC (default)
+    args_utc = build_exiftool_args(meta, Path("a.jpg"), use_localtime=False)
+    # Test local time
+    args_local = build_exiftool_args(meta, Path("a.jpg"), use_localtime=True)
+    
+    # The datetime strings will be different (unless running in UTC timezone)
+    # but both should contain some form of DateTimeOriginal
+    assert any("-DateTimeOriginal=" in arg for arg in args_utc)
+    assert any("-DateTimeOriginal=" in arg for arg in args_local)
+
+
+def test_build_args_append_only() -> None:
+    """Test append-only mode uses correct exiftool syntax."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description="desc",
+        people=["alice", "bob"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+
+    # Normal mode
+    args_normal = build_exiftool_args(meta, append_only=False)
+    assert "-EXIF:ImageDescription=desc" in args_normal
+    assert "-XMP-iptcExt:PersonInImage+=alice" in args_normal
+
+    # Append-only mode
+    args_append = build_exiftool_args(meta, append_only=True)
+    assert "-EXIF:ImageDescription-=desc" in args_append
+    assert "-XMP-iptcExt:PersonInImage-+=alice" in args_append
+
+
+def test_build_args_favorite() -> None:
+    """Test favorite photos get rating=5."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=True,
+    )
+
+    args = build_exiftool_args(meta)
+    assert "-XMP:Rating=5" in args
+
+    # Test append-only mode
+    args_append = build_exiftool_args(meta, append_only=True)
+    assert "-XMP:Rating-=5" in args_append
+
+
+def test_build_args_no_favorite() -> None:
+    """Test non-favorite photos don't get rating."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+
+    args = build_exiftool_args(meta)
+    assert not any("Rating" in arg for arg in args)
+
+
+def test_build_args_albums() -> None:
+    """Test that albums are written as keywords with Album: prefix."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=["Vacances 2024", "Famille"]
+    )
+
+    args = build_exiftool_args(meta)
+    assert "-XMP-dc:Subject+=Album: Vacances 2024" in args
+    assert "-IPTC:Keywords+=Album: Vacances 2024" in args
+    assert "-XMP-dc:Subject+=Album: Famille" in args
+    assert "-IPTC:Keywords+=Album: Famille" in args
+
+
+def test_build_args_albums_append_only() -> None:
+    """Test albums in append-only mode."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=["Test Album"]
+    )
+
+    args = build_exiftool_args(meta, append_only=True)
+    assert "-XMP-dc:Subject-+=Album: Test Album" in args
+    assert "-IPTC:Keywords-+=Album: Test Album" in args
+
+
+def test_build_args_no_albums() -> None:
+    """Test that empty albums list doesn't add any album tags."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=[]
+    )
+
+    args = build_exiftool_args(meta)
+    assert not any("Album:" in arg for arg in args)
+````
+
+## File: src/google_takeout_metadata/exif_writer.py
+````python
+# imports: supprime import shlex, tempfile
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import List
+
+from .sidecar import SidecarData
+
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}  # broader set of video extensions
+
+def _is_video_file(path: Path) -> bool:
+    return path.suffix.lower() in VIDEO_EXTS
+
+def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
+    if ts is None:
+        return None
+    dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
+    return dt.strftime("%Y:%m:%d %H:%M:%S")  # EXIF sans fuseau
+
+def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False, append_only: bool = False) -> List[str]:
+    args: List[str] = []
+
+    # Charsets pour Unicode/accents
+    args += [
+        "-charset", "filename=UTF8",
+        "-charset", "iptc=UTF8",
+        "-charset", "exif=UTF8",
+        "-charset", "XMP=UTF8",
+    ]
+
+    # Vidéos : clarifier que nos timestamps source sont en UTC quand use_localtime=False
+    if image_path and _is_video_file(image_path):
+        args += ["-api", "QuickTimeUTC=1"]
+
+    # Description
+    if meta.description:
+        desc_tag = "=" if not append_only else "-="
+        args += [
+            f"-EXIF:ImageDescription{desc_tag}{meta.description}",
+            f"-XMP-dc:Description{desc_tag}{meta.description}",
+            f"-IPTC:Caption-Abstract{desc_tag}{meta.description}",
+        ]
+        if image_path and _is_video_file(image_path):
+            # Pour le moment, pas de "title" textuel distinct → on évite Keys:Title = description
+            args += [f"-Keys:Description{desc_tag}{meta.description}"]
+
+    # Personnes
+    people_tag = "+=" if not append_only else "-+="
+    for person in meta.people:
+        args += [
+            f"-XMP-iptcExt:PersonInImage{people_tag}{person}",
+            f"-XMP-dc:Subject{people_tag}{person}",
+            f"-IPTC:Keywords{people_tag}{person}",
+        ]
+
+    # Albums
+    album_tag = "+=" if not append_only else "-+="
+    for album in meta.albums:
+        album_keyword = f"Album: {album}"
+        args += [
+            f"-XMP-dc:Subject{album_tag}{album_keyword}",
+            f"-IPTC:Keywords{album_tag}{album_keyword}",
+        ]
+
+    # Rating/Favoris
+    if meta.favorite:
+        rating_tag = "=" if not append_only else "-="
+        args.append(f"-XMP:Rating{rating_tag}5")
+
+    # Set standard EXIF date fields:
+    # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
+    # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
+    if (s := _fmt_dt(meta.taken_at, use_localtime)):
+        args.append(f"-DateTimeOriginal={s}")
+
+    base_ts = meta.created_at or meta.taken_at
+    if (s := _fmt_dt(base_ts, use_localtime)):
+        args += [f"-CreateDate={s}", f"-ModifyDate={s}"]
+
+    # Dates QuickTime (vidéos)
+    if image_path and _is_video_file(image_path):
+        if (s := _fmt_dt(meta.taken_at, use_localtime)):
+            args += [f"-QuickTime:CreateDate={s}"]
+        if (s := _fmt_dt(base_ts, use_localtime)):
+            args += [f"-QuickTime:ModifyDate={s}"]
+        if meta.description:
+            args += [f"-Keys:Description={meta.description}"]
+
+    # GPS
+    if meta.latitude is not None and meta.longitude is not None:
+        lat_ref = "N" if meta.latitude >= 0 else "S"
+        lon_ref = "E" if meta.longitude >= 0 else "W"
+        args += [
+            f"-GPSLatitude={abs(meta.latitude)}",
+            f"-GPSLatitudeRef={lat_ref}",
+            f"-GPSLongitude={abs(meta.longitude)}",
+            f"-GPSLongitudeRef={lon_ref}",
+        ]
+        if meta.altitude is not None:
+            alt_ref = "1" if meta.altitude < 0 else "0"
+            args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
+
+        if image_path and _is_video_file(image_path):
+            # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
+            args += [f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
+            # Keys:Location est peu standardisé ; garde-le si ça t’aide dans ton écosystème
+            args += [f"-Keys:Location={meta.latitude},{meta.longitude}"]
+
+    return args
+
+def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = False) -> None:
+    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime, append_only=append_only)
+    if not args:
+        return
+
+    cmd = [
+        "exiftool",
+        "-overwrite_original",
+        "-charset", "filename=UTF8",
+        "-charset", "iptc=UTF8",
+        "-charset", "exif=UTF8",
+        "-charset", "XMP=UTF8",
+        # Pour les vidéos, indiquer que nos timestamps sont UTC (évite offsets)
+        "-api", "QuickTimeUTC=1",
+        *args,
+        str(image_path),
+    ]
+
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60, encoding='utf-8')
+    except FileNotFoundError as exc:
+        raise RuntimeError("exiftool not found") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"exiftool failed for {image_path}: {exc.stderr or exc.stdout}") from exc
+````

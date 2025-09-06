@@ -1,6 +1,10 @@
 # imports: supprime import shlex, tempfile
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, tim        if image_path and _is_video_file(image_path):
+            # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
+            args += [f"-QuickTime:GPSCoordinates{gps_tag}{meta.latitude},{meta.longitude}"]
+            # Keys:Location est peu standardisé ; garde-le si ça t'aide dans ton écosystème
+            args += [f"-Keys:Location{gps_tag}{meta.latitude},{meta.longitude}"]
 from pathlib import Path
 from typing import List
 
@@ -97,9 +101,9 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
         if image_path and _is_video_file(image_path):
             # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-            args += [f"-QuickTime:GPSCoordinates{gps_tag}{meta.latitude},{meta.longitude}"]
-            # Keys:Location est peu standardisé ; garde-le si ça t'aide dans ton écosystème
-            args += [f"-Keys:Location{gps_tag}{meta.latitude},{meta.longitude}"]
+            args += [f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
+            # Keys:Location est peu standardisé ; garde-le si ça t’aide dans ton écosystème
+            args += [f"-Keys:Location={meta.latitude},{meta.longitude}"]
 
     return args
 
