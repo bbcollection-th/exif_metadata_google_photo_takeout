@@ -71,8 +71,7 @@ def test_fix_file_extension_mismatch_rollback_on_failure(tmp_path: Path) -> None
         assert result_json == json_path
         assert image_path.exists()  # Original image path should exist again
         assert not (tmp_path / "photo.jpg").exists()  # Renamed image should not exist
-
-
+        assert not (tmp_path / "photo.jpg.supplemental-metadata.json").exists()  # Pas de JSON orphelin attendu
 def test_fix_file_extension_mismatch_failed_rollback(tmp_path: Path) -> None:
     """Test fix_file_extension_mismatch when both operation and rollback fail"""
     # Create a fake JPEG file with wrong extension
