@@ -37,7 +37,7 @@ def test_video_metadata_append_only():
     video_path = Path("test_video.mp4")
     
     print("1. Testing build_exiftool_args for video in append-only mode:")
-    args = build_exiftool_args(meta, video_path, append_only=True)
+    args = build_exiftool_args(meta, image_path=video_path, append_only=True)
     
     # Check for video-specific QuickTime fields
     quicktime_create_args = [arg for arg in args if "QuickTime:CreateDate" in arg]
