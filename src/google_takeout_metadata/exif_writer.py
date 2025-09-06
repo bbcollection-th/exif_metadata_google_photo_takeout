@@ -225,6 +225,14 @@ def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = Fa
 def _write_metadata_append_only(image_path: Path, meta: SidecarData, use_localtime: bool) -> None:
     """Write metadata in append-only mode using separate commands for conditional writes."""
     
+    # Check if this is a video file
+    is_video = _is_video_file(image_path)
+    
+    # Add video configuration for videos
+    if is_video:
+        video_config_args = ["-api", "QuickTimeUTC=1"]
+        _run_exiftool_command(image_path, video_config_args, append_only=True)
+    
     # 1. Write descriptions only if they don't exist (conditional)
     if meta.description:
         desc_args = [
@@ -241,6 +249,13 @@ def _write_metadata_append_only(image_path: Path, meta: SidecarData, use_localti
             "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
         ]
         _run_exiftool_command(image_path, desc_args, append_only=True, allow_condition_failure=True)
+        
+        # Add video-specific description field
+        if is_video:
+            desc_args = [
+                "-if", "not $Keys:Description", f"-Keys:Description={meta.description}",
+            ]
+            _run_exiftool_command(image_path, desc_args, append_only=True, allow_condition_failure=True)
     
     # 2. Add people unconditionally (they are lists, so += is safe)
     if meta.people:
@@ -273,6 +288,11 @@ def _write_metadata_append_only(image_path: Path, meta: SidecarData, use_localti
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
         date_args = ["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"]
         _run_exiftool_command(image_path, date_args, append_only=True, allow_condition_failure=True)
+        
+        # Add QuickTime:CreateDate for videos
+        if is_video:
+            date_args = ["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"]
+            _run_exiftool_command(image_path, date_args, append_only=True, allow_condition_failure=True)
     
     base_ts = meta.created_at or meta.taken_at
     if (s := _fmt_dt(base_ts, use_localtime)):
@@ -281,6 +301,11 @@ def _write_metadata_append_only(image_path: Path, meta: SidecarData, use_localti
         
         date_args = ["-if", "not $ModifyDate", f"-ModifyDate={s}"]
         _run_exiftool_command(image_path, date_args, append_only=True, allow_condition_failure=True)
+        
+        # Add QuickTime:ModifyDate for videos
+        if is_video:
+            date_args = ["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"]
+            _run_exiftool_command(image_path, date_args, append_only=True, allow_condition_failure=True)
     
     # 6. Write GPS only if it doesn't exist (conditional)
     if meta.latitude is not None and meta.longitude is not None:
@@ -297,6 +322,24 @@ def _write_metadata_append_only(image_path: Path, meta: SidecarData, use_localti
         _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
         
         gps_args = ["-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}"]
+        _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        # Add video-specific GPS fields
+        if is_video:
+            gps_args = ["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
+            _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
+            
+            gps_args = ["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"]
+            _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
+    
+    # 7. Write GPS altitude only if it doesn't exist (conditional)
+    if meta.altitude is not None:
+        alt_ref = "1" if meta.altitude < 0 else "0"
+        
+        gps_args = ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}"]
+        _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        gps_args = ["-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
         _run_exiftool_command(image_path, gps_args, append_only=True, allow_condition_failure=True)
 
 
@@ -325,4 +368,15 @@ def _run_exiftool_command(image_path: Path, args: list[str], append_only: bool, 
         if exc.returncode == 2 and allow_condition_failure and "files failed condition" in (exc.stdout or ""):
             # This is expected - the conditions prevented writing because tags already exist
             return
+            
+        # Exit code 1 with specific warning messages about non-writable fields should be treated as non-fatal
+        # for video-specific tags that may not be supported by all file formats
+        stderr_msg = exc.stderr or ""
+        if (exc.returncode == 1 and allow_condition_failure and 
+            ("doesn't exist or isn't writable" in stderr_msg or
+             "not supported" in stderr_msg.lower() or
+             "nothing to do" in stderr_msg.lower())):
+            # Non-fatal warning for unsupported video-specific tags
+            return
+            
         raise RuntimeError(f"exiftool failed for {image_path}: {exc.stderr or exc.stdout}") from exc

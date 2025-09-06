@@ -198,6 +198,47 @@ def test_build_args_albums() -> None:
     assert "-IPTC:Keywords+=Album: Famille" in args
 
 
+def test_build_args_video_append_only() -> None:
+    """Test that video-specific tags are included in append-only mode."""
+    meta = SidecarData(
+        filename="video.mp4",
+        description="Video description",
+        people=["alice"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=35.0,
+        favorite=False,
+    )
+    
+    video_path = Path("video.mp4")
+    args = build_exiftool_args(meta, video_path, append_only=True)
+    
+    # Check video-specific description uses conditional logic
+    assert "-if" in args
+    assert "not $Keys:Description" in args
+    assert "-Keys:Description=Video description" in args
+    
+    # Check QuickTime dates use conditional logic
+    assert "not $QuickTime:CreateDate" in args
+    assert "not $QuickTime:ModifyDate" in args
+    
+    # Check video-specific GPS fields use conditional logic
+    assert "not $QuickTime:GPSCoordinates" in args
+    assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
+    assert "not $Keys:Location" in args
+    assert "-Keys:Location=48.8566,2.3522" in args
+    
+    # Check altitude uses conditional logic
+    assert "not $GPSAltitude" in args
+    assert "-GPSAltitude=35.0" in args
+    
+    # Check video config
+    assert "-api" in args
+    assert "QuickTimeUTC=1" in args
+
+
 def test_build_args_albums_append_only() -> None:
     """Test albums in append-only mode."""
     meta = SidecarData(

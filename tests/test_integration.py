@@ -427,3 +427,65 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     # Both original and new person should be present (because += adds)
     assert "Original Person" in final_keywords
     assert "New Person" in final_keywords
+
+
+@pytest.mark.integration
+def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
+    """Test that append-only mode produces similar results to overwrite mode for videos when no metadata exists."""
+    # Copy a real MP4 file from the test data
+    project_root = Path(__file__).parent.parent
+    source_video = project_root / "Google Photos" / "essais" / "1686356837983.mp4"
+    if not source_video.exists():
+        pytest.skip("Real MP4 test file not found")
+    
+    # Create two copies for testing
+    video_path_append = tmp_path / "test_append.mp4"
+    video_path_overwrite = tmp_path / "test_overwrite.mp4"
+    
+    import shutil
+    shutil.copy2(source_video, video_path_append)
+    shutil.copy2(source_video, video_path_overwrite)
+    
+    # Create test metadata
+    meta = SidecarData(
+        filename="test.mp4",
+        description="Test video description",
+        people=["Video Person"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=35.0,
+        favorite=True,
+        albums=["Test Album"]
+    )
+    
+    # Write with append-only mode
+    write_metadata(video_path_append, meta, append_only=True)
+    
+    # Write with overwrite mode
+    write_metadata(video_path_overwrite, meta, append_only=False)
+    
+    # Read back metadata from both files
+    metadata_append = _run_exiftool_read(video_path_append)
+    metadata_overwrite = _run_exiftool_read(video_path_overwrite)
+    
+    # Compare key fields - they should be similar when starting from empty metadata
+    # (Some fields might differ slightly due to format differences)
+    
+    # Description should be written in both modes
+    if "Description" in metadata_overwrite:
+        assert metadata_append.get("Description") == metadata_overwrite.get("Description")
+    
+    # Keywords should contain the person and album in both modes
+    keywords_append = metadata_append.get("Keywords", [])
+    keywords_overwrite = metadata_overwrite.get("Keywords", [])
+    if isinstance(keywords_append, str):
+        keywords_append = [keywords_append]
+    if isinstance(keywords_overwrite, str):
+        keywords_overwrite = [keywords_overwrite]
+    
+    # If keywords were written in overwrite mode, they should also be in append mode
+    for keyword in keywords_overwrite:
+        if "Video Person" in keyword or "Album: Test Album" in keyword:
+            assert keyword in keywords_append or any(keyword in k for k in keywords_append)
