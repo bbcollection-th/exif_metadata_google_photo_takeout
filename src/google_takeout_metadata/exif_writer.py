@@ -276,7 +276,7 @@ def _run_exiftool_command(image_path: Path, args: list[str], append_only: bool, 
     except subprocess.CalledProcessError as exc:
         # Exit code 2 means "files failed condition" when using -if
         # This is expected behavior in append-only mode when tags already exist
-        if exc.returncode == 2 and allow_condition_failure and "files failed condition" in (exc.stdout or ""):
+        if exc.returncode == 2 and allow_condition_failure and "files failed condition" in (exc.stderr or ""):
             # This is expected - the conditions prevented writing because tags already exist
             return
         raise RuntimeError(f"exiftool failed for {image_path}: {exc.stderr or exc.stdout}") from exc
