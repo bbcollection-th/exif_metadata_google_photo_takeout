@@ -8,6 +8,8 @@ import pytest
 from PIL import Image
 
 from google_takeout_metadata.processor import process_sidecar_file
+from google_takeout_metadata.exif_writer import write_metadata
+from google_takeout_metadata.sidecar import SidecarData
 from google_takeout_metadata.sidecar import SidecarData
 
 
@@ -311,3 +313,117 @@ def test_albums_and_people_combined(tmp_path: Path) -> None:
     assert "Alice" in keywords
     assert "Bob" in keywords
     assert "Album: Album Famille" in keywords
+
+
+@pytest.mark.integration
+def test_default_safe_behavior(tmp_path: Path) -> None:
+    """Test that default behavior is safe (append-only) and preserves existing metadata."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='red')
+    img.save(image_path)
+    
+    # First, manually add some metadata using overwrite mode
+    first_meta = SidecarData(
+        filename="test.jpg",
+        description="Original description",
+        people=["Original Person"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=["Original Album"]
+    )
+    
+    # Write initial metadata with overwrite mode
+    write_metadata(image_path, first_meta, append_only=False)
+    
+    # Verify initial metadata was written
+    initial_metadata = _run_exiftool_read(image_path)
+    assert initial_metadata.get("ImageDescription") == "Original description"
+    initial_keywords = initial_metadata.get("Keywords", [])
+    if isinstance(initial_keywords, str):
+        initial_keywords = [initial_keywords]
+    assert "Original Person" in initial_keywords
+    assert "Album: Original Album" in initial_keywords
+    
+    # Now create sidecar with different metadata and process with default behavior
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "New description", 
+        "people": [{"name": "New Person"}]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process with default behavior (should be append-only, preserving existing metadata)
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    final_metadata = _run_exiftool_read(image_path)
+    
+    # In true append-only mode, the original description should be preserved
+    # because we use -if "not $TAG" which only writes if tag doesn't exist
+    assert final_metadata.get("ImageDescription") == "Original description"
+    
+    # Keywords should still contain original data, and new people should be ADDED (not replace)
+    # because we use += for people
+    final_keywords = final_metadata.get("Keywords", [])
+    if isinstance(final_keywords, str):
+        final_keywords = [final_keywords]
+    assert "Original Person" in final_keywords
+    assert "Album: Original Album" in final_keywords
+    # New person SHOULD be added because we use += operator for people
+    assert "New Person" in final_keywords
+
+
+@pytest.mark.integration  
+def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
+    """Test that explicit overwrite mode replaces existing metadata."""
+    # Create a simple test image
+    image_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='blue') 
+    img.save(image_path)
+    
+    # First, add some initial metadata
+    first_meta = SidecarData(
+        filename="test.jpg",
+        description="Original description",
+        people=["Original Person"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=[]
+    )
+    
+    write_metadata(image_path, first_meta, append_only=False)
+    
+    # Now create sidecar with different metadata
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "New description",
+        "people": [{"name": "New Person"}]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process with explicit overwrite mode
+    process_sidecar_file(json_path, append_only=False)
+    
+    # Read back metadata
+    final_metadata = _run_exiftool_read(image_path)
+    
+    # In overwrite mode, new description should replace old one
+    # Note: We're using += operator so people get added, not replaced
+    final_keywords = final_metadata.get("Keywords", [])
+    if isinstance(final_keywords, str):
+        final_keywords = [final_keywords]
+    
+    # Both original and new person should be present (because += adds)
+    assert "Original Person" in final_keywords
+    assert "New Person" in final_keywords

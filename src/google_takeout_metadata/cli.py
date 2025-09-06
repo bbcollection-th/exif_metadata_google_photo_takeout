@@ -24,8 +24,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Convert timestamps to local time instead of UTC (default: UTC)"
     )
     parser.add_argument(
+        "--overwrite", action="store_true",
+        help="Allow overwriting existing metadata fields (by default, existing metadata is preserved)"
+    )
+    parser.add_argument(
         "--append-only", action="store_true",
-        help="Only add metadata fields if they are absent (avoid overwriting existing data)"
+        help=argparse.SUPPRESS  # Cache l'option dépréciée de l'aide
     )
     parser.add_argument(
         "--clean-sidecars", action="store_true",
@@ -44,7 +48,19 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
     
-    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only, clean_sidecars=args.clean_sidecars)
+    # Gestion de la rétrocompatibilité et validation des options
+    if args.append_only and args.overwrite:
+        logging.error("Cannot use both --append-only (deprecated) and --overwrite options together")
+        sys.exit(1)
+    
+    if args.append_only:
+        logging.warning("--append-only is deprecated and now the default behavior. Use --overwrite to allow overwriting existing metadata.")
+    
+    # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
+    # L'option --overwrite permet d'écraser les métadonnées existantes
+    append_only = not args.overwrite
+    
+    process_directory(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry

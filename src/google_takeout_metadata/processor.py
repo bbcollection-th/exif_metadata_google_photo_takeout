@@ -173,7 +173,7 @@ def _is_sidecar_file(path: Path) -> bool:
     return False
 
 
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
     """Process a single ``.json`` sidecar file.
     
     Args:
@@ -237,7 +237,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             logger.warning("Failed to delete sidecar file %s: %s", current_json_path, exc)
 
 
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
     """Recursively process all sidecar files under ``root``.
     
     Args:
