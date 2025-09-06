@@ -58,13 +58,12 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Extract expected filename from sidecar path
     # For new format: IMG_001.jpg.supplemental-metadata.json -> expected title: IMG_001.jpg
     # For legacy format: IMG_001.jpg.json -> expected title: IMG_001.jpg
-    if path.name.endswith(".supplemental-metadata.json"):
+    if path.name.lower().endswith(".supplemental-metadata.json"):
         expected_title = path.name[:-len(".supplemental-metadata.json")]
-    elif path.name.endswith(".json"):
+    elif path.name.lower().endswith(".json"):
         expected_title = path.stem
     else:
         expected_title = path.stem
-    
     if expected_title != title:
         raise ValueError(
             f"Sidecar title {title!r} does not match expected filename {expected_title!r} from {path.name!r}"
