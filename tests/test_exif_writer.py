@@ -213,7 +213,7 @@ def test_build_args_video_append_only() -> None:
     )
     
     video_path = Path("video.mp4")
-    args = build_exiftool_args(meta, video_path, append_only=True)
+    args = build_exiftool_args(meta, image_path=video_path, append_only=True)
     
     # Check video-specific description uses conditional logic
     assert "-if" in args
