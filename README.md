@@ -44,7 +44,10 @@ google-takeout-metadata --localtime /chemin/vers/le/dossier
 # Mode sécurisé: n'ajouter que les métadonnées manquantes
 google-takeout-metadata --append-only /chemin/vers/le/dossier
 
-# Combiner les deux options
+# Nettoyer les fichiers sidecars après traitement
+google-takeout-metadata --clean-sidecars /chemin/vers/le/dossier
+
+# Combiner les options
 google-takeout-metadata --localtime --append-only /chemin/vers/le/dossier
 ```
 

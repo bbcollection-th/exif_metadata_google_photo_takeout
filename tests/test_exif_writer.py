@@ -25,9 +25,7 @@ def test_build_args() -> None:
     assert "-GPSLatitudeRef=S" in args
     assert "-GPSLongitudeRef=E" in args
     assert "-GPSAltitude=3.0" in args
-    # Check charset parameters
-    assert "-charset" in args
-    assert "filename=UTF8" in args
+    # Les options charset sont maintenant dans write_metadata() seulement
 
 
 def test_write_metadata_error(tmp_path, monkeypatch):

@@ -34,6 +34,36 @@ def test_title_mismatch(tmp_path: Path) -> None:
         parse_sidecar(json_path)
 
 
+def test_parse_sidecar_supplemental_metadata_format(tmp_path: Path) -> None:
+    """Test parsing new Google Takeout format: IMG_001.jpg.supplemental-metadata.json"""
+    sample = {
+        "title": "IMG_001.jpg",
+        "description": "Test photo with new format",
+        "creationTime": {"timestamp": "1736719606"},
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "people": [{"name": "test user"}],
+    }
+
+    json_path = tmp_path / "IMG_001.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+
+    meta = parse_sidecar(json_path)
+    assert meta.filename == "IMG_001.jpg"
+    assert meta.description == "Test photo with new format"
+    assert meta.people == ["test user"]
+    assert meta.taken_at == 1736719606
+    assert meta.created_at == 1736719606
+
+
+def test_title_mismatch_supplemental_metadata(tmp_path: Path) -> None:
+    """Test title validation with supplemental-metadata format."""
+    data = {"title": "wrong_name.jpg"}
+    json_path = tmp_path / "IMG_001.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="Sidecar title.*does not match expected filename"):
+        parse_sidecar(json_path)
+
+
 def test_invalid_json(tmp_path: Path) -> None:
     json_path = tmp_path / "bad.jpg.json"
     json_path.write_text("not json", encoding="utf-8")
@@ -224,6 +254,58 @@ def test_find_albums_for_directory_no_metadata(tmp_path: Path) -> None:
     
     albums = find_albums_for_directory(tmp_path)
     assert albums == []
+
+
+def test_find_albums_french_metadata_format(tmp_path: Path) -> None:
+    """Test finding albums with French metadata file format."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create French album metadata
+    album_data = {"title": "Mon Album Français"}
+    metadata_path = tmp_path / "métadonnées.json"
+    metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert albums == ["Mon Album Français"]
+
+
+def test_find_albums_french_numbered_metadata(tmp_path: Path) -> None:
+    """Test finding albums with numbered French metadata files."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create multiple French metadata files
+    album_data1 = {"title": "Album 1"}
+    metadata_path1 = tmp_path / "métadonnées.json"
+    metadata_path1.write_text(json.dumps(album_data1), encoding="utf-8")
+    
+    album_data2 = {"title": "Album 2"}
+    metadata_path2 = tmp_path / "métadonnées(1).json"
+    metadata_path2.write_text(json.dumps(album_data2), encoding="utf-8")
+    
+    album_data3 = {"title": "Album 3"}
+    metadata_path3 = tmp_path / "métadonnées(2).json" 
+    metadata_path3.write_text(json.dumps(album_data3), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert set(albums) == {"Album 1", "Album 2", "Album 3"}
+
+
+def test_find_albums_mixed_formats(tmp_path: Path) -> None:
+    """Test finding albums with mixed English and French metadata files."""
+    from google_takeout_metadata.sidecar import find_albums_for_directory
+    
+    # Create English metadata
+    album_data_en = {"title": "English Album"}
+    metadata_path_en = tmp_path / "metadata.json"
+    metadata_path_en.write_text(json.dumps(album_data_en), encoding="utf-8")
+    
+    # Create French metadata
+    album_data_fr = {"title": "Album Français"}
+    metadata_path_fr = tmp_path / "métadonnées.json"
+    metadata_path_fr.write_text(json.dumps(album_data_fr), encoding="utf-8")
+    
+    albums = find_albums_for_directory(tmp_path)
+    assert set(albums) == {"Album Français", "English Album"}
 
 
 def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:

@@ -24,6 +24,7 @@ class SidecarData:
     lat_span: Optional[float] = None
     lon_span: Optional[float] = None
     albums: List[str] = None
+    archived: bool = False
 
     def __post_init__(self):
         """Initialize albums as empty list if None."""
@@ -36,6 +37,10 @@ def parse_sidecar(path: Path) -> SidecarData:
 
     The function validates that the embedded ``title`` field matches the sidecar
     filename to avoid applying metadata to the wrong image.
+    
+    Supports both formats:
+    - New format: photo.jpg.supplemental-metadata.json -> title should be "photo.jpg"
+    - Legacy format: photo.jpg.json -> title should be "photo.jpg"
     """
 
     try:
@@ -49,9 +54,19 @@ def parse_sidecar(path: Path) -> SidecarData:
     title = data.get("title")
     if not title:
         raise ValueError(f"Missing 'title' in {path}")
-    if path.stem != title:
+    
+    # Extract expected filename from sidecar path
+    # For new format: IMG_001.jpg.supplemental-metadata.json -> expected title: IMG_001.jpg
+    # For legacy format: IMG_001.jpg.json -> expected title: IMG_001.jpg
+    if path.name.lower().endswith(".supplemental-metadata.json"):
+        expected_title = path.name[:-len(".supplemental-metadata.json")]
+    elif path.name.lower().endswith(".json"):
+        expected_title = path.stem
+    else:
+        expected_title = path.stem
+    if expected_title != title:
         raise ValueError(
-            f"Sidecar title {title!r} does not match filename {path.name!r}"
+            f"Sidecar title {title!r} does not match expected filename {expected_title!r} from {path.name!r}"
         )
 
     description = data.get("description")
@@ -81,7 +96,11 @@ def parse_sidecar(path: Path) -> SidecarData:
     taken_at = get_ts("photoTakenTime")
     created_at = get_ts("creationTime")
 
+    # Extract geographical data - prefer geoData, fallback to geoDataExif
     geo = data.get("geoData", {})
+    if not geo or not geo.get("latitude"):
+        geo = data.get("geoDataExif", {})
+    
     latitude = geo.get("latitude")
     longitude = geo.get("longitude")
     altitude = geo.get("altitude")
@@ -94,8 +113,19 @@ def parse_sidecar(path: Path) -> SidecarData:
     if any(v in (0, 0.0, None) for v in (latitude, longitude)):
         latitude = longitude = altitude = None
 
-    # Extract favorite status
-    favorite = bool(data.get("favorited", {}).get("value", False))
+    # Extract favorite status - support both formats
+    favorited_data = data.get("favorited")
+    if isinstance(favorited_data, bool):
+        # Direct boolean format: "favorited": true
+        favorite = favorited_data
+    elif isinstance(favorited_data, dict):
+        # Object format: "favorited": {"value": true}
+        favorite = bool(favorited_data.get("value", False))
+    else:
+        favorite = False
+
+    # Extract archived status
+    archived = bool(data.get("archived", False))
 
     return SidecarData(
         filename=title,
@@ -109,6 +139,7 @@ def parse_sidecar(path: Path) -> SidecarData:
         favorite=favorite,
         lat_span=lat_span,
         lon_span=lon_span,
+        archived=archived,
     )
 
 
@@ -160,18 +191,31 @@ def find_albums_for_directory(directory: Path) -> List[str]:
     
     Looks for metadata.json files in the directory and parent directories
     to collect album information.
+    
+    Supports multiple metadata file patterns:
+    - metadata.json (English)
+    - métadonnées.json (French)
+    - métadonnées(1).json, métadonnées(2).json, etc. (French with duplicates)
+    - album_metadata.json, folder_metadata.json (legacy)
     """
     albums = []
     
-    # Check current directory for metadata.json
-    metadata_file = directory / "metadata.json"
-    if metadata_file.exists():
-        albums.extend(parse_album_metadata(metadata_file))
+    # Check current directory for various metadata file patterns
+    metadata_patterns = [
+        "metadata.json",
+        "métadonnées.json", 
+        "album_metadata.json", 
+        "folder_metadata.json"
+    ]
     
-    # Also check for variations like "album_metadata.json" or similar
-    for metadata_pattern in ["metadata.json", "album_metadata.json", "folder_metadata.json"]:
-        metadata_file = directory / metadata_pattern
+    for pattern in metadata_patterns:
+        metadata_file = directory / pattern
         if metadata_file.exists():
+            albums.extend(parse_album_metadata(metadata_file))
+    
+    # Also check for numbered variations like métadonnées(1).json, métadonnées(2).json, etc.
+    for metadata_file in directory.glob("métadonnées*.json"):
+        if metadata_file.name not in ["métadonnées.json"]:  # already checked above
             albums.extend(parse_album_metadata(metadata_file))
     
     return sorted(set(albums))

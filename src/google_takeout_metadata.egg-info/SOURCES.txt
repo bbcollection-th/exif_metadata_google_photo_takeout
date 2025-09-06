@@ -4,6 +4,7 @@ pyproject.toml
 src/google_takeout_metadata/__init__.py
 src/google_takeout_metadata/cli.py
 src/google_takeout_metadata/exif_writer.py
+src/google_takeout_metadata/exif_writer_backup.py
 src/google_takeout_metadata/processor.py
 src/google_takeout_metadata/sidecar.py
 src/google_takeout_metadata.egg-info/PKG-INFO

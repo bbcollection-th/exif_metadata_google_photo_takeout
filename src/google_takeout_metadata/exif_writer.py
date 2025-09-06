@@ -20,14 +20,6 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
 def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False, append_only: bool = False) -> List[str]:
     args: List[str] = []
 
-    # Charsets pour Unicode/accents
-    args += [
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8",
-        "-charset", "XMP=UTF8",
-    ]
-
     # Vidéos : clarifier que nos timestamps source sont en UTC quand use_localtime=False
     if image_path and _is_video_file(image_path):
         args += ["-api", "QuickTimeUTC=1"]
@@ -70,41 +62,44 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
     # Set standard EXIF date fields:
     # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
     # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
+    date_tag = "=" if not append_only else "-="
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
-        args.append(f"-DateTimeOriginal={s}")
+        args.append(f"-DateTimeOriginal{date_tag}{s}")
 
     base_ts = meta.created_at or meta.taken_at
     if (s := _fmt_dt(base_ts, use_localtime)):
-        args += [f"-CreateDate={s}", f"-ModifyDate={s}"]
+        args += [f"-CreateDate{date_tag}{s}", f"-ModifyDate{date_tag}{s}"]
 
     # Dates QuickTime (vidéos)
     if image_path and _is_video_file(image_path):
         if (s := _fmt_dt(meta.taken_at, use_localtime)):
-            args += [f"-QuickTime:CreateDate={s}"]
+            args += [f"-QuickTime:CreateDate{date_tag}{s}"]
         if (s := _fmt_dt(base_ts, use_localtime)):
-            args += [f"-QuickTime:ModifyDate={s}"]
+            args += [f"-QuickTime:ModifyDate{date_tag}{s}"]
         if meta.description:
-            args += [f"-Keys:Description={meta.description}"]
+            desc_tag = "=" if not append_only else "-="
+            args += [f"-Keys:Description{desc_tag}{meta.description}"]
 
     # GPS
     if meta.latitude is not None and meta.longitude is not None:
+        gps_tag = "=" if not append_only else "-="
         lat_ref = "N" if meta.latitude >= 0 else "S"
         lon_ref = "E" if meta.longitude >= 0 else "W"
         args += [
-            f"-GPSLatitude={abs(meta.latitude)}",
-            f"-GPSLatitudeRef={lat_ref}",
-            f"-GPSLongitude={abs(meta.longitude)}",
-            f"-GPSLongitudeRef={lon_ref}",
+            f"-GPSLatitude{gps_tag}{abs(meta.latitude)}",
+            f"-GPSLatitudeRef{gps_tag}{lat_ref}",
+            f"-GPSLongitude{gps_tag}{abs(meta.longitude)}",
+            f"-GPSLongitudeRef{gps_tag}{lon_ref}",
         ]
         if meta.altitude is not None:
             alt_ref = "1" if meta.altitude < 0 else "0"
-            args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
+            args += [f"-GPSAltitude{gps_tag}{abs(meta.altitude)}", f"-GPSAltitudeRef{gps_tag}{alt_ref}"]
 
         if image_path and _is_video_file(image_path):
             # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-            args += [f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
-            # Keys:Location est peu standardisé ; garde-le si ça t’aide dans ton écosystème
-            args += [f"-Keys:Location={meta.latitude},{meta.longitude}"]
+            args += [f"-QuickTime:GPSCoordinates{gps_tag}{meta.latitude},{meta.longitude}"]
+            # Keys:Location est peu standardisé ; garde-le si ça t'aide dans ton écosystème
+            args += [f"-Keys:Location{gps_tag}{meta.latitude},{meta.longitude}"]
 
     return args
 
@@ -120,14 +115,12 @@ def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = Fa
         "-charset", "iptc=UTF8",
         "-charset", "exif=UTF8",
         "-charset", "XMP=UTF8",
-        # Pour les vidéos, indiquer que nos timestamps sont UTC (évite offsets)
-        "-api", "QuickTimeUTC=1",
         *args,
         str(image_path),
     ]
 
     try:
-        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
+        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60, encoding='utf-8')
     except FileNotFoundError as exc:
         raise RuntimeError("exiftool not found") from exc
     except subprocess.CalledProcessError as exc:
