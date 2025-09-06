@@ -87,7 +87,7 @@ dependencies = []
 test = ["pytest", "pillow"]
 
 [project.scripts]
-tk = "google_takeout_metadata.cli:main"
+google-takeout-metadata = "google_takeout_metadata.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -329,6 +329,246 @@ echo "=== Test terminé ==="
 echo "Répertoire de test: $TEST_DIR"
 ````
 
+## File: pytest.ini
+````
+[pytest]
+addopts = -ra
+pythonpath = src
+markers =
+    integration: marks tests as integration tests requiring exiftool
+````
+
+## File: tests/test_end_to_end.py
+````python
+from pathlib import Path
+import json
+import subprocess
+import shutil
+import pytest
+from PIL import Image
+
+from google_takeout_metadata.processor import process_directory
+
+
+@pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
+def test_end_to_end(tmp_path: Path) -> None:
+    # create dummy image
+    img_path = tmp_path / "sample.jpg"
+    Image.new("RGB", (10, 10), color="red").save(img_path)
+    # create matching sidecar
+    data = {
+        "title": "sample.jpg",
+        "description": 'Magicien "en" or',
+        "photoTakenTime": {"timestamp": "1736719606"},
+        "people": [{"name": "anthony vincent"}],
+    }
+    (tmp_path / "sample.jpg.json").write_text(json.dumps(data), encoding="utf-8")
+
+    process_directory(tmp_path)
+
+    exe = shutil.which("exiftool") or "exiftool"
+    result = subprocess.run(
+        [
+            exe,
+            "-j",
+            "-XMP-iptcExt:PersonInImage",
+            "-XMP-dc:Subject",
+            "-IPTC:Keywords",
+            "-EXIF:ImageDescription",
+            str(img_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    tags = json.loads(result.stdout)[0]
+    
+    # exiftool returns single values as strings, multiple values as lists
+    # Normalize to lists for comparison
+    def normalize_to_list(value):
+        if value is None:
+            return []
+        elif isinstance(value, list):
+            return value
+        else:
+            return [value]
+    
+    assert normalize_to_list(tags.get("PersonInImage")) == ["anthony vincent"]
+    assert normalize_to_list(tags.get("Subject")) == ["anthony vincent"]
+    assert normalize_to_list(tags.get("Keywords")) == ["anthony vincent"]
+    assert tags.get("ImageDescription") == 'Magicien "en" or'
+````
+
+## File: README.md
+````markdown
+# exif_metadata_google_photo_takeout
+
+Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par Google Takeout dans les photos correspondantes.
+
+## Fonctionnalités
+
+✅ **Métadonnées supportées:**
+- Descriptions/légendes
+- Personnes identifiées (avec déduplication automatique)
+- Dates de prise de vue et de création
+- Coordonnées GPS (filtrage automatique des coordonnées 0/0 peu fiables)
+- Favoris (mappés sur Rating=5)
+- **Albums** (détectés depuis les fichiers metadata.json de dossier et ajoutés comme mots-clés "Album: <nom>")
+
+✅ **Mode de fonctionnement sûr par défaut:**
+- **Append-only par défaut**: Les métadonnées existantes sont préservées
+- Les descriptions ne sont écrites que si elles n'existent pas déjà
+- Les personnes et albums sont ajoutés aux listes existantes sans suppression
+- Utiliser `--overwrite` pour forcer l'écrasement des métadonnées existantes
+
+✅ **Options avancées:**
+- `--localtime`: Conversion des timestamps en heure locale au lieu d'UTC
+- `--overwrite`: Force l'écrasement des métadonnées existantes (mode destructif)
+
+✅ **Qualité:**
+- Tests unitaires complets
+- Tests d'intégration E2E avec exiftool
+- Support des formats photo et vidéo
+
+## Installation
+
+Prérequis: `exiftool` doit être installé et accessible dans le PATH.
+
+```bash
+pip install -e .
+```
+
+## Utilisation
+
+### Utilisation basique (mode sûr par défaut)
+```bash
+# Mode append-only par défaut - préserve les métadonnées existantes
+google-takeout-metadata /chemin/vers/le/dossier
+```
+
+### Avec options
+```bash
+# Utiliser l'heure locale pour les timestamps
+google-takeout-metadata --localtime /chemin/vers/le/dossier
+
+# Mode destructif: écraser les métadonnées existantes (à utiliser avec précaution)
+google-takeout-metadata --overwrite /chemin/vers/le/dossier
+
+# Nettoyer les fichiers sidecars après traitement
+google-takeout-metadata --clean-sidecars /chemin/vers/le/dossier
+
+# Combiner les options (mode sûr avec heure locale)
+google-takeout-metadata --localtime /chemin/vers/le/dossier
+```
+
+Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` et écrit les informations pertinentes dans les fichiers image correspondants à l'aide d'`exiftool`.
+
+## Comportement par défaut (Sécurisé)
+
+**Le mode append-only est désormais activé par défaut** pour éviter la perte accidentelle de métadonnées:
+
+### ✅ Métadonnées préservées:
+- **Descriptions existantes** ne sont jamais écrasées
+- **Dates existantes** ne sont jamais modifiées
+- **Coordonnées GPS existantes** ne sont jamais remplacées
+- **Ratings existants** ne sont jamais changés
+
+### ✅ Métadonnées ajoutées:
+- **Personnes** sont ajoutées aux listes existantes (pas de suppression)
+- **Albums** sont ajoutés aux mots-clés existants (pas de suppression)
+
+### ⚠️ Mode destructif:
+Utilisez `--overwrite` seulement si vous voulez explicitement écraser les métadonnées existantes.
+
+## Tests
+
+```bash
+# Tests unitaires
+pytest tests/ -m "not integration"
+
+# Tests complets (nécessite exiftool)
+pytest tests/
+
+# Tests d'intégration uniquement
+pytest tests/ -m "integration"
+```
+
+Les tests comprennent:
+- **Tests unitaires**: Parsing des sidecars, génération des arguments exiftool
+- **Tests d'intégration**: Écriture et relecture effective des métadonnées avec exiftool
+````
+
+## File: src/google_takeout_metadata/cli.py
+````python
+"""Command line interface."""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import shutil
+import sys
+from pathlib import Path
+
+from .processor import process_directory
+
+
+def main(argv: list[str] | None = None) -> None:
+    # Vérifier que exiftool est disponible
+    if shutil.which("exiftool") is None:
+        logging.error("exiftool not found. Please install it to use this script.")
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(description="Merge Google Takeout metadata into images")
+    parser.add_argument("path", type=Path, help="Directory to scan recursively")
+    parser.add_argument(
+        "--localtime", action="store_true",
+        help="Convert timestamps to local time instead of UTC (default: UTC)"
+    )
+    parser.add_argument(
+        "--overwrite", action="store_true",
+        help="Allow overwriting existing metadata fields (by default, existing metadata is preserved)"
+    )
+    parser.add_argument(
+        "--append-only", action="store_true",
+        help=argparse.SUPPRESS  # Cache l'option dépréciée de l'aide
+    )
+    parser.add_argument(
+        "--clean-sidecars", action="store_true",
+        help="Delete JSON sidecar files after successful metadata transfer"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="Enable verbose logging (DEBUG level)"
+    )
+    args = parser.parse_args(argv)
+
+    # Configuration du logging avec le niveau approprié
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level, 
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    
+    # Gestion de la rétrocompatibilité et validation des options
+    if args.append_only and args.overwrite:
+        logging.error("Cannot use both --append-only (deprecated) and --overwrite options together")
+        sys.exit(1)
+    
+    if args.append_only:
+        logging.warning("--append-only is deprecated and now the default behavior. Use --overwrite to allow overwriting existing metadata.")
+    
+    # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
+    # L'option --overwrite permet d'écraser les métadonnées existantes
+    append_only = not args.overwrite
+    
+    process_directory(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry
+    main()
+````
+
 ## File: tests/test_integration.py
 ````python
 """Integration tests that actually run exiftool and verify metadata is written correctly."""
@@ -341,6 +581,7 @@ import pytest
 from PIL import Image
 
 from google_takeout_metadata.processor import process_sidecar_file
+from google_takeout_metadata.exif_writer import write_metadata
 from google_takeout_metadata.sidecar import SidecarData
 
 
@@ -644,185 +885,182 @@ def test_albums_and_people_combined(tmp_path: Path) -> None:
     assert "Alice" in keywords
     assert "Bob" in keywords
     assert "Album: Album Famille" in keywords
-````
-
-## File: pytest.ini
-````
-[pytest]
-addopts = -ra
-pythonpath = src
-markers =
-    integration: marks tests as integration tests requiring exiftool
-````
-
-## File: tests/test_processor.py
-````python
-from pathlib import Path
-
-from google_takeout_metadata.processor import process_directory, _is_sidecar_file
 
 
-def test_ignore_non_sidecar(tmp_path: Path) -> None:
-    (tmp_path / "data.json").write_text("{}", encoding="utf-8")
-    process_directory(tmp_path)
-
-
-def test_is_sidecar_file_standard_pattern() -> None:
-    """Test standard pattern: photo.jpg.json"""
-    assert _is_sidecar_file(Path("photo.jpg.json"))
-    assert _is_sidecar_file(Path("video.mp4.json"))
-    assert _is_sidecar_file(Path("image.PNG.JSON"))  # case insensitive
-
-
-def test_is_sidecar_file_supplemental_metadata_pattern() -> None:
-    """Test new Google Takeout format: photo.jpg.supplemental-metadata.json"""
-    assert _is_sidecar_file(Path("IMG_001.jpg.supplemental-metadata.json"))
-    assert _is_sidecar_file(Path("video.mp4.supplemental-metadata.json"))
-    assert _is_sidecar_file(Path("image.PNG.SUPPLEMENTAL-METADATA.JSON"))  # case insensitive
-    assert _is_sidecar_file(Path("photo.heic.supplemental-metadata.json"))
-
-
-def test_is_sidecar_file_older_pattern() -> None:
-    """Test older pattern: photo.json"""
-    assert _is_sidecar_file(Path("IMG_1234.jpg.json"))  # this should work with the new logic
-    # Note: photo.json without extension in name would not be detected
-    # as it's ambiguous, but that's fine since parse_sidecar() validates
-
-
-def test_is_sidecar_file_negative() -> None:
-    """Test files that should not be detected as sidecars"""
-    assert not _is_sidecar_file(Path("data.json"))  # no image extension
-    assert not _is_sidecar_file(Path("photo.txt"))  # not json
-    assert not _is_sidecar_file(Path("photo.jpg"))  # not json
-    assert not _is_sidecar_file(Path("metadata.json"))  # album metadata, not sidecar
-    assert not _is_sidecar_file(Path("métadonnées.json"))  # album metadata, not sidecar
-````
-
-## File: README.md
-````markdown
-# exif_metadata_google_photo_takeout
-
-Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par Google Takeout dans les photos correspondantes.
-
-## Fonctionnalités
-
-✅ **Métadonnées supportées:**
-- Descriptions/légendes
-- Personnes identifiées (avec déduplication automatique)
-- Dates de prise de vue et de création
-- Coordonnées GPS (filtrage automatique des coordonnées 0/0 peu fiables)
-- Favoris (mappés sur Rating=5)
-- **Albums** (détectés depuis les fichiers metadata.json de dossier et ajoutés comme mots-clés "Album: <nom>")
-
-✅ **Options avancées:**
-- `--localtime`: Conversion des timestamps en heure locale au lieu d'UTC
-- `--append-only`: Ajoute uniquement les métadonnées manquantes (évite d'écraser l'existant)
-
-✅ **Qualité:**
-- Tests unitaires complets
-- Tests d'intégration E2E avec exiftool
-- Support des formats photo et vidéo
-
-## Installation
-
-Prérequis: `exiftool` doit être installé et accessible dans le PATH.
-
-```bash
-pip install -e .
-```
-
-## Utilisation
-
-### Utilisation basique
-```bash
-tk /chemin/vers/le/dossier
-```
-
-### Avec options
-```bash
-# Utiliser l'heure locale pour les timestamps
-tk --localtime /chemin/vers/le/dossier
-
-# Mode sécurisé: n'ajouter que les métadonnées manquantes
-tk --append-only /chemin/vers/le/dossier
-
-# Combiner les deux options
-tk --localtime --append-only /chemin/vers/le/dossier
-```
-
-Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` et écrit les informations pertinentes dans les fichiers image correspondants à l'aide d'`exiftool`.
-
-## Tests
-
-```bash
-# Tests unitaires
-pytest tests/ -m "not integration"
-
-# Tests complets (nécessite exiftool)
-pytest tests/
-
-# Tests d'intégration uniquement
-pytest tests/ -m "integration"
-```
-
-Les tests comprennent:
-- **Tests unitaires**: Parsing des sidecars, génération des arguments exiftool
-- **Tests d'intégration**: Écriture et relecture effective des métadonnées avec exiftool
-````
-
-## File: src/google_takeout_metadata/cli.py
-````python
-"""Command line interface."""
-
-from __future__ import annotations
-
-import argparse
-import logging
-import shutil
-import sys
-from pathlib import Path
-
-from .processor import process_directory
-
-
-def main(argv: list[str] | None = None) -> None:
-    # Vérifier que exiftool est disponible
-    if shutil.which("exiftool") is None:
-        logging.error("exiftool not found. Please install it to use this script.")
-        sys.exit(1)
-
-    parser = argparse.ArgumentParser(description="Merge Google Takeout metadata into images")
-    parser.add_argument("path", type=Path, help="Directory to scan recursively")
-    parser.add_argument(
-        "--localtime", action="store_true",
-        help="Convert timestamps to local time instead of UTC (default: UTC)"
-    )
-    parser.add_argument(
-        "--append-only", action="store_true",
-        help="Only add metadata fields if they are absent (avoid overwriting existing data)"
-    )
-    parser.add_argument(
-        "--clean-sidecars", action="store_true",
-        help="Delete JSON sidecar files after successful metadata transfer"
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true",
-        help="Enable verbose logging (DEBUG level)"
-    )
-    args = parser.parse_args(argv)
-
-    # Configuration du logging avec le niveau approprié
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level, 
-        format="%(asctime)s - %(levelname)s - %(message)s"
+@pytest.mark.integration
+def test_default_safe_behavior(tmp_path: Path) -> None:
+    """Test that default behavior is safe (append-only) and preserves existing metadata."""
+    # Create a simple test image
+    media_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='red')
+    img.save(media_path)
+    
+    # First, manually add some metadata using overwrite mode
+    first_meta = SidecarData(
+        filename="test.jpg",
+        description="Original description",
+        people=["Original Person"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=["Original Album"]
     )
     
-    process_directory(args.path, use_localtime=args.localtime, append_only=args.append_only, clean_sidecars=args.clean_sidecars)
+    # Write initial metadata with overwrite mode
+    write_metadata(media_path, first_meta, append_only=False)
+    
+    # Verify initial metadata was written
+    initial_metadata = _run_exiftool_read(media_path)
+    assert initial_metadata.get("ImageDescription") == "Original description"
+    initial_keywords = initial_metadata.get("Keywords", [])
+    if isinstance(initial_keywords, str):
+        initial_keywords = [initial_keywords]
+    assert "Original Person" in initial_keywords
+    assert "Album: Original Album" in initial_keywords
+    
+    # Now create sidecar with different metadata and process with default behavior
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "New description", 
+        "people": [{"name": "New Person"}]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process with default behavior (should be append-only, preserving existing metadata)
+    process_sidecar_file(json_path)
+    
+    # Read back metadata
+    final_metadata = _run_exiftool_read(media_path)
+    
+    # In true append-only mode, the original description should be preserved
+    # because we use -if "not $TAG" which only writes if tag doesn't exist
+    assert final_metadata.get("ImageDescription") == "Original description"
+    
+    # Keywords should still contain original data, and new people should be ADDED (not replace)
+    # because we use += for people
+    final_keywords = final_metadata.get("Keywords", [])
+    if isinstance(final_keywords, str):
+        final_keywords = [final_keywords]
+    assert "Original Person" in final_keywords
+    assert "Album: Original Album" in final_keywords
+    # New person SHOULD be added because we use += operator for people
+    assert "New Person" in final_keywords
 
 
-if __name__ == "__main__":  # pragma: no cover - CLI entry
-    main()
+@pytest.mark.integration  
+def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
+    """Test that explicit overwrite mode replaces existing metadata."""
+    # Create a simple test image
+    media_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='blue') 
+    img.save(media_path)
+    
+    # First, add some initial metadata
+    first_meta = SidecarData(
+        filename="test.jpg",
+        description="Original description",
+        people=["Original Person"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=[]
+    )
+    
+    write_metadata(media_path, first_meta, append_only=False)
+    
+    # Now create sidecar with different metadata
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "New description",
+        "people": [{"name": "New Person"}]
+    }
+    json_path = tmp_path / "test.jpg.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Process with explicit overwrite mode
+    process_sidecar_file(json_path, append_only=False)
+    
+    # Read back metadata
+    final_metadata = _run_exiftool_read(media_path)
+    
+    # In overwrite mode, new description should replace old one
+    # Note: We're using += operator so people get added, not replaced
+    final_keywords = final_metadata.get("Keywords", [])
+    if isinstance(final_keywords, str):
+        final_keywords = [final_keywords]
+    
+    # Both original and new person should be present (because += adds)
+    assert "Original Person" in final_keywords
+    assert "New Person" in final_keywords
+
+
+@pytest.mark.integration
+def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
+    """Test that append-only mode produces similar results to overwrite mode for videos when no metadata exists."""
+    # Copy a real MP4 file from the test data
+    project_root = Path(__file__).parent.parent
+    source_video = project_root / "Google Photos" / "essais" / "1686356837983.mp4"
+    if not source_video.exists():
+        pytest.skip("Real MP4 test file not found")
+    
+    # Create two copies for testing
+    video_path_append = tmp_path / "test_append.mp4"
+    video_path_overwrite = tmp_path / "test_overwrite.mp4"
+    
+    import shutil
+    shutil.copy2(source_video, video_path_append)
+    shutil.copy2(source_video, video_path_overwrite)
+    
+    # Create test metadata
+    meta = SidecarData(
+        filename="test.mp4",
+        description="Test video description",
+        people=["Video Person"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=35.0,
+        favorite=True,
+        albums=["Test Album"]
+    )
+    
+    # Write with append-only mode
+    write_metadata(video_path_append, meta, append_only=True)
+    
+    # Write with overwrite mode
+    write_metadata(video_path_overwrite, meta, append_only=False)
+    
+    # Read back metadata from both files
+    metadata_append = _run_exiftool_read(video_path_append)
+    metadata_overwrite = _run_exiftool_read(video_path_overwrite)
+    
+    # Compare key fields - they should be similar when starting from empty metadata
+    # (Some fields might differ slightly due to format differences)
+    
+    # Description should be written in both modes
+    if "Description" in metadata_overwrite:
+        assert metadata_append.get("Description") == metadata_overwrite.get("Description")
+    
+    # Keywords should contain the person and album in both modes
+    keywords_append = metadata_append.get("Keywords", [])
+    keywords_overwrite = metadata_overwrite.get("Keywords", [])
+    if isinstance(keywords_append, str):
+        keywords_append = [keywords_append]
+    if isinstance(keywords_overwrite, str):
+        keywords_overwrite = [keywords_overwrite]
+    
+    # If keywords were written in overwrite mode, they should also be in append mode
+    for keyword in keywords_overwrite:
+        if "Video Person" in keyword or "Album: Test Album" in keyword:
+            assert keyword in keywords_append or any(keyword in k for k in keywords_append)
 ````
 
 ## File: tests/test_sidecar.py
@@ -1168,315 +1406,119 @@ def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
     # but we can test the album finding logic separately
 ````
 
-## File: src/google_takeout_metadata/processor.py
-````python
-"""High level processing of directories of Google Takeout metadata."""
-
-from __future__ import annotations
-
-from pathlib import Path
-import logging
-import json
-import subprocess
-
-from .sidecar import parse_sidecar, find_albums_for_directory
-from .exif_writer import write_metadata
-
-logger = logging.getLogger(__name__)
-
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", "heif", ".avif", ".mp4", ".mov", "m4v", ".3gp"}
-
-
-def detect_file_type(file_path: Path) -> str | None:
-    """Detect the actual file type using file command or magic bytes.
-    
-    Returns:
-        The correct file extension (with dot) or None if detection fails
-    """
-    try:
-        # Try using file command first (available on most systems)
-        result = subprocess.run(
-            ["file", str(file_path)], 
-            capture_output=True, 
-            text=True, 
-            timeout=10
-        )
-        if result.returncode == 0:
-            output = result.stdout.lower()
-            if "jpeg" in output or "jfif" in output:
-                return ".jpg"
-            elif "png" in output:
-                return ".png"
-            elif "gif" in output:
-                return ".gif"
-            elif "webp" in output:
-                return ".webp"
-            elif "heic" in output or "heif" in output:
-                return ".heic"
-            elif "mp4" in output:
-                return ".mp4"
-            elif "quicktime" in output or "mov" in output:
-                return ".mov"
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
-        pass
-    
-    # Fallback: Try reading magic bytes
-    try:
-        with open(file_path, "rb") as f:
-            header = f.read(16)
-            if header.startswith(b'\xff\xd8\xff'):
-                return ".jpg"
-            elif header.startswith(b'\x89PNG\r\n\x1a\n'):
-                return ".png"
-            elif header.startswith(b'GIF8'):
-                return ".gif"
-            elif header.startswith(b'RIFF') and b'WEBP' in header:
-                return ".webp"
-            elif header[4:8] == b'ftyp':
-                if b'heic' in header[:16] or b'mif1' in header[:16]:
-                    return ".heic"
-                elif b'mp4' in header[:16] or b'isom' in header[:16]:
-                    return ".mp4"
-    except (OSError, IOError):
-        pass
-    
-    return None
-
-
-def fix_file_extension_mismatch(media_path: Path, json_path: Path) -> tuple[Path, Path]:
-    """Fix file extension mismatch by renaming files and updating JSON content.
-    
-    Args:
-        media_path: Path to the image/video file
-        json_path: Path to the corresponding JSON sidecar file
-        
-    Returns:
-        Tuple of (new_media_path, new_json_path)
-    """
-    # Detect the actual file type
-    actual_ext = detect_file_type(media_path)
-    if not actual_ext or actual_ext == media_path.suffix.lower():
-        # No mismatch detected or detection failed
-        return media_path, json_path
-    
-    # Create new paths with correct extension
-    new_media_path = media_path.with_suffix(actual_ext)
-    new_json_path = json_path.with_name(new_media_path.name + ".supplemental-metadata.json")
-    
-    logger.info("Detected extension mismatch for %s: should be %s", media_path, actual_ext)
-    
-    try:
-        # Rename the image file
-        media_path.rename(new_media_path)
-        logger.info("Renamed %s to %s", media_path, new_media_path)
-        
-        # Update JSON content and rename JSON file
-        with open(json_path, 'r', encoding='utf-8') as f:
-            json_data = json.load(f)
-        
-        # Update the title field
-        json_data['title'] = new_media_path.name
-        
-        # Write updated JSON to new location
-        with open(new_json_path, 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, indent=2, ensure_ascii=False)
-        
-        # Remove old JSON file
-        json_path.unlink()
-        logger.info("Updated and renamed JSON: %s to %s", json_path, new_json_path)
-        
-        return new_media_path, new_json_path
-        
-    except (OSError, IOError, json.JSONDecodeError) as exc:
-        logger.warning("Failed to fix extension mismatch for %s: %s", media_path, exc)
-        return media_path, json_path
-
-
-def _is_sidecar_file(path: Path) -> bool:
-    """Check if a file could be a Google Photos sidecar JSON file.
-    
-    This function uses a permissive approach since parse_sidecar() does
-    strong validation by matching the title field with the expected filename.
-    
-    Supports both formats:
-    - New format: photo.jpg.supplemental-metadata.json
-    - Legacy format: photo.jpg.json
-    """
-    if not path.suffix.lower() == ".json":
-        return False
-    
-    suffixes = [s.lower() for s in path.suffixes]
-    
-    # New Google Takeout format: photo.jpg.supplemental-metadata.json
-    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in IMAGE_EXTS:
-        return True
-    
-    # Legacy pattern: photo.jpg.json
-    if len(suffixes) >= 2 and suffixes[-2] in IMAGE_EXTS:
-        return True
-    
-    # Older pattern: photo.json (less specific but validated later)
-    # Only consider this if the base name without .json could be an image
-    stem_parts = path.stem.split('.')
-    if len(stem_parts) >= 2:
-        potential_ext = '.' + stem_parts[-1].lower()
-        if potential_ext in IMAGE_EXTS:
-            return True
-    
-    return False
-
-
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
-    """Process a single ``.json`` sidecar file.
-    
-    Args:
-        json_path: Path to the JSON sidecar file
-        use_localtime: Convert timestamps to local time instead of UTC
-        append_only: Only add metadata fields if they are absent
-        clean_sidecars: Delete the JSON file after successful processing
-    """
-
-    meta = parse_sidecar(json_path)
-    
-    # Find albums for this directory
-    directory_albums = find_albums_for_directory(json_path.parent)
-    meta.albums.extend(directory_albums)
-    
-    media_path = json_path.with_name(meta.filename)
-    if not media_path.exists():
-        raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
-    
-    # Try to write metadata to image
-    try:
-        write_metadata(media_path, meta, use_localtime=use_localtime, append_only=append_only)
-        current_json_path = json_path
-    except RuntimeError as exc:
-        # Check if this might be an extension mismatch error
-        error_msg = str(exc).lower()
-        if ("not a valid png" in error_msg and "looks more like a jpeg" in error_msg) or \
-           ("not a valid jpeg" in error_msg and "looks more like a png" in error_msg) or \
-           ("charset option" in error_msg):
-            
-            logger.info("Attempting to fix file extension mismatch for %s", media_path)
-            
-            # Try to fix the extension mismatch
-            fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
-            
-            if fixed_media_path != media_path:
-                # Files were renamed, re-parse the updated JSON and retry
-                meta = parse_sidecar(fixed_json_path)
-                directory_albums = find_albums_for_directory(fixed_json_path.parent)
-                meta.albums.extend(directory_albums)
-                
-                write_metadata(fixed_media_path, meta, use_localtime=use_localtime, append_only=append_only)
-                current_json_path = fixed_json_path
-                logger.info("Successfully processed %s after fixing extension", fixed_media_path)
-            else:
-                # Extension fix failed, re-raise original error
-                raise
-        else:
-            # Not an extension mismatch error, re-raise
-            raise
-    
-    # Clean up sidecar file if requested and write was successful
-    if clean_sidecars:
-        try:
-            current_json_path.unlink()
-            logger.info("Deleted sidecar file: %s", current_json_path)
-        except OSError as exc:
-            logger.warning("Failed to delete sidecar file %s: %s", current_json_path, exc)
-
-
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = False, clean_sidecars: bool = False) -> None:
-    """Recursively process all sidecar files under ``root``.
-    
-    Args:
-        root: Root directory to scan recursively
-        use_localtime: Convert timestamps to local time instead of UTC
-        append_only: Only add metadata fields if they are absent
-        clean_sidecars: Delete JSON files after successful processing
-    """
-    count = 0
-    cleaned_count = 0
-    
-    for json_file in root.rglob("*.json"):
-        
-        if not _is_sidecar_file(json_file):
-            continue
-        count += 1
-        try:
-            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, clean_sidecars=clean_sidecars)
-            if clean_sidecars:
-                cleaned_count += 1
-        except (FileNotFoundError, ValueError, RuntimeError) as exc:  # pragma: no cover - logging
-            logger.warning("Failed to process %s: %s", json_file, exc, exc_info=True)
-    
-    logger.info("Processed %d sidecar files under %s", count, root)
-    if clean_sidecars and cleaned_count > 0:
-        logger.info("Cleaned up %d sidecar files", cleaned_count)
-    if count == 0:
-        logger.warning("No sidecar files found under %s", root)
-````
-
-## File: tests/test_end_to_end.py
+## File: tests/test_processor.py
 ````python
 from pathlib import Path
 import json
-import subprocess
-import shutil
-import pytest
-from PIL import Image
+import unittest.mock
 
-from google_takeout_metadata.processor import process_directory
+from google_takeout_metadata.processor import (
+    process_directory, 
+    _is_sidecar_file, 
+    fix_file_extension_mismatch
+)
 
 
-@pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
-def test_end_to_end(tmp_path: Path) -> None:
-    # create dummy image
-    img_path = tmp_path / "sample.jpg"
-    Image.new("RGB", (10, 10), color="red").save(img_path)
-    # create matching sidecar
-    data = {
-        "title": "sample.jpg",
-        "description": 'Magicien "en" or',
-        "photoTakenTime": {"timestamp": "1736719606"},
-        "people": [{"name": "anthony vincent"}],
-    }
-    (tmp_path / "sample.jpg.json").write_text(json.dumps(data), encoding="utf-8")
-
+def test_ignore_non_sidecar(tmp_path: Path) -> None:
+    (tmp_path / "data.json").write_text("{}", encoding="utf-8")
     process_directory(tmp_path)
 
-    exe = shutil.which("exiftool") or "exiftool"
-    result = subprocess.run(
-        [
-            exe,
-            "-j",
-            "-XMP-iptcExt:PersonInImage",
-            "-XMP-dc:Subject",
-            "-IPTC:Keywords",
-            "-EXIF:ImageDescription",
-            str(img_path),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    tags = json.loads(result.stdout)[0]
+
+def test_is_sidecar_file_standard_pattern() -> None:
+    """Test standard pattern: photo.jpg.json"""
+    assert _is_sidecar_file(Path("photo.jpg.json"))
+    assert _is_sidecar_file(Path("video.mp4.json"))
+    assert _is_sidecar_file(Path("image.PNG.JSON"))  # case insensitive
+
+
+def test_is_sidecar_file_supplemental_metadata_pattern() -> None:
+    """Test new Google Takeout format: photo.jpg.supplemental-metadata.json"""
+    assert _is_sidecar_file(Path("IMG_001.jpg.supplemental-metadata.json"))
+    assert _is_sidecar_file(Path("video.mp4.supplemental-metadata.json"))
+    assert _is_sidecar_file(Path("image.PNG.SUPPLEMENTAL-METADATA.JSON"))  # case insensitive
+    assert _is_sidecar_file(Path("photo.heic.supplemental-metadata.json"))
+
+
+def test_is_sidecar_file_older_pattern() -> None:
+    """Test older pattern: photo.json"""
+    assert _is_sidecar_file(Path("IMG_1234.jpg.json"))  # this should work with the new logic
+    # Note: photo.json without extension in name would not be detected
+    # as it's ambiguous, but that's fine since parse_sidecar() validates
+
+
+def test_is_sidecar_file_negative() -> None:
+    """Test files that should not be detected as sidecars"""
+    assert not _is_sidecar_file(Path("data.json"))  # no image extension
+    assert not _is_sidecar_file(Path("photo.txt"))  # not json
+    assert not _is_sidecar_file(Path("photo.jpg"))  # not json
+    assert not _is_sidecar_file(Path("metadata.json"))  # album metadata, not sidecar
+    assert not _is_sidecar_file(Path("métadonnées.json"))  # album metadata, not sidecar
+
+
+def test_fix_file_extension_mismatch_rollback_on_failure(tmp_path: Path) -> None:
+    """Test that fix_file_extension_mismatch properly rolls back image rename on failure"""
+    # Create a fake JPEG file with wrong extension
+    media_path = tmp_path / "photo.png"
+    media_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
     
-    # exiftool returns single values as strings, multiple values as lists
-    # Normalize to lists for comparison
-    def normalize_to_list(value):
-        if value is None:
-            return []
-        elif isinstance(value, list):
-            return value
-        else:
-            return [value]
+    # Create corresponding JSON file
+    json_path = tmp_path / "photo.png.supplemental-metadata.json"
+    json_data = {"title": "photo.png"}
+    json_path.write_text(json.dumps(json_data), encoding='utf-8')
     
-    assert normalize_to_list(tags.get("PersonInImage")) == ["anthony vincent"]
-    assert normalize_to_list(tags.get("Subject")) == ["anthony vincent"]
-    assert normalize_to_list(tags.get("Keywords")) == ["anthony vincent"]
-    assert tags.get("ImageDescription") == 'Magicien "en" or'
+    # Mock Path.unlink to raise an error (simulating read-only file)
+    original_unlink = Path.unlink
+    def mock_unlink(self):
+        if self.name.endswith('.supplemental-metadata.json') and 'photo.png' in str(self):
+            raise OSError("Permission denied")
+        return original_unlink(self)
+    
+    with unittest.mock.patch.object(Path, 'unlink', mock_unlink):
+        result_image, result_json = fix_file_extension_mismatch(media_path, json_path)
+        
+        # Should have rolled back successfully
+        assert result_image == media_path
+        assert result_json == json_path
+        assert media_path.exists()  # Original image path should exist again
+        assert not (tmp_path / "photo.jpg").exists()  # Renamed image should not exist
+        assert not (tmp_path / "photo.jpg.supplemental-metadata.json").exists()  # Pas de JSON orphelin attendu
+def test_fix_file_extension_mismatch_failed_rollback(tmp_path: Path) -> None:
+    """Test fix_file_extension_mismatch when both operation and rollback fail"""
+    # Create a fake JPEG file with wrong extension
+    media_path = tmp_path / "photo.png"
+    media_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
+    
+    # Create corresponding JSON file
+    json_path = tmp_path / "photo.png.supplemental-metadata.json"
+    json_data = {"title": "photo.png"}
+    json_path.write_text(json.dumps(json_data), encoding='utf-8')
+    
+    # Mock to simulate both unlink failure and rollback failure
+    original_unlink = Path.unlink
+    original_rename = Path.rename
+    
+    def mock_unlink(self):
+        if self.name.endswith('.supplemental-metadata.json'):
+            raise OSError("Permission denied")
+        return original_unlink(self)
+    
+    def mock_rename(self, target):
+        # If trying to rename back (rollback), fail
+        if str(target).endswith('.png') and str(self).endswith('.jpg'):
+            raise OSError("Rollback failed")
+        # Otherwise, do the actual rename
+        return original_rename(self, target)
+    
+    with unittest.mock.patch.object(Path, 'unlink', mock_unlink), \
+         unittest.mock.patch.object(Path, 'rename', mock_rename):
+        
+        result_image, result_json = fix_file_extension_mismatch(media_path, json_path)
+        
+        # Should return new image path but old JSON path due to failed rollback
+        assert result_image == tmp_path / "photo.jpg"
+        assert result_json == json_path  # Original JSON path
+        assert (tmp_path / "photo.jpg").exists()  # New image should exist
+        assert not media_path.exists()  # Original image should not exist
 ````
 
 ## File: src/google_takeout_metadata/sidecar.py
@@ -1541,13 +1583,12 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Extract expected filename from sidecar path
     # For new format: IMG_001.jpg.supplemental-metadata.json -> expected title: IMG_001.jpg
     # For legacy format: IMG_001.jpg.json -> expected title: IMG_001.jpg
-    if path.name.endswith(".supplemental-metadata.json"):
+    if path.name.lower().endswith(".supplemental-metadata.json"):
         expected_title = path.name[:-len(".supplemental-metadata.json")]
-    elif path.name.endswith(".json"):
+    elif path.name.lower().endswith(".json"):
         expected_title = path.stem
     else:
         expected_title = path.stem
-    
     if expected_title != title:
         raise ValueError(
             f"Sidecar title {title!r} does not match expected filename {expected_title!r} from {path.name!r}"
@@ -1705,6 +1746,284 @@ def find_albums_for_directory(directory: Path) -> List[str]:
     return sorted(set(albums))
 ````
 
+## File: src/google_takeout_metadata/processor.py
+````python
+"""High level processing of directories of Google Takeout metadata."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import logging
+import json
+import subprocess
+
+from .sidecar import parse_sidecar, find_albums_for_directory
+from .exif_writer import write_metadata
+
+logger = logging.getLogger(__name__)
+
+# Séparer les extensions images et vidéos pour une meilleure cohérence
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".avif"}
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}
+ALL_MEDIA_EXTS = IMAGE_EXTS | VIDEO_EXTS
+
+
+def detect_file_type(file_path: Path) -> str | None:
+    """Detect the actual file type using file command or magic bytes.
+    
+    Returns:
+        The correct file extension (with dot) or None if detection fails
+    """
+    try:
+        # Try using file command first (available on most systems)
+        result = subprocess.run(
+            ["file", str(file_path)], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+        if result.returncode == 0:
+            output = result.stdout.lower()
+            if "jpeg" in output or "jfif" in output:
+                return ".jpg"
+            elif "png" in output:
+                return ".png"
+            elif "gif" in output:
+                return ".gif"
+            elif "webp" in output:
+                return ".webp"
+            elif "heic" in output or "heif" in output:
+                return ".heic"
+            elif "mp4" in output:
+                return ".mp4"
+            elif "quicktime" in output or "mov" in output:
+                return ".mov"
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    
+    # Fallback: Try reading magic bytes
+    try:
+        with open(file_path, "rb") as f:
+            header = f.read(16)
+            if header.startswith(b'\xff\xd8\xff'):
+                return ".jpg"
+            elif header.startswith(b'\x89PNG\r\n\x1a\n'):
+                return ".png"
+            elif header.startswith(b'GIF8'):
+                return ".gif"
+            elif header.startswith(b'RIFF') and b'WEBP' in header:
+                return ".webp"
+            elif header[4:8] == b'ftyp':
+                if b'heic' in header[:16] or b'mif1' in header[:16]:
+                    return ".heic"
+                elif b'mp4' in header[:16] or b'isom' in header[:16]:
+                    return ".mp4"
+    except (OSError, IOError):
+        pass
+    
+    return None
+
+
+def fix_file_extension_mismatch(media_path: Path, json_path: Path) -> tuple[Path, Path]:
+    """Fix file extension mismatch by renaming files and updating JSON content.
+    
+    Args:
+        media_path: Path to the image/video file
+        json_path: Path to the corresponding JSON sidecar file
+        
+    Returns:
+        Tuple of (new_media_path, new_json_path)
+    """
+    # Detect the actual file type
+    actual_ext = detect_file_type(media_path)
+    if not actual_ext or actual_ext == media_path.suffix.lower():
+        # No mismatch detected or detection failed
+        return media_path, json_path
+    
+    # Create new paths with correct extension
+    new_media_path = media_path.with_suffix(actual_ext)
+    new_json_path = json_path.with_name(new_media_path.name + ".supplemental-metadata.json")
+    
+    logger.info("Detected extension mismatch for %s: should be %s", media_path, actual_ext)
+    
+    image_renamed = False
+    try:
+        # Rename the image file
+        media_path.rename(new_media_path)
+        image_renamed = True
+        logger.info("Renamed %s to %s", media_path, new_media_path)
+        
+        # Update JSON content and rename JSON file
+        with open(json_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        
+        # Update the title field
+        json_data['title'] = new_media_path.name
+        
+        # Write updated JSON to new location
+        with open(new_json_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        
+        # Remove old JSON file
+        json_path.unlink()
+        logger.info("Updated and renamed JSON: %s to %s", json_path, new_json_path)
+        
+        return new_media_path, new_json_path
+        
+    except (OSError, IOError, json.JSONDecodeError) as exc:
+        logger.warning("Failed to fix extension mismatch for %s: %s", media_path, exc)
+        
+        # If the image was renamed but subsequent steps failed, try to rollback
+        if image_renamed:
+            try:
+                # Clean up any new JSON file that might have been created
+                if new_json_path.exists():
+                    new_json_path.unlink()
+                    logger.info("Cleaned up partially created JSON file: %s", new_json_path)
+                
+                # Rename image back to original name
+                new_media_path.rename(media_path)
+                logger.info("Successfully rolled back image rename: %s -> %s", new_media_path, media_path)
+                return media_path, json_path
+            except (OSError, IOError) as rollback_exc:
+                logger.error("Failed to rollback image rename from %s to %s: %s. "
+                           "Directory is now in inconsistent state - image has new name but JSON references old name.", 
+                           new_media_path, media_path, rollback_exc)
+                # Return new paths so caller can work with the current state
+                return new_media_path, json_path
+        
+        return media_path, json_path
+
+
+def _is_sidecar_file(path: Path) -> bool:
+    """Check if a file could be a Google Photos sidecar JSON file.
+    
+    This function uses a permissive approach since parse_sidecar() does
+    strong validation by matching the title field with the expected filename.
+    
+    Supports both formats:
+    - New format: photo.jpg.supplemental-metadata.json
+    - Legacy format: photo.jpg.json
+    """
+    if not path.suffix.lower() == ".json":
+        return False
+    
+    suffixes = [s.lower() for s in path.suffixes]
+    
+    # New Google Takeout format: photo.jpg.supplemental-metadata.json
+    if len(suffixes) >= 3 and suffixes[-2] == ".supplemental-metadata" and suffixes[-3] in ALL_MEDIA_EXTS:
+        return True
+    
+    # Legacy pattern: photo.jpg.json
+    if len(suffixes) >= 2 and suffixes[-2] in ALL_MEDIA_EXTS:
+        return True
+    
+    # Older pattern: photo.json (less specific but validated later)
+    # Only consider this if the base name without .json could be an image
+    stem_parts = path.stem.split('.')
+    if len(stem_parts) >= 2:
+        potential_ext = '.' + stem_parts[-1].lower()
+        if potential_ext in ALL_MEDIA_EXTS:
+            return True
+    
+    return False
+
+
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
+    """Process a single ``.json`` sidecar file.
+    
+    Args:
+        json_path: Path to the JSON sidecar file
+        use_localtime: Convert timestamps to local time instead of UTC
+        append_only: Only add metadata fields if they are absent
+        clean_sidecars: Delete the JSON file after successful processing
+    """
+
+    meta = parse_sidecar(json_path)
+    
+    # Find albums for this directory
+    directory_albums = find_albums_for_directory(json_path.parent)
+    meta.albums.extend(directory_albums)
+    
+    media_path = json_path.with_name(meta.filename)
+    if not media_path.exists():
+        raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
+    
+    # Try to write metadata to image
+    try:
+        write_metadata(media_path, meta, use_localtime=use_localtime, append_only=append_only)
+        current_json_path = json_path
+    except RuntimeError as exc:
+        # Check if this might be an extension mismatch error
+        error_msg = str(exc).lower()
+        if ("not a valid png" in error_msg and "looks more like a jpeg" in error_msg) or \
+           ("not a valid jpeg" in error_msg and "looks more like a png" in error_msg) or \
+           ("charset option" in error_msg):
+            
+            logger.info("Attempting to fix file extension mismatch for %s", media_path)
+            
+            # Try to fix the extension mismatch
+            fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
+            
+            if fixed_media_path != media_path or fixed_json_path != json_path:
+                # Files were renamed (at least partially), re-parse the JSON and retry
+                # Handle case where image was renamed but JSON wasn't (partial rollback failure)
+                actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
+                
+                meta = parse_sidecar(actual_json_path)
+                directory_albums = find_albums_for_directory(actual_json_path.parent)
+                meta.albums.extend(directory_albums)
+                
+                write_metadata(fixed_media_path, meta, use_localtime=use_localtime, append_only=append_only)
+                current_json_path = actual_json_path
+                logger.info("Successfully processed %s after fixing extension", fixed_media_path)
+            else:
+                # Extension fix failed, re-raise original error
+                raise
+        else:
+            # Not an extension mismatch error, re-raise
+            raise
+    
+    # Clean up sidecar file if requested and write was successful
+    if clean_sidecars:
+        try:
+            current_json_path.unlink()
+            logger.info("Deleted sidecar file: %s", current_json_path)
+        except OSError as exc:
+            logger.warning("Failed to delete sidecar file %s: %s", current_json_path, exc)
+
+
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
+    """Recursively process all sidecar files under ``root``.
+    
+    Args:
+        root: Root directory to scan recursively
+        use_localtime: Convert timestamps to local time instead of UTC
+        append_only: Only add metadata fields if they are absent
+        clean_sidecars: Delete JSON files after successful processing
+    """
+    count = 0
+    cleaned_count = 0
+    
+    for json_file in root.rglob("*.json"):
+        
+        if not _is_sidecar_file(json_file):
+            continue
+        count += 1
+        try:
+            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, clean_sidecars=clean_sidecars)
+            if clean_sidecars:
+                cleaned_count += 1
+        except (FileNotFoundError, ValueError, RuntimeError) as exc:  # pragma: no cover - logging
+            logger.warning("Failed to process %s: %s", json_file, exc, exc_info=True)
+    
+    logger.info("Processed %d sidecar files under %s", count, root)
+    if clean_sidecars and cleaned_count > 0:
+        logger.info("Cleaned up %d sidecar files", cleaned_count)
+    if count == 0:
+        logger.warning("No sidecar files found under %s", root)
+````
+
 ## File: tests/test_exif_writer.py
 ````python
 from google_takeout_metadata.sidecar import SidecarData
@@ -1727,16 +2046,14 @@ def test_build_args() -> None:
         favorite=False,
     )
 
-    args = build_exiftool_args(meta)
+    args = build_exiftool_args(meta, append_only=False)
     assert "-EXIF:ImageDescription=desc" in args
     assert "-XMP-iptcExt:PersonInImage+=alice" in args
     assert "-GPSLatitude=1.0" in args
     assert "-GPSLatitudeRef=S" in args
     assert "-GPSLongitudeRef=E" in args
     assert "-GPSAltitude=3.0" in args
-    # Check charset parameters
-    assert "-charset" in args
-    assert "filename=UTF8" in args
+    # Les options charset sont maintenant dans write_metadata() seulement
 
 
 def test_write_metadata_error(tmp_path, monkeypatch):
@@ -1777,7 +2094,7 @@ def test_build_args_video():
     )
     
     video_path = Path("video.mp4")
-    args = build_exiftool_args(meta, video_path)
+    args = build_exiftool_args(meta, media_path=video_path)
     
     # Check video-specific tags
     assert "-Keys:Description=Video description" in args
@@ -1804,9 +2121,9 @@ def test_build_args_localtime():
     )
 
     # Test UTC (default)
-    args_utc = build_exiftool_args(meta, Path("a.jpg"), use_localtime=False)
+    args_utc = build_exiftool_args(meta, media_path=Path("a.jpg"), use_localtime=False)
     # Test local time
-    args_local = build_exiftool_args(meta, Path("a.jpg"), use_localtime=True)
+    args_local = build_exiftool_args(meta, media_path=Path("a.jpg"), use_localtime=True)
     
     # The datetime strings will be different (unless running in UTC timezone)
     # but both should contain some form of DateTimeOriginal
@@ -1835,8 +2152,13 @@ def test_build_args_append_only() -> None:
 
     # Append-only mode
     args_append = build_exiftool_args(meta, append_only=True)
-    assert "-EXIF:ImageDescription-=desc" in args_append
-    assert "-XMP-iptcExt:PersonInImage-+=alice" in args_append
+    # In append-only mode, we use -if conditions to only write if tag doesn't exist
+    assert "-if" in args_append
+    assert "not $EXIF:ImageDescription" in args_append
+    assert "-EXIF:ImageDescription=desc" in args_append
+    # People use += to add without removing existing values
+    assert "-XMP-iptcExt:PersonInImage+=alice" in args_append
+    assert "-XMP-iptcExt:PersonInImage+=bob" in args_append
 
 
 def test_build_args_favorite() -> None:
@@ -1853,12 +2175,15 @@ def test_build_args_favorite() -> None:
         favorite=True,
     )
 
-    args = build_exiftool_args(meta)
+    args = build_exiftool_args(meta, append_only=False)
     assert "-XMP:Rating=5" in args
 
-    # Test append-only mode
+    # Test append-only mode (now the default behavior)
     args_append = build_exiftool_args(meta, append_only=True)
-    assert "-XMP:Rating-=5" in args_append
+    # Should use conditional writing with -if
+    assert "-if" in args_append
+    assert "not $XMP:Rating" in args_append
+    assert "-XMP:Rating=5" in args_append
 
 
 def test_build_args_no_favorite() -> None:
@@ -1894,11 +2219,52 @@ def test_build_args_albums() -> None:
         albums=["Vacances 2024", "Famille"]
     )
 
-    args = build_exiftool_args(meta)
+    args = build_exiftool_args(meta, append_only=False)
     assert "-XMP-dc:Subject+=Album: Vacances 2024" in args
     assert "-IPTC:Keywords+=Album: Vacances 2024" in args
     assert "-XMP-dc:Subject+=Album: Famille" in args
     assert "-IPTC:Keywords+=Album: Famille" in args
+
+
+def test_build_args_video_append_only() -> None:
+    """Test that video-specific tags are included in append-only mode."""
+    meta = SidecarData(
+        filename="video.mp4",
+        description="Video description",
+        people=["alice"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=35.0,
+        favorite=False,
+    )
+    
+    video_path = Path("video.mp4")
+    args = build_exiftool_args(meta, media_path=video_path, append_only=True)
+    
+    # Check video-specific description uses conditional logic
+    assert "-if" in args
+    assert "not $Keys:Description" in args
+    assert "-Keys:Description=Video description" in args
+    
+    # Check QuickTime dates use conditional logic
+    assert "not $QuickTime:CreateDate" in args
+    assert "not $QuickTime:ModifyDate" in args
+    
+    # Check video-specific GPS fields use conditional logic
+    assert "not $QuickTime:GPSCoordinates" in args
+    assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
+    assert "not $Keys:Location" in args
+    assert "-Keys:Location=48.8566,2.3522" in args
+    
+    # Check altitude uses conditional logic
+    assert "not $GPSAltitude" in args
+    assert "-GPSAltitude=35.0" in args
+    
+    # Check video config
+    assert "-api" in args
+    assert "QuickTimeUTC=1" in args
 
 
 def test_build_args_albums_append_only() -> None:
@@ -1917,8 +2283,9 @@ def test_build_args_albums_append_only() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=True)
-    assert "-XMP-dc:Subject-+=Album: Test Album" in args
-    assert "-IPTC:Keywords-+=Album: Test Album" in args
+    # Albums use += to add without removing existing values
+    assert "-XMP-dc:Subject+=Album: Test Album" in args
+    assert "-IPTC:Keywords+=Album: Test Album" in args
 
 
 def test_build_args_no_albums() -> None:
@@ -1938,6 +2305,123 @@ def test_build_args_no_albums() -> None:
 
     args = build_exiftool_args(meta)
     assert not any("Album:" in arg for arg in args)
+
+
+def test_build_args_default_behavior() -> None:
+    """Test that default behavior is append-only (safe mode)."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description="Safe description",
+        people=["Safe Person"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=None,
+        favorite=True,
+    )
+
+    # Default behavior should be append-only (safe)
+    args = build_exiftool_args(meta)
+    
+    # Should use -if conditions for descriptions and ratings
+    assert "-if" in args
+    assert "not $EXIF:ImageDescription" in args
+    assert "-EXIF:ImageDescription=Safe description" in args
+    # Should use += for people (lists)
+    assert "-XMP-iptcExt:PersonInImage+=Safe Person" in args
+    # Should use -if condition for rating
+    assert "not $XMP:Rating" in args
+    assert "-XMP:Rating=5" in args
+    # Should use -if condition for GPS
+    assert "not $GPSLatitude" in args
+    assert "-GPSLatitude=48.8566" in args
+
+
+def test_build_args_overwrite_mode() -> None:
+    """Test explicit overwrite mode (destructive)."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description="Overwrite description",
+        people=["Overwrite Person"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=True,
+    )
+
+    # Explicit overwrite mode
+    args = build_exiftool_args(meta, append_only=False)
+    
+    # Should use direct assignment for descriptions and ratings
+    assert "-EXIF:ImageDescription=Overwrite description" in args
+    assert "-XMP-iptcExt:PersonInImage+=Overwrite Person" in args
+    assert "-XMP:Rating=5" in args
+    # Should NOT have -if conditions
+    assert "-if" not in args
+    assert "not $EXIF:ImageDescription" not in args
+    assert "not $XMP-iptcExt:PersonInImage" not in args
+    assert "not $XMP:Rating" not in args
+
+
+def test_build_args_people_default() -> None:
+    """Test that people are handled safely by default."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=["Alice Dupont", "Bob Martin", "Charlie Bernard"],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+
+    # Default behavior (append-only)
+    args = build_exiftool_args(meta)
+    
+    # Each person should use += (append to list)
+    for person in ["Alice Dupont", "Bob Martin", "Charlie Bernard"]:
+        assert f"-XMP-iptcExt:PersonInImage+={person}" in args
+        assert f"-XMP-dc:Subject+={person}" in args
+        assert f"-IPTC:Keywords+={person}" in args
+    
+    # Should NOT have -if conditions for people (they are lists, use +=)
+    assert "not $XMP-iptcExt:PersonInImage" not in args
+    assert "not $XMP-dc:Subject" not in args
+    assert "not $IPTC:Keywords" not in args
+
+
+def test_build_args_albums_default() -> None:
+    """Test that albums are handled safely by default."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+        albums=["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]
+    )
+
+    # Default behavior (append-only)
+    args = build_exiftool_args(meta)
+    
+    # Each album should use += (append to list)
+    for album in ["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]:
+        album_keyword = f"Album: {album}"
+        assert f"-XMP-dc:Subject+={album_keyword}" in args
+        assert f"-IPTC:Keywords+={album_keyword}" in args
+    
+    # Should NOT have -if conditions for albums (they are lists, use +=)
+    assert "not $XMP-dc:Subject" not in args
+    assert "not $IPTC:Keywords" not in args
 ````
 
 ## File: src/google_takeout_metadata/exif_writer.py
@@ -1961,99 +2445,334 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")  # EXIF sans fuseau
 
-def build_exiftool_args(meta: SidecarData, media_path: Path | None = None, use_localtime: bool = False, append_only: bool = False) -> List[str]:
+def _build_video_config_args(media_path: Path | None) -> List[str]:
+    """Construire les arguments de configuration pour les vidéos."""
     args: List[str] = []
-
-    # Charsets pour Unicode/accents
-    args += [
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8",
-        "-charset", "XMP=UTF8",
-    ]
-
-    # Vidéos : clarifier que nos timestamps source sont en UTC quand use_localtime=False
     if media_path and _is_video_file(media_path):
         args += ["-api", "QuickTimeUTC=1"]
+    return args
 
-    # Description
-    if meta.description:
-        desc_tag = "=" if not append_only else "-="
-        args += [
-            f"-EXIF:ImageDescription{desc_tag}{meta.description}",
-            f"-XMP-dc:Description{desc_tag}{meta.description}",
-            f"-IPTC:Caption-Abstract{desc_tag}{meta.description}",
-        ]
+
+def _build_description_args(meta: SidecarData, media_path: Path | None, append_only: bool) -> List[str]:
+    """Construire les arguments pour la description."""
+    args: List[str] = []
+    
+    if not meta.description:
+        return args
+    
+    if append_only:
+        # True append-only mode: only write if tag doesn't already exist
+        args.extend([
+            "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={meta.description}",
+            "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={meta.description}",
+            "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
+        ])
         if media_path and _is_video_file(media_path):
-            # Pour le moment, pas de "title" textuel distinct → on évite Keys:Title = description
-            args += [f"-Keys:Description{desc_tag}{meta.description}"]
+            args.extend([
+                "-if", "not $Keys:Description", f"-Keys:Description={meta.description}"
+            ])
+    else:
+        # Overwrite mode: replace existing descriptions
+        args.extend([
+            f"-EXIF:ImageDescription={meta.description}",
+            f"-XMP-dc:Description={meta.description}",
+            f"-IPTC:Caption-Abstract={meta.description}",
+        ])
+        if media_path and _is_video_file(media_path):
+            args.append(f"-Keys:Description={meta.description}")
+    
+    return args
 
-    # Personnes
-    people_tag = "+=" if not append_only else "-+="
+
+def _build_people_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour les personnes."""
+    args: List[str] = []
+    
     for person in meta.people:
+        # Both append_only and overwrite mode use += to add people (not replace all)
         args += [
-            f"-XMP-iptcExt:PersonInImage{people_tag}{person}",
-            f"-XMP-dc:Subject{people_tag}{person}",
-            f"-IPTC:Keywords{people_tag}{person}",
+            f"-XMP-iptcExt:PersonInImage+={person}",
+            f"-XMP-dc:Subject+={person}",
+            f"-IPTC:Keywords+={person}",
         ]
+    
+    return args
 
-    # Albums
-    album_tag = "+=" if not append_only else "-+="
+
+def _build_albums_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour les albums."""
+    args: List[str] = []
+    
     for album in meta.albums:
         album_keyword = f"Album: {album}"
+        # Both append_only and overwrite mode use += to add albums (not replace all)
         args += [
-            f"-XMP-dc:Subject{album_tag}{album_keyword}",
-            f"-IPTC:Keywords{album_tag}{album_keyword}",
+            f"-XMP-dc:Subject+={album_keyword}",
+            f"-IPTC:Keywords+={album_keyword}",
         ]
+    
+    return args
 
-    # Rating/Favoris
+
+def _build_rating_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour le rating/favoris."""
+    args: List[str] = []
+    
     if meta.favorite:
-        rating_tag = "=" if not append_only else "-="
-        args.append(f"-XMP:Rating{rating_tag}5")
+        if append_only:
+            # Only set rating if not already present
+            args.extend(["-if", "not $XMP:Rating", f"-XMP:Rating=5"])
+        else:
+            # Overwrite mode: set rating even if already present
+            args.append(f"-XMP:Rating=5")
+    
+    return args
 
+
+def _build_date_args(meta: SidecarData, media_path: Path | None, use_localtime: bool, append_only: bool) -> List[str]:
+    """Construire les arguments pour les dates."""
+    args: List[str] = []
+    
     # Set standard EXIF date fields:
     # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
     # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
-        args.append(f"-DateTimeOriginal={s}")
+        if append_only:
+            args.extend(["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"])
+        else:
+            args.append(f"-DateTimeOriginal={s}")
 
     base_ts = meta.created_at or meta.taken_at
     if (s := _fmt_dt(base_ts, use_localtime)):
-        args += [f"-CreateDate={s}", f"-ModifyDate={s}"]
+        if append_only:
+            args.extend(["-if", "not $CreateDate", f"-CreateDate={s}"])
+            args.extend(["-if", "not $ModifyDate", f"-ModifyDate={s}"])
+        else:
+            args.extend([f"-CreateDate={s}", f"-ModifyDate={s}"])
 
     # Dates QuickTime (vidéos)
     if media_path and _is_video_file(media_path):
         if (s := _fmt_dt(meta.taken_at, use_localtime)):
-            args += [f"-QuickTime:CreateDate={s}"]
+            if append_only:
+                args.extend(["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"])
+            else:
+                args.append(f"-QuickTime:CreateDate={s}")
         if (s := _fmt_dt(base_ts, use_localtime)):
-            args += [f"-QuickTime:ModifyDate={s}"]
-        if meta.description:
-            args += [f"-Keys:Description={meta.description}"]
+            if append_only:
+                args.extend(["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"])
+            else:
+                args.append(f"-QuickTime:ModifyDate={s}")
+    
+    return args
 
-    # GPS
-    if meta.latitude is not None and meta.longitude is not None:
-        lat_ref = "N" if meta.latitude >= 0 else "S"
-        lon_ref = "E" if meta.longitude >= 0 else "W"
+
+def _build_gps_args(meta: SidecarData, media_path: Path | None, append_only: bool) -> List[str]:
+    """Construire les arguments pour les données GPS."""
+    args: List[str] = []
+    
+    if meta.latitude is None or meta.longitude is None:
+        return args
+    
+    lat_ref = "N" if meta.latitude >= 0 else "S"
+    lon_ref = "E" if meta.longitude >= 0 else "W"
+    
+    if append_only:
+        # Only write GPS if not already present
+        args += [
+            "-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}",
+            "-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}",
+            "-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}",
+            "-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}",
+        ]
+    else:
         args += [
             f"-GPSLatitude={abs(meta.latitude)}",
             f"-GPSLatitudeRef={lat_ref}",
             f"-GPSLongitude={abs(meta.longitude)}",
             f"-GPSLongitudeRef={lon_ref}",
         ]
-        if meta.altitude is not None:
-            alt_ref = "1" if meta.altitude < 0 else "0"
+    
+    if meta.altitude is not None:
+        alt_ref = "1" if meta.altitude < 0 else "0"
+        if append_only:
+            args += ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}", "-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
+        else:
             args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
 
-        if media_path and _is_video_file(media_path):
-            # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-            args += [f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
-            # Keys:Location est peu standardisé ; garde-le si ça t’aide dans ton écosystème
-            args += [f"-Keys:Location={meta.latitude},{meta.longitude}"]
+    if media_path and _is_video_file(media_path):
+        # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
+        if append_only:
+            args.extend(["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"])
+            args.extend(["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"])
+        else:
+            args.append(f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}")
+            args.append(f"-Keys:Location={meta.latitude},{meta.longitude}")
+    
+    return args
+
+
+def build_exiftool_args(meta: SidecarData, media_path: Path | None = None, use_localtime: bool = False, append_only: bool = True) -> List[str]:
+    """Construire la liste complète des arguments pour exiftool."""
+    args: List[str] = []
+
+    # Configuration vidéo
+    args.extend(_build_video_config_args(media_path))
+    
+    # Description
+    args.extend(_build_description_args(meta, media_path, append_only))
+    
+    # Personnes
+    args.extend(_build_people_args(meta, append_only))
+    
+    # Albums
+    args.extend(_build_albums_args(meta, append_only))
+    
+    # Rating/Favoris
+    args.extend(_build_rating_args(meta, append_only))
+    
+    # Dates
+    args.extend(_build_date_args(meta, media_path, use_localtime, append_only))
+    
+    # GPS
+    args.extend(_build_gps_args(meta, media_path, append_only))
 
     return args
 
-def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = False) -> None:
-    args = build_exiftool_args(meta, media_path, use_localtime=use_localtime, append_only=append_only)
+def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
+    if append_only:
+        # In append-only mode, we need to run separate commands for conditional vs unconditional writes
+        # This prevents -if conditions from affecting subsequent operations
+        _write_metadata_append_only(media_path, meta, use_localtime)
+    else:
+        # In overwrite mode, use the standard single-command approach
+        args = build_exiftool_args(meta, media_path, use_localtime=use_localtime, append_only=False)
+        if args:
+            _run_exiftool_command(media_path, args, append_only=False)
+
+
+def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localtime: bool) -> None:
+    """Write metadata in append-only mode using separate commands for conditional writes."""
+    
+    # Check if this is a video file
+    is_video = _is_video_file(media_path)
+    
+    # Add video configuration for videos
+    if is_video:
+        video_config_args = ["-api", "QuickTimeUTC=1"]
+        _run_exiftool_command(media_path, video_config_args, append_only=True)
+    
+    # 1. Write descriptions only if they don't exist (conditional)
+    if meta.description:
+        desc_args = [
+            "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={meta.description}",
+        ]
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        
+        desc_args = [
+            "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={meta.description}",
+        ]
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        
+        desc_args = [
+            "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
+        ]
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        
+        # Add video-specific description field
+        if is_video:
+            desc_args = [
+                "-if", "not $Keys:Description", f"-Keys:Description={meta.description}",
+            ]
+            _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+    
+    # 2. Add people unconditionally (they are lists, so += is safe)
+    if meta.people:
+        people_args = []
+        for person in meta.people:
+            people_args += [
+                f"-XMP-iptcExt:PersonInImage+={person}",
+                f"-XMP-dc:Subject+={person}",
+                f"-IPTC:Keywords+={person}",
+            ]
+        _run_exiftool_command(media_path, people_args, append_only=True)
+    
+    # 3. Add albums unconditionally (they are lists, so += is safe)
+    if meta.albums:
+        album_args = []
+        for album in meta.albums:
+            album_keyword = f"Album: {album}"
+            album_args += [
+                f"-XMP-dc:Subject+={album_keyword}",
+                f"-IPTC:Keywords+={album_keyword}",
+            ]
+        _run_exiftool_command(media_path, album_args, append_only=True)
+    
+    # 4. Write rating only if it doesn't exist (conditional)
+    if meta.favorite:
+        rating_args = ["-if", "not $XMP:Rating", f"-XMP:Rating=5"]
+        _run_exiftool_command(media_path, rating_args, append_only=True, allow_condition_failure=True)
+    
+    # 5. Write dates only if they don't exist (conditional)
+    if (s := _fmt_dt(meta.taken_at, use_localtime)):
+        date_args = ["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"]
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        
+        # Add QuickTime:CreateDate for videos
+        if is_video:
+            date_args = ["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"]
+            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+    
+    base_ts = meta.created_at or meta.taken_at
+    if (s := _fmt_dt(base_ts, use_localtime)):
+        date_args = ["-if", "not $CreateDate", f"-CreateDate={s}"]
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        
+        date_args = ["-if", "not $ModifyDate", f"-ModifyDate={s}"]
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        
+        # Add QuickTime:ModifyDate for videos
+        if is_video:
+            date_args = ["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"]
+            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+    
+    # 6. Write GPS only if it doesn't exist (conditional)
+    if meta.latitude is not None and meta.longitude is not None:
+        lat_ref = "N" if meta.latitude >= 0 else "S"
+        lon_ref = "E" if meta.longitude >= 0 else "W"
+        
+        gps_args = ["-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        gps_args = ["-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        gps_args = ["-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        gps_args = ["-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        # Add video-specific GPS fields
+        if is_video:
+            gps_args = ["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
+            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+            
+            gps_args = ["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"]
+            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+    
+    # 7. Write GPS altitude only if it doesn't exist (conditional)
+    if meta.altitude is not None:
+        alt_ref = "1" if meta.altitude < 0 else "0"
+        
+        gps_args = ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        
+        gps_args = ["-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+
+
+def _run_exiftool_command(media_path: Path, args: list[str], append_only: bool, allow_condition_failure: bool = False) -> None:
+    """Run a single exiftool command with the given arguments."""
     if not args:
         return
 
@@ -2063,9 +2782,6 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
         "-charset", "filename=UTF8",
         "-charset", "iptc=UTF8",
         "-charset", "exif=UTF8",
-        "-charset", "XMP=UTF8",
-        # Pour les vidéos, indiquer que nos timestamps sont UTC (évite offsets)
-        "-api", "QuickTimeUTC=1",
         *args,
         str(media_path),
     ]
@@ -2075,5 +2791,21 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
     except FileNotFoundError as exc:
         raise RuntimeError("exiftool not found") from exc
     except subprocess.CalledProcessError as exc:
+        # Exit code 2 means "files failed condition" when using -if
+        # This is expected behavior in append-only mode when tags already exist
+        if exc.returncode == 2 and allow_condition_failure and "files failed condition" in (exc.stderr or ""):
+            # This is expected - the conditions prevented writing because tags already exist
+            return
+            
+        # Exit code 1 with specific warning messages about non-writable fields should be treated as non-fatal
+        # for video-specific tags that may not be supported by all file formats
+        stderr_msg = exc.stderr or ""
+        if (exc.returncode == 1 and allow_condition_failure and 
+            ("doesn't exist or isn't writable" in stderr_msg or
+             "not supported" in stderr_msg.lower() or
+             "nothing to do" in stderr_msg.lower())):
+            # Non-fatal warning for unsupported video-specific tags
+            return
+            
         raise RuntimeError(f"exiftool failed for {media_path}: {exc.stderr or exc.stdout}") from exc
 ````

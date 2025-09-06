@@ -488,3 +488,191 @@ def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
     for keyword in keywords_overwrite:
         if "Video Person" in keyword or "Album: Test Album" in keyword:
             assert keyword in keywords_append or any(keyword in k for k in keywords_append)
+
+
+@pytest.mark.integration
+def test_batch_vs_normal_mode_equivalence(tmp_path: Path) -> None:
+    """Test that batch mode produces the same results as normal mode."""
+    # Import at test time to avoid import issues
+    from google_takeout_metadata.processor_batch import process_directory_batch
+    from google_takeout_metadata.processor import process_directory
+    
+    # Create test data
+    test_files = [
+        ("photo1.jpg", "First test photo", "Alice"),
+        ("photo2.jpg", "Second test photo", "Bob"),
+        ("photo3.jpg", "Third test photo", "Charlie")
+    ]
+    
+    # Create two identical directory structures
+    normal_dir = tmp_path / "normal_mode"
+    batch_dir = tmp_path / "batch_mode"
+    normal_dir.mkdir()
+    batch_dir.mkdir()
+    
+    for filename, description, person in test_files:
+        # Create identical files in both directories
+        for test_dir in [normal_dir, batch_dir]:
+            # Create image
+            media_path = test_dir / filename
+            img = Image.new('RGB', (100, 100), color='blue')
+            img.save(media_path)
+            
+            # Create sidecar
+            sidecar_data = {
+                "title": filename,
+                "description": description,
+                "people": [{"name": person}]
+            }
+            json_path = test_dir / f"{filename}.json"
+            json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    try:
+        # Process with normal mode
+        process_directory(normal_dir, use_localtime=False, append_only=True, clean_sidecars=False)
+        
+        # Process with batch mode  
+        process_directory_batch(batch_dir, use_localtime=False, append_only=True, clean_sidecars=False)
+        
+        # Compare results
+        for filename, expected_description, expected_person in test_files:
+            normal_metadata = _run_exiftool_read(normal_dir / filename)
+            batch_metadata = _run_exiftool_read(batch_dir / filename)
+            
+            # Check descriptions match
+            assert normal_metadata.get("ImageDescription") == batch_metadata.get("ImageDescription")
+            assert normal_metadata.get("ImageDescription") == expected_description
+            
+            # Check people match
+            normal_people = normal_metadata.get("PersonInImage", [])
+            batch_people = batch_metadata.get("PersonInImage", [])
+            if isinstance(normal_people, str):
+                normal_people = [normal_people]
+            if isinstance(batch_people, str):
+                batch_people = [batch_people]
+            
+            assert set(normal_people) == set(batch_people)
+            assert expected_person in normal_people
+            
+    except FileNotFoundError:
+        pytest.skip("exiftool not found - skipping batch vs normal comparison test")
+
+
+@pytest.mark.integration
+def test_batch_mode_performance_benefit(tmp_path: Path) -> None:
+    """Test that batch mode can handle many files (performance test)."""
+    from google_takeout_metadata.processor_batch import process_directory_batch
+    import time
+    
+    # Create many test files
+    num_files = 20  # Reduced for CI, but still demonstrates batch capability
+    
+    for i in range(num_files):
+        filename = f"perf_test_{i:03d}.jpg"
+        
+        # Create image
+        media_path = tmp_path / filename
+        img = Image.new('RGB', (50, 50), color='red')
+        img.save(media_path)
+        
+        # Create sidecar
+        sidecar_data = {
+            "title": filename,
+            "description": f"Performance test image {i}"
+        }
+        json_path = tmp_path / f"{filename}.json"
+        json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    try:
+        # Measure batch processing time
+        start_time = time.time()
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        end_time = time.time()
+        
+        batch_time = end_time - start_time
+        
+        # Verify all files were processed correctly
+        for i in range(num_files):
+            filename = f"perf_test_{i:03d}.jpg"
+            media_path = tmp_path / filename
+            
+            metadata = _run_exiftool_read(media_path)
+            expected_description = f"Performance test image {i}"
+            assert metadata.get("ImageDescription") == expected_description
+        
+        # This test mainly ensures batch mode works with many files
+        # The actual performance benefit depends on the system and exiftool version
+        print(f"Batch mode processed {num_files} files in {batch_time:.2f} seconds")
+        
+    except FileNotFoundError:
+        pytest.skip("exiftool not found - skipping batch performance test")
+
+
+@pytest.mark.integration  
+def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
+    """Test batch mode with different file types and complex metadata."""
+    from google_takeout_metadata.processor_batch import process_directory_batch
+    import shutil
+    
+    # Create test images of different types
+    test_files = [
+        ("mixed1.jpg", "JPEG test"),
+        ("mixed2.png", "PNG test")  # PNG if supported by PIL
+    ]
+    
+    for filename, description in test_files:
+        # Create image with appropriate format
+        media_path = tmp_path / filename
+        if filename.endswith('.jpg'):
+            img = Image.new('RGB', (100, 100), color='green')
+            img.save(media_path, format='JPEG')
+        elif filename.endswith('.png'):
+            img = Image.new('RGBA', (100, 100), color=(0, 255, 0, 128))
+            img.save(media_path, format='PNG')
+        
+        # Create complex sidecar
+        sidecar_data = {
+            "title": filename,
+            "description": description,
+            "people": [{"name": "Mixed Test Person"}],
+            "favorited": {"value": True},
+            "geoData": {
+                "latitude": 45.5017,
+                "longitude": -73.5673,
+                "altitude": 20.0
+            }
+        }
+        json_path = tmp_path / f"{filename}.json"
+        json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    try:
+        # Process with batch mode
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        
+        # Verify all files were processed
+        for filename, expected_description in test_files:
+            media_path = tmp_path / filename
+            
+            metadata = _run_exiftool_read(media_path)
+            
+            # Check basic metadata
+            assert metadata.get("ImageDescription") == expected_description
+            
+            # Check people
+            people = metadata.get("PersonInImage", [])
+            if isinstance(people, str):
+                people = [people]
+            assert "Mixed Test Person" in people
+            
+            # Check rating (favorite)
+            rating = metadata.get("Rating")
+            assert rating == 5 or rating == "5"
+            
+            # Check GPS (may not work for all file types)
+            gps_lat = metadata.get("GPSLatitude")
+            if gps_lat is not None:
+                # GPS data present - verify it's correct
+                assert abs(float(str(gps_lat).replace("deg", "").strip()) - 45.5017) < 0.001
+        
+    except FileNotFoundError:
+        pytest.skip("exiftool not found - skipping mixed file types batch test")

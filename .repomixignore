@@ -10,3 +10,4 @@ LICENSE
 repomix.config.json
 src/google_takeout_metadata.egg-info/
 .repomixignore
+CORRECTION_SIGNATURES_FONCTION.md
