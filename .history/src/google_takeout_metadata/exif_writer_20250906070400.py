@@ -53,15 +53,6 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
             f"-IPTC:Keywords{people_tag}{person}",
         ]
 
-    # Albums
-    album_tag = "+=" if not append_only else "-+="
-    for album in meta.albums:
-        album_keyword = f"Album: {album}"
-        args += [
-            f"-XMP-dc:Subject{album_tag}{album_keyword}",
-            f"-IPTC:Keywords{album_tag}{album_keyword}",
-        ]
-
     # Rating/Favoris
     if meta.favorite:
         rating_tag = "=" if not append_only else "-="
@@ -108,8 +99,8 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     return args
 
-def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = False) -> None:
-    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime, append_only=append_only)
+def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False) -> None:
+    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime)
     if not args:
         return
 

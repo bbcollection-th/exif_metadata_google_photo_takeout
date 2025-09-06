@@ -17,7 +17,7 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")  # EXIF sans fuseau
 
-def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False, append_only: bool = False) -> List[str]:
+def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False) -> List[str]:
     args: List[str] = []
 
     # Charsets pour Unicode/accents
@@ -34,45 +34,28 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     # Description
     if meta.description:
-        desc_tag = "=" if not append_only else "-="
         args += [
-            f"-EXIF:ImageDescription{desc_tag}{meta.description}",
-            f"-XMP-dc:Description{desc_tag}{meta.description}",
-            f"-IPTC:Caption-Abstract{desc_tag}{meta.description}",
+            f"-EXIF:ImageDescription={meta.description}",
+            f"-XMP-dc:Description={meta.description}",
+            f"-IPTC:Caption-Abstract={meta.description}",
         ]
         if image_path and _is_video_file(image_path):
             # Pour le moment, pas de "title" textuel distinct → on évite Keys:Title = description
-            args += [f"-Keys:Description{desc_tag}{meta.description}"]
+            args += [f"-Keys:Description={meta.description}"]
 
     # Personnes
-    people_tag = "+=" if not append_only else "-+="
     for person in meta.people:
         args += [
-            f"-XMP-iptcExt:PersonInImage{people_tag}{person}",
-            f"-XMP-dc:Subject{people_tag}{person}",
-            f"-IPTC:Keywords{people_tag}{person}",
+            f"-XMP-iptcExt:PersonInImage+={person}",
+            f"-XMP-dc:Subject+={person}",
+            f"-IPTC:Keywords+={person}",
         ]
-
-    # Albums
-    album_tag = "+=" if not append_only else "-+="
-    for album in meta.albums:
-        album_keyword = f"Album: {album}"
-        args += [
-            f"-XMP-dc:Subject{album_tag}{album_keyword}",
-            f"-IPTC:Keywords{album_tag}{album_keyword}",
-        ]
-
-    # Rating/Favoris
-    if meta.favorite:
-        rating_tag = "=" if not append_only else "-="
-        args.append(f"-XMP:Rating{rating_tag}5")
 
     # Set standard EXIF date fields:
     # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
     # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
         args.append(f"-DateTimeOriginal={s}")
-
     base_ts = meta.created_at or meta.taken_at
     if (s := _fmt_dt(base_ts, use_localtime)):
         args += [f"-CreateDate={s}", f"-ModifyDate={s}"]
@@ -83,8 +66,6 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
             args += [f"-QuickTime:CreateDate={s}"]
         if (s := _fmt_dt(base_ts, use_localtime)):
             args += [f"-QuickTime:ModifyDate={s}"]
-        if meta.description:
-            args += [f"-Keys:Description={meta.description}"]
 
     # GPS
     if meta.latitude is not None and meta.longitude is not None:
@@ -108,24 +89,12 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     return args
 
-def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = False) -> None:
-    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime, append_only=append_only)
+def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False) -> None:
+    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime)
     if not args:
         return
 
-    cmd = [
-        "exiftool",
-        "-overwrite_original",
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8",
-        "-charset", "XMP=UTF8",
-        # Pour les vidéos, indiquer que nos timestamps sont UTC (évite offsets)
-        "-api", "QuickTimeUTC=1",
-        *args,
-        str(image_path),
-    ]
-
+    cmd = ["exiftool", "-overwrite_original", *args, str(image_path)]
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
     except FileNotFoundError as exc:
