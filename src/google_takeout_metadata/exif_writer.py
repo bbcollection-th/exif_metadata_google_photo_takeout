@@ -17,71 +17,79 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")  # EXIF sans fuseau
 
-def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False, append_only: bool = True) -> List[str]:
+def _build_video_config_args(image_path: Path | None) -> List[str]:
+    """Construire les arguments de configuration pour les vidéos."""
     args: List[str] = []
-
-    # Vidéos : clarifier que nos timestamps source sont en UTC quand use_localtime=False
     if image_path and _is_video_file(image_path):
         args += ["-api", "QuickTimeUTC=1"]
+    return args
 
-    # Description
-    if meta.description:
-        if append_only:
-            # True append-only mode: only write if tag doesn't already exist
-            # Use -if condition to check tag absence
-            args.extend([
-                "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={meta.description}",
-                "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={meta.description}",
-                "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
-            ])
-            if image_path and _is_video_file(image_path):
-                args.extend([
-                    "-if", "not $Keys:Description", f"-Keys:Description={meta.description}"
-                ])
-        else:
-            # Overwrite mode: replace existing descriptions
-            args.extend([
-                f"-EXIF:ImageDescription={meta.description}",
-                f"-XMP-dc:Description={meta.description}",
-                f"-IPTC:Caption-Abstract={meta.description}",
-            ])
-            if image_path and _is_video_file(image_path):
-                args.append(f"-Keys:Description={meta.description}")
 
-    # Personnes
+def _build_description_args(meta: SidecarData, image_path: Path | None, append_only: bool) -> List[str]:
+    """Construire les arguments pour la description."""
+    args: List[str] = []
+    
+    if not meta.description:
+        return args
+    
+    if append_only:
+        # True append-only mode: only write if tag doesn't already exist
+        args.extend([
+            "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={meta.description}",
+            "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={meta.description}",
+            "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
+        ])
+        if image_path and _is_video_file(image_path):
+            args.extend([
+                "-if", "not $Keys:Description", f"-Keys:Description={meta.description}"
+            ])
+    else:
+        # Overwrite mode: replace existing descriptions
+        args.extend([
+            f"-EXIF:ImageDescription={meta.description}",
+            f"-XMP-dc:Description={meta.description}",
+            f"-IPTC:Caption-Abstract={meta.description}",
+        ])
+        if image_path and _is_video_file(image_path):
+            args.append(f"-Keys:Description={meta.description}")
+    
+    return args
+
+
+def _build_people_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour les personnes."""
+    args: List[str] = []
+    
     for person in meta.people:
-        if append_only:
-            # In append-only mode, add people without removing existing ones
-            args += [
-                f"-XMP-iptcExt:PersonInImage+={person}",
-                f"-XMP-dc:Subject+={person}",
-                f"-IPTC:Keywords+={person}",
-            ]
-        else:
-            # In overwrite mode, we still use += to add people (not replace all)
-            args += [
-                f"-XMP-iptcExt:PersonInImage+={person}",
-                f"-XMP-dc:Subject+={person}",
-                f"-IPTC:Keywords+={person}",
-            ]
+        # Both append_only and overwrite mode use += to add people (not replace all)
+        args += [
+            f"-XMP-iptcExt:PersonInImage+={person}",
+            f"-XMP-dc:Subject+={person}",
+            f"-IPTC:Keywords+={person}",
+        ]
+    
+    return args
 
-    # Albums
+
+def _build_albums_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour les albums."""
+    args: List[str] = []
+    
     for album in meta.albums:
         album_keyword = f"Album: {album}"
-        if append_only:
-            # In append-only mode, add albums without removing existing ones
-            args += [
-                f"-XMP-dc:Subject+={album_keyword}",
-                f"-IPTC:Keywords+={album_keyword}",
-            ]
-        else:
-            # In overwrite mode, we still use += to add albums (not replace all)
-            args += [
-                f"-XMP-dc:Subject+={album_keyword}",
-                f"-IPTC:Keywords+={album_keyword}",
-            ]
+        # Both append_only and overwrite mode use += to add albums (not replace all)
+        args += [
+            f"-XMP-dc:Subject+={album_keyword}",
+            f"-IPTC:Keywords+={album_keyword}",
+        ]
+    
+    return args
 
-    # Rating/Favoris
+
+def _build_rating_args(meta: SidecarData, append_only: bool) -> List[str]:
+    """Construire les arguments pour le rating/favoris."""
+    args: List[str] = []
+    
     if meta.favorite:
         if append_only:
             # Only set rating if not already present
@@ -89,7 +97,14 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
         else:
             # Overwrite mode: set rating even if already present
             args.append(f"-XMP:Rating=5")
+    
+    return args
 
+
+def _build_date_args(meta: SidecarData, image_path: Path | None, use_localtime: bool, append_only: bool) -> List[str]:
+    """Construire les arguments pour les dates."""
+    args: List[str] = []
+    
     # Set standard EXIF date fields:
     # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
     # - CreateDate and ModifyDate are set from meta.created_at if available, otherwise from meta.taken_at
@@ -119,48 +134,79 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
                 args.extend(["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"])
             else:
                 args.append(f"-QuickTime:ModifyDate={s}")
-        if meta.description:
-            if append_only:
-                args.extend(["-if", "not $Keys:Description", f"-Keys:Description={meta.description}"])
-            else:
-                args.append(f"-Keys:Description={meta.description}")
+    
+    return args
 
-    # GPS
-    if meta.latitude is not None and meta.longitude is not None:
-        lat_ref = "N" if meta.latitude >= 0 else "S"
-        lon_ref = "E" if meta.longitude >= 0 else "W"
-        
+
+def _build_gps_args(meta: SidecarData, image_path: Path | None, append_only: bool) -> List[str]:
+    """Construire les arguments pour les données GPS."""
+    args: List[str] = []
+    
+    if meta.latitude is None or meta.longitude is None:
+        return args
+    
+    lat_ref = "N" if meta.latitude >= 0 else "S"
+    lon_ref = "E" if meta.longitude >= 0 else "W"
+    
+    if append_only:
+        # Only write GPS if not already present
+        args += [
+            "-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}",
+            "-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}",
+            "-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}",
+            "-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}",
+        ]
+    else:
+        args += [
+            f"-GPSLatitude={abs(meta.latitude)}",
+            f"-GPSLatitudeRef={lat_ref}",
+            f"-GPSLongitude={abs(meta.longitude)}",
+            f"-GPSLongitudeRef={lon_ref}",
+        ]
+    
+    if meta.altitude is not None:
+        alt_ref = "1" if meta.altitude < 0 else "0"
         if append_only:
-            # Only write GPS if not already present
-            args += [
-                "-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}",
-                "-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}",
-                "-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}",
-                "-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}",
-            ]
+            args += ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}", "-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
         else:
-            args += [
-                f"-GPSLatitude={abs(meta.latitude)}",
-                f"-GPSLatitudeRef={lat_ref}",
-                f"-GPSLongitude={abs(meta.longitude)}",
-                f"-GPSLongitudeRef={lon_ref}",
-            ]
-        
-        if meta.altitude is not None:
-            alt_ref = "1" if meta.altitude < 0 else "0"
-            if append_only:
-                args += ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}", "-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
-            else:
-                args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
+            args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
 
-        if image_path and _is_video_file(image_path):
-            # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-            if append_only:
-                args.extend(["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"])
-                args.extend(["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"])
-            else:
-                args.append(f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}")
-                args.append(f"-Keys:Location={meta.latitude},{meta.longitude}")
+    if image_path and _is_video_file(image_path):
+        # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
+        if append_only:
+            args.extend(["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"])
+            args.extend(["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"])
+        else:
+            args.append(f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}")
+            args.append(f"-Keys:Location={meta.latitude},{meta.longitude}")
+    
+    return args
+
+
+def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_localtime: bool = False, append_only: bool = True) -> List[str]:
+    """Construire la liste complète des arguments pour exiftool."""
+    args: List[str] = []
+
+    # Configuration vidéo
+    args.extend(_build_video_config_args(image_path))
+    
+    # Description
+    args.extend(_build_description_args(meta, image_path, append_only))
+    
+    # Personnes
+    args.extend(_build_people_args(meta, append_only))
+    
+    # Albums
+    args.extend(_build_albums_args(meta, append_only))
+    
+    # Rating/Favoris
+    args.extend(_build_rating_args(meta, append_only))
+    
+    # Dates
+    args.extend(_build_date_args(meta, image_path, use_localtime, append_only))
+    
+    # GPS
+    args.extend(_build_gps_args(meta, image_path, append_only))
 
     return args
 

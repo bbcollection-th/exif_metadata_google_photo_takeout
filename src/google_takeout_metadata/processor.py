@@ -126,6 +126,12 @@ def fix_file_extension_mismatch(image_path: Path, json_path: Path) -> tuple[Path
         # If the image was renamed but subsequent steps failed, try to rollback
         if image_renamed:
             try:
+                # Clean up any new JSON file that might have been created
+                if new_json_path.exists():
+                    new_json_path.unlink()
+                    logger.info("Cleaned up partially created JSON file: %s", new_json_path)
+                
+                # Rename image back to original name
                 new_image_path.rename(image_path)
                 logger.info("Successfully rolled back image rename: %s -> %s", new_image_path, image_path)
                 return image_path, json_path
