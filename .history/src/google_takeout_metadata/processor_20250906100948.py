@@ -209,17 +209,14 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             # Try to fix the extension mismatch
             fixed_image_path, fixed_json_path = fix_file_extension_mismatch(image_path, json_path)
             
-            if fixed_image_path != image_path or fixed_json_path != json_path:
-                # Files were renamed (at least partially), re-parse the JSON and retry
-                # Handle case where image was renamed but JSON wasn't (partial rollback failure)
-                actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
-                
-                meta = parse_sidecar(actual_json_path)
-                directory_albums = find_albums_for_directory(actual_json_path.parent)
+            if fixed_image_path != image_path:
+                # Files were renamed, re-parse the updated JSON and retry
+                meta = parse_sidecar(fixed_json_path)
+                directory_albums = find_albums_for_directory(fixed_json_path.parent)
                 meta.albums.extend(directory_albums)
                 
                 write_metadata(fixed_image_path, meta, use_localtime=use_localtime, append_only=append_only)
-                current_json_path = actual_json_path
+                current_json_path = fixed_json_path
                 logger.info("Successfully processed %s after fixing extension", fixed_image_path)
             else:
                 # Extension fix failed, re-raise original error

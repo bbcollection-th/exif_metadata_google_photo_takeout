@@ -94,11 +94,11 @@ def test_fix_file_extension_mismatch_failed_rollback(tmp_path: Path) -> None:
         return original_unlink(self)
     
     def mock_rename(self, target):
-        # If trying to rename back (rollback), fail
+        result = original_rename(self, target)
+        # If trying to rename back (rollback), also fail
         if str(target).endswith('.png') and str(self).endswith('.jpg'):
             raise OSError("Rollback failed")
-        # Otherwise, do the actual rename
-        return original_rename(self, target)
+        return result
     
     with unittest.mock.patch.object(Path, 'unlink', mock_unlink), \
          unittest.mock.patch.object(Path, 'rename', mock_rename):
