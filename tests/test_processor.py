@@ -48,8 +48,8 @@ def test_is_sidecar_file_negative() -> None:
 def test_fix_file_extension_mismatch_rollback_on_failure(tmp_path: Path) -> None:
     """Test that fix_file_extension_mismatch properly rolls back image rename on failure"""
     # Create a fake JPEG file with wrong extension
-    image_path = tmp_path / "photo.png"
-    image_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
+    media_path = tmp_path / "photo.png"
+    media_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
     
     # Create corresponding JSON file
     json_path = tmp_path / "photo.png.supplemental-metadata.json"
@@ -64,19 +64,19 @@ def test_fix_file_extension_mismatch_rollback_on_failure(tmp_path: Path) -> None
         return original_unlink(self)
     
     with unittest.mock.patch.object(Path, 'unlink', mock_unlink):
-        result_image, result_json = fix_file_extension_mismatch(image_path, json_path)
+        result_image, result_json = fix_file_extension_mismatch(media_path, json_path)
         
         # Should have rolled back successfully
-        assert result_image == image_path
+        assert result_image == media_path
         assert result_json == json_path
-        assert image_path.exists()  # Original image path should exist again
+        assert media_path.exists()  # Original image path should exist again
         assert not (tmp_path / "photo.jpg").exists()  # Renamed image should not exist
         assert not (tmp_path / "photo.jpg.supplemental-metadata.json").exists()  # Pas de JSON orphelin attendu
 def test_fix_file_extension_mismatch_failed_rollback(tmp_path: Path) -> None:
     """Test fix_file_extension_mismatch when both operation and rollback fail"""
     # Create a fake JPEG file with wrong extension
-    image_path = tmp_path / "photo.png"
-    image_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
+    media_path = tmp_path / "photo.png"
+    media_path.write_bytes(b'\xff\xd8\xff\xe0')  # JPEG magic bytes
     
     # Create corresponding JSON file
     json_path = tmp_path / "photo.png.supplemental-metadata.json"
@@ -102,10 +102,10 @@ def test_fix_file_extension_mismatch_failed_rollback(tmp_path: Path) -> None:
     with unittest.mock.patch.object(Path, 'unlink', mock_unlink), \
          unittest.mock.patch.object(Path, 'rename', mock_rename):
         
-        result_image, result_json = fix_file_extension_mismatch(image_path, json_path)
+        result_image, result_json = fix_file_extension_mismatch(media_path, json_path)
         
         # Should return new image path but old JSON path due to failed rollback
         assert result_image == tmp_path / "photo.jpg"
         assert result_json == json_path  # Original JSON path
         assert (tmp_path / "photo.jpg").exists()  # New image should exist
-        assert not image_path.exists()  # Original image should not exist
+        assert not media_path.exists()  # Original image should not exist

@@ -66,7 +66,7 @@ def test_build_args_video():
     )
     
     video_path = Path("video.mp4")
-    args = build_exiftool_args(meta, video_path)
+    args = build_exiftool_args(meta, media_path=video_path)
     
     # Check video-specific tags
     assert "-Keys:Description=Video description" in args
@@ -93,9 +93,9 @@ def test_build_args_localtime():
     )
 
     # Test UTC (default)
-    args_utc = build_exiftool_args(meta, Path("a.jpg"), use_localtime=False)
+    args_utc = build_exiftool_args(meta, media_path=Path("a.jpg"), use_localtime=False)
     # Test local time
-    args_local = build_exiftool_args(meta, Path("a.jpg"), use_localtime=True)
+    args_local = build_exiftool_args(meta, media_path=Path("a.jpg"), use_localtime=True)
     
     # The datetime strings will be different (unless running in UTC timezone)
     # but both should contain some form of DateTimeOriginal
@@ -213,7 +213,7 @@ def test_build_args_video_append_only() -> None:
     )
     
     video_path = Path("video.mp4")
-    args = build_exiftool_args(meta, image_path=video_path, append_only=True)
+    args = build_exiftool_args(meta, media_path=video_path, append_only=True)
     
     # Check video-specific description uses conditional logic
     assert "-if" in args

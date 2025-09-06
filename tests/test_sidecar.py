@@ -319,8 +319,8 @@ def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
     
     # Create a dummy image file
-    image_path = tmp_path / "test.jpg"
-    with open(image_path, 'wb') as f:
+    media_path = tmp_path / "test.jpg"
+    with open(media_path, 'wb') as f:
         f.write(b'\xFF\xD8\xFF\xE0')  # Minimal JPEG header
     
     # Create sidecar

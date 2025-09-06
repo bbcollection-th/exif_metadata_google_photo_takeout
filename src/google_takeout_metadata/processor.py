@@ -74,41 +74,41 @@ def detect_file_type(file_path: Path) -> str | None:
     return None
 
 
-def fix_file_extension_mismatch(image_path: Path, json_path: Path) -> tuple[Path, Path]:
+def fix_file_extension_mismatch(media_path: Path, json_path: Path) -> tuple[Path, Path]:
     """Fix file extension mismatch by renaming files and updating JSON content.
     
     Args:
-        image_path: Path to the image/video file
+        media_path: Path to the image/video file
         json_path: Path to the corresponding JSON sidecar file
         
     Returns:
-        Tuple of (new_image_path, new_json_path)
+        Tuple of (new_media_path, new_json_path)
     """
     # Detect the actual file type
-    actual_ext = detect_file_type(image_path)
-    if not actual_ext or actual_ext == image_path.suffix.lower():
+    actual_ext = detect_file_type(media_path)
+    if not actual_ext or actual_ext == media_path.suffix.lower():
         # No mismatch detected or detection failed
-        return image_path, json_path
+        return media_path, json_path
     
     # Create new paths with correct extension
-    new_image_path = image_path.with_suffix(actual_ext)
-    new_json_path = json_path.with_name(new_image_path.name + ".supplemental-metadata.json")
+    new_media_path = media_path.with_suffix(actual_ext)
+    new_json_path = json_path.with_name(new_media_path.name + ".supplemental-metadata.json")
     
-    logger.info("Detected extension mismatch for %s: should be %s", image_path, actual_ext)
+    logger.info("Detected extension mismatch for %s: should be %s", media_path, actual_ext)
     
     image_renamed = False
     try:
         # Rename the image file
-        image_path.rename(new_image_path)
+        media_path.rename(new_media_path)
         image_renamed = True
-        logger.info("Renamed %s to %s", image_path, new_image_path)
+        logger.info("Renamed %s to %s", media_path, new_media_path)
         
         # Update JSON content and rename JSON file
         with open(json_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
         
         # Update the title field
-        json_data['title'] = new_image_path.name
+        json_data['title'] = new_media_path.name
         
         # Write updated JSON to new location
         with open(new_json_path, 'w', encoding='utf-8') as f:
@@ -118,10 +118,10 @@ def fix_file_extension_mismatch(image_path: Path, json_path: Path) -> tuple[Path
         json_path.unlink()
         logger.info("Updated and renamed JSON: %s to %s", json_path, new_json_path)
         
-        return new_image_path, new_json_path
+        return new_media_path, new_json_path
         
     except (OSError, IOError, json.JSONDecodeError) as exc:
-        logger.warning("Failed to fix extension mismatch for %s: %s", image_path, exc)
+        logger.warning("Failed to fix extension mismatch for %s: %s", media_path, exc)
         
         # If the image was renamed but subsequent steps failed, try to rollback
         if image_renamed:
@@ -132,17 +132,17 @@ def fix_file_extension_mismatch(image_path: Path, json_path: Path) -> tuple[Path
                     logger.info("Cleaned up partially created JSON file: %s", new_json_path)
                 
                 # Rename image back to original name
-                new_image_path.rename(image_path)
-                logger.info("Successfully rolled back image rename: %s -> %s", new_image_path, image_path)
-                return image_path, json_path
+                new_media_path.rename(media_path)
+                logger.info("Successfully rolled back image rename: %s -> %s", new_media_path, media_path)
+                return media_path, json_path
             except (OSError, IOError) as rollback_exc:
                 logger.error("Failed to rollback image rename from %s to %s: %s. "
                            "Directory is now in inconsistent state - image has new name but JSON references old name.", 
-                           new_image_path, image_path, rollback_exc)
+                           new_media_path, media_path, rollback_exc)
                 # Return new paths so caller can work with the current state
-                return new_image_path, json_path
+                return new_media_path, json_path
         
-        return image_path, json_path
+        return media_path, json_path
 
 
 def _is_sidecar_file(path: Path) -> bool:
@@ -195,13 +195,13 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     directory_albums = find_albums_for_directory(json_path.parent)
     meta.albums.extend(directory_albums)
     
-    image_path = json_path.with_name(meta.filename)
-    if not image_path.exists():
+    media_path = json_path.with_name(meta.filename)
+    if not media_path.exists():
         raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
     
     # Try to write metadata to image
     try:
-        write_metadata(image_path, meta, use_localtime=use_localtime, append_only=append_only)
+        write_metadata(media_path, meta, use_localtime=use_localtime, append_only=append_only)
         current_json_path = json_path
     except RuntimeError as exc:
         # Check if this might be an extension mismatch error
@@ -210,12 +210,12 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
            ("not a valid jpeg" in error_msg and "looks more like a png" in error_msg) or \
            ("charset option" in error_msg):
             
-            logger.info("Attempting to fix file extension mismatch for %s", image_path)
+            logger.info("Attempting to fix file extension mismatch for %s", media_path)
             
             # Try to fix the extension mismatch
-            fixed_image_path, fixed_json_path = fix_file_extension_mismatch(image_path, json_path)
+            fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
             
-            if fixed_image_path != image_path or fixed_json_path != json_path:
+            if fixed_media_path != media_path or fixed_json_path != json_path:
                 # Files were renamed (at least partially), re-parse the JSON and retry
                 # Handle case where image was renamed but JSON wasn't (partial rollback failure)
                 actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
@@ -224,9 +224,9 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 directory_albums = find_albums_for_directory(actual_json_path.parent)
                 meta.albums.extend(directory_albums)
                 
-                write_metadata(fixed_image_path, meta, use_localtime=use_localtime, append_only=append_only)
+                write_metadata(fixed_media_path, meta, use_localtime=use_localtime, append_only=append_only)
                 current_json_path = actual_json_path
-                logger.info("Successfully processed %s after fixing extension", fixed_image_path)
+                logger.info("Successfully processed %s after fixing extension", fixed_media_path)
             else:
                 # Extension fix failed, re-raise original error
                 raise
