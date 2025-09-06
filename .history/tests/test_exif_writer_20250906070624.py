@@ -71,7 +71,8 @@ def test_build_args_video():
     args = build_exiftool_args(meta, video_path)
     
     # Check video-specific tags
-    assert "-Keys:Description=Video description" in args
+    assert "-Keys:Title='Video description'" in args
+    assert "-Keys:Description='Video description'" in args
     assert any("-QuickTime:CreateDate=" in arg for arg in args)
     assert any("-QuickTime:ModifyDate=" in arg for arg in args)
     assert "-Keys:Location=48.8566,2.3522" in args
@@ -168,64 +169,3 @@ def test_build_args_no_favorite() -> None:
 
     args = build_exiftool_args(meta)
     assert not any("Rating" in arg for arg in args)
-
-
-def test_build_args_albums() -> None:
-    """Test that albums are written as keywords with Album: prefix."""
-    meta = SidecarData(
-        filename="a.jpg",
-        description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
-        favorite=False,
-        albums=["Vacances 2024", "Famille"]
-    )
-
-    args = build_exiftool_args(meta)
-    assert "-XMP-dc:Subject+=Album: Vacances 2024" in args
-    assert "-IPTC:Keywords+=Album: Vacances 2024" in args
-    assert "-XMP-dc:Subject+=Album: Famille" in args
-    assert "-IPTC:Keywords+=Album: Famille" in args
-
-
-def test_build_args_albums_append_only() -> None:
-    """Test albums in append-only mode."""
-    meta = SidecarData(
-        filename="a.jpg",
-        description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
-        favorite=False,
-        albums=["Test Album"]
-    )
-
-    args = build_exiftool_args(meta, append_only=True)
-    assert "-XMP-dc:Subject-+=Album: Test Album" in args
-    assert "-IPTC:Keywords-+=Album: Test Album" in args
-
-
-def test_build_args_no_albums() -> None:
-    """Test that empty albums list doesn't add any album tags."""
-    meta = SidecarData(
-        filename="a.jpg",
-        description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
-        favorite=False,
-        albums=[]
-    )
-
-    args = build_exiftool_args(meta)
-    assert not any("Album:" in arg for arg in args)

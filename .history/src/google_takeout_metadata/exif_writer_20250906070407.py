@@ -53,15 +53,6 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
             f"-IPTC:Keywords{people_tag}{person}",
         ]
 
-    # Albums
-    album_tag = "+=" if not append_only else "-+="
-    for album in meta.albums:
-        album_keyword = f"Album: {album}"
-        args += [
-            f"-XMP-dc:Subject{album_tag}{album_keyword}",
-            f"-IPTC:Keywords{album_tag}{album_keyword}",
-        ]
-
     # Rating/Favoris
     if meta.favorite:
         rating_tag = "=" if not append_only else "-="

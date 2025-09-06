@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 
-from .sidecar import parse_sidecar, find_albums_for_directory
+from .sidecar import parse_sidecar
 from .exif_writer import write_metadata
 
 logger = logging.getLogger(__name__)
@@ -43,11 +43,6 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     """Process a single ``.json`` sidecar file."""
 
     meta = parse_sidecar(json_path)
-    
-    # Find albums for this directory
-    directory_albums = find_albums_for_directory(json_path.parent)
-    meta.albums.extend(directory_albums)
-    
     image_path = json_path.with_name(meta.filename)
     if not image_path.exists():
         raise FileNotFoundError(f"Image file not found for sidecar {json_path}")

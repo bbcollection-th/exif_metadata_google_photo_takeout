@@ -1,12 +1,17 @@
 from pathlib import Path
 import json
 import subprocess
-import shutil
-import pytest
 from PIL import Image
 
 from google_takeout_metadata.processor import process_directory
 
+
+from pathlib import Path
+import json
+import subprocess
+import shutil
+import pytest
+from PIL import Image
 
 @pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
 def test_end_to_end(tmp_path: Path) -> None:

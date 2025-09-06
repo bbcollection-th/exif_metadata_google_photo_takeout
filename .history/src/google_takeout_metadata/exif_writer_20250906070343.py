@@ -34,38 +34,22 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     # Description
     if meta.description:
-        desc_tag = "=" if not append_only else "-="
         args += [
-            f"-EXIF:ImageDescription{desc_tag}{meta.description}",
-            f"-XMP-dc:Description{desc_tag}{meta.description}",
-            f"-IPTC:Caption-Abstract{desc_tag}{meta.description}",
+            f"-EXIF:ImageDescription={meta.description}",
+            f"-XMP-dc:Description={meta.description}",
+            f"-IPTC:Caption-Abstract={meta.description}",
         ]
         if image_path and _is_video_file(image_path):
             # Pour le moment, pas de "title" textuel distinct → on évite Keys:Title = description
-            args += [f"-Keys:Description{desc_tag}{meta.description}"]
+            args += [f"-Keys:Description={meta.description}"]
 
     # Personnes
-    people_tag = "+=" if not append_only else "-+="
     for person in meta.people:
         args += [
-            f"-XMP-iptcExt:PersonInImage{people_tag}{person}",
-            f"-XMP-dc:Subject{people_tag}{person}",
-            f"-IPTC:Keywords{people_tag}{person}",
+            f"-XMP-iptcExt:PersonInImage+={person}",
+            f"-XMP-dc:Subject+={person}",
+            f"-IPTC:Keywords+={person}",
         ]
-
-    # Albums
-    album_tag = "+=" if not append_only else "-+="
-    for album in meta.albums:
-        album_keyword = f"Album: {album}"
-        args += [
-            f"-XMP-dc:Subject{album_tag}{album_keyword}",
-            f"-IPTC:Keywords{album_tag}{album_keyword}",
-        ]
-
-    # Rating/Favoris
-    if meta.favorite:
-        rating_tag = "=" if not append_only else "-="
-        args.append(f"-XMP:Rating{rating_tag}5")
 
     # Set standard EXIF date fields:
     # - DateTimeOriginal is set from meta.taken_at (when the photo/video was taken)
@@ -108,8 +92,8 @@ def build_exiftool_args(meta: SidecarData, image_path: Path | None = None, use_l
 
     return args
 
-def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = False) -> None:
-    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime, append_only=append_only)
+def write_metadata(image_path: Path, meta: SidecarData, use_localtime: bool = False) -> None:
+    args = build_exiftool_args(meta, image_path, use_localtime=use_localtime)
     if not args:
         return
 
