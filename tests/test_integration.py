@@ -12,7 +12,7 @@ from google_takeout_metadata.exif_writer import write_metadata
 from google_takeout_metadata.sidecar import SidecarData
 
 
-def _run_exiftool_read(image_path: Path) -> dict:
+def _run_exiftool_read(media_path: Path) -> dict:
     """Run exiftool to read metadata from an image file."""
     cmd = [
         "exiftool", 
@@ -21,7 +21,7 @@ def _run_exiftool_read(image_path: Path) -> dict:
         "-charset", "iptc=UTF8", 
         "-charset", "exif=UTF8",
         "-charset", "XMP=UTF8",
-        str(image_path)
+        str(media_path)
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
@@ -37,9 +37,9 @@ def _run_exiftool_read(image_path: Path) -> dict:
 def test_write_and_read_description(tmp_path: Path) -> None:
     """Test that description is written and can be read back."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='red')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create sidecar JSON
     sidecar_data = {
@@ -53,7 +53,7 @@ def test_write_and_read_description(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify description was written
     assert metadata.get("Description") == "Test photo with ñ and émojis 🎉"
@@ -64,9 +64,9 @@ def test_write_and_read_description(tmp_path: Path) -> None:
 def test_write_and_read_people(tmp_path: Path) -> None:
     """Test that people names are written and can be read back."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='blue')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create sidecar JSON with people
     sidecar_data = {
@@ -83,7 +83,7 @@ def test_write_and_read_people(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify people were written
     keywords = metadata.get("Keywords", [])
@@ -98,9 +98,9 @@ def test_write_and_read_people(tmp_path: Path) -> None:
 def test_write_and_read_gps(tmp_path: Path) -> None:
     """Test that GPS coordinates are written and can be read back."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='green')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create sidecar JSON with GPS data
     sidecar_data = {
@@ -118,7 +118,7 @@ def test_write_and_read_gps(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify GPS data was written
     # exiftool returns GPS coordinates in human-readable format, so we need to check differently
@@ -142,9 +142,9 @@ def test_write_and_read_gps(tmp_path: Path) -> None:
 def test_write_and_read_favorite(tmp_path: Path) -> None:
     """Test that favorite status is written as rating."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='yellow')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create sidecar JSON with favorite
     sidecar_data = {
@@ -158,7 +158,7 @@ def test_write_and_read_favorite(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify rating was written
     assert int(metadata.get("Rating", 0)) == 5
@@ -168,16 +168,16 @@ def test_write_and_read_favorite(tmp_path: Path) -> None:
 def test_append_only_mode(tmp_path: Path) -> None:
     """Test that append-only mode doesn't overwrite existing description."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='purple')
-    img.save(image_path)
+    img.save(media_path)
     
     # First, manually add a description
     cmd = [
         "exiftool", 
         "-overwrite_original",
         "-EXIF:ImageDescription=Original description",
-        str(image_path)
+        str(media_path)
     ]
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
@@ -196,7 +196,7 @@ def test_append_only_mode(tmp_path: Path) -> None:
     process_sidecar_file(json_path, append_only=True)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # In append-only mode, original description should be preserved
     # Note: exiftool's -= operator doesn't overwrite if field exists
@@ -207,9 +207,9 @@ def test_append_only_mode(tmp_path: Path) -> None:
 def test_datetime_formats(tmp_path: Path) -> None:
     """Test that datetime is written in correct format."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='orange')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create sidecar JSON with timestamp
     sidecar_data = {
@@ -223,7 +223,7 @@ def test_datetime_formats(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify datetime format (should be YYYY:MM:DD HH:MM:SS)
     date_original = metadata.get("DateTimeOriginal")
@@ -238,9 +238,9 @@ def test_datetime_formats(tmp_path: Path) -> None:
 def test_write_and_read_albums(tmp_path: Path) -> None:
     """Test that albums are written and can be read back."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='cyan')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create album metadata.json
     album_data = {"title": "Vacances Été 2024"}
@@ -259,7 +259,7 @@ def test_write_and_read_albums(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify album was written as keyword
     keywords = metadata.get("Keywords", [])
@@ -280,9 +280,9 @@ def test_write_and_read_albums(tmp_path: Path) -> None:
 def test_albums_and_people_combined(tmp_path: Path) -> None:
     """Test that albums and people can coexist in keywords."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='magenta')
-    img.save(image_path)
+    img.save(media_path)
     
     # Create album metadata.json
     album_data = {"title": "Album Famille"}
@@ -301,7 +301,7 @@ def test_albums_and_people_combined(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    metadata = _run_exiftool_read(image_path)
+    metadata = _run_exiftool_read(media_path)
     
     # Verify both album and people were written
     keywords = metadata.get("Keywords", [])
@@ -318,9 +318,9 @@ def test_albums_and_people_combined(tmp_path: Path) -> None:
 def test_default_safe_behavior(tmp_path: Path) -> None:
     """Test that default behavior is safe (append-only) and preserves existing metadata."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='red')
-    img.save(image_path)
+    img.save(media_path)
     
     # First, manually add some metadata using overwrite mode
     first_meta = SidecarData(
@@ -337,10 +337,10 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
     )
     
     # Write initial metadata with overwrite mode
-    write_metadata(image_path, first_meta, append_only=False)
+    write_metadata(media_path, first_meta, append_only=False)
     
     # Verify initial metadata was written
-    initial_metadata = _run_exiftool_read(image_path)
+    initial_metadata = _run_exiftool_read(media_path)
     assert initial_metadata.get("ImageDescription") == "Original description"
     initial_keywords = initial_metadata.get("Keywords", [])
     if isinstance(initial_keywords, str):
@@ -361,7 +361,7 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
     process_sidecar_file(json_path)
     
     # Read back metadata
-    final_metadata = _run_exiftool_read(image_path)
+    final_metadata = _run_exiftool_read(media_path)
     
     # In true append-only mode, the original description should be preserved
     # because we use -if "not $TAG" which only writes if tag doesn't exist
@@ -382,9 +382,9 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
 def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     """Test that explicit overwrite mode replaces existing metadata."""
     # Create a simple test image
-    image_path = tmp_path / "test.jpg"
+    media_path = tmp_path / "test.jpg"
     img = Image.new('RGB', (100, 100), color='blue') 
-    img.save(image_path)
+    img.save(media_path)
     
     # First, add some initial metadata
     first_meta = SidecarData(
@@ -400,7 +400,7 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
         albums=[]
     )
     
-    write_metadata(image_path, first_meta, append_only=False)
+    write_metadata(media_path, first_meta, append_only=False)
     
     # Now create sidecar with different metadata
     sidecar_data = {
@@ -415,7 +415,7 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     process_sidecar_file(json_path, append_only=False)
     
     # Read back metadata
-    final_metadata = _run_exiftool_read(image_path)
+    final_metadata = _run_exiftool_read(media_path)
     
     # In overwrite mode, new description should replace old one
     # Note: We're using += operator so people get added, not replaced
@@ -426,3 +426,65 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     # Both original and new person should be present (because += adds)
     assert "Original Person" in final_keywords
     assert "New Person" in final_keywords
+
+
+@pytest.mark.integration
+def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
+    """Test that append-only mode produces similar results to overwrite mode for videos when no metadata exists."""
+    # Copy a real MP4 file from the test data
+    project_root = Path(__file__).parent.parent
+    source_video = project_root / "Google Photos" / "essais" / "1686356837983.mp4"
+    if not source_video.exists():
+        pytest.skip("Real MP4 test file not found")
+    
+    # Create two copies for testing
+    video_path_append = tmp_path / "test_append.mp4"
+    video_path_overwrite = tmp_path / "test_overwrite.mp4"
+    
+    import shutil
+    shutil.copy2(source_video, video_path_append)
+    shutil.copy2(source_video, video_path_overwrite)
+    
+    # Create test metadata
+    meta = SidecarData(
+        filename="test.mp4",
+        description="Test video description",
+        people=["Video Person"],
+        taken_at=1736719606,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=35.0,
+        favorite=True,
+        albums=["Test Album"]
+    )
+    
+    # Write with append-only mode
+    write_metadata(video_path_append, meta, append_only=True)
+    
+    # Write with overwrite mode
+    write_metadata(video_path_overwrite, meta, append_only=False)
+    
+    # Read back metadata from both files
+    metadata_append = _run_exiftool_read(video_path_append)
+    metadata_overwrite = _run_exiftool_read(video_path_overwrite)
+    
+    # Compare key fields - they should be similar when starting from empty metadata
+    # (Some fields might differ slightly due to format differences)
+    
+    # Description should be written in both modes
+    if "Description" in metadata_overwrite:
+        assert metadata_append.get("Description") == metadata_overwrite.get("Description")
+    
+    # Keywords should contain the person and album in both modes
+    keywords_append = metadata_append.get("Keywords", [])
+    keywords_overwrite = metadata_overwrite.get("Keywords", [])
+    if isinstance(keywords_append, str):
+        keywords_append = [keywords_append]
+    if isinstance(keywords_overwrite, str):
+        keywords_overwrite = [keywords_overwrite]
+    
+    # If keywords were written in overwrite mode, they should also be in append mode
+    for keyword in keywords_overwrite:
+        if "Video Person" in keyword or "Album: Test Album" in keyword:
+            assert keyword in keywords_append or any(keyword in k for k in keywords_append)
