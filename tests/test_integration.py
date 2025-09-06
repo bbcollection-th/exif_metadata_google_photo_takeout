@@ -10,7 +10,6 @@ from PIL import Image
 from google_takeout_metadata.processor import process_sidecar_file
 from google_takeout_metadata.exif_writer import write_metadata
 from google_takeout_metadata.sidecar import SidecarData
-from google_takeout_metadata.sidecar import SidecarData
 
 
 def _run_exiftool_read(media_path: Path) -> dict:
