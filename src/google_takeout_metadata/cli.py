@@ -1,4 +1,4 @@
-"""Command line interface."""
+"""Interface en ligne de commande."""
 
 from __future__ import annotations
 
@@ -14,18 +14,18 @@ from .processor_batch import process_directory_batch
 def main(argv: list[str] | None = None) -> None:
     # Vérifier que exiftool est disponible
     if shutil.which("exiftool") is None:
-        logging.error("exiftool not found. Please install it to use this script.")
+        logging.error("exiftool introuvable. Veuillez l'installer pour utiliser ce script.")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description="Merge Google Takeout metadata into images")
-    parser.add_argument("path", type=Path, help="Directory to scan recursively")
+    parser = argparse.ArgumentParser(description="Fusionner les métadonnées Google Takeout dans les images")
+    parser.add_argument("path", type=Path, help="Répertoire à analyser récursivement")
     parser.add_argument(
         "--localtime", action="store_true",
-        help="Convert timestamps to local time instead of UTC (default: UTC)"
+        help="Convertir les horodatages en heure locale au lieu de l'UTC (par défaut : UTC)"
     )
     parser.add_argument(
         "--overwrite", action="store_true",
-        help="Allow overwriting existing metadata fields (by default, existing metadata is preserved)"
+        help="Autoriser l'écrasement des champs de métadonnées existants (par défaut, les métadonnées existantes sont préservées)"
     )
     parser.add_argument(
         "--append-only", action="store_true",
@@ -33,15 +33,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--clean-sidecars", action="store_true",
-        help="Delete JSON sidecar files after successful metadata transfer"
+        help="Supprimer les fichiers JSON annexes après un transfert de métadonnées réussi"
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true",
-        help="Enable verbose logging (DEBUG level)"
+        help="Activer les logs détaillés (niveau DEBUG)"
     )
     parser.add_argument(
         "--batch", action="store_true",
-        help="Process files in batches"
+        help="Traiter les fichiers par lots"
     )
     args = parser.parse_args(argv)
 
@@ -54,14 +54,14 @@ def main(argv: list[str] | None = None) -> None:
     
     # Gestion de la rétrocompatibilité et validation des options
     if args.append_only and args.overwrite:
-        logging.error("Cannot use both --append-only (deprecated) and --overwrite options together")
+        logging.error("Impossible d'utiliser simultanément --append-only (obsolète) et --overwrite")
         sys.exit(1)
     
     if args.append_only:
-        logging.warning("--append-only is deprecated and now the default behavior. Use --overwrite to allow overwriting existing metadata.")
+        logging.warning("--append-only est obsolète et correspond désormais au comportement par défaut. Utilisez --overwrite pour autoriser l'écrasement des métadonnées existantes.")
     
     if not args.path.is_dir():
-        logging.error("The specified path is not a directory: %s", args.path)
+        logging.error("Le chemin indiqué n'est pas un répertoire : %s", args.path)
         sys.exit(1)
     # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
     # L'option --overwrite permet d'écraser les métadonnées existantes

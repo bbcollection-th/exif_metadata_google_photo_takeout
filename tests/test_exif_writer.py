@@ -52,7 +52,7 @@ def test_write_metadata_error(tmp_path, monkeypatch):
 
 
 def test_build_args_video():
-    """Test video-specific tags are added for MP4/MOV files."""
+    """Tester que les balises spécifiques aux vidéos sont ajoutées pour les fichiers MP4/MOV."""
     meta = SidecarData(
         filename="video.mp4",
         description="Video description",
@@ -68,7 +68,7 @@ def test_build_args_video():
     video_path = Path("video.mp4")
     args = build_exiftool_args(meta, media_path=video_path)
     
-    # Check video-specific tags
+    # Vérifier les balises spécifiques aux vidéos
     assert "-Keys:Description=Video description" in args
     assert any("-QuickTime:CreateDate=" in arg for arg in args)
     assert any("-QuickTime:ModifyDate=" in arg for arg in args)
@@ -79,7 +79,7 @@ def test_build_args_video():
 
 
 def test_build_args_localtime():
-    """Test that local time formatting works."""
+    """Tester que le formatage de l'heure locale fonctionne."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -97,14 +97,14 @@ def test_build_args_localtime():
     # Test local time
     args_local = build_exiftool_args(meta, media_path=Path("a.jpg"), use_localtime=True)
     
-    # The datetime strings will be different (unless running in UTC timezone)
-    # but both should contain some form of DateTimeOriginal
+    # Les chaînes de date-heure seront différentes (sauf si exécuté dans le fuseau horaire UTC)
+    # mais les deux devraient contenir une forme de DateTimeOriginal
     assert any("-DateTimeOriginal=" in arg for arg in args_utc)
     assert any("-DateTimeOriginal=" in arg for arg in args_local)
 
 
 def test_build_args_append_only() -> None:
-    """Test append-only mode uses correct exiftool syntax."""
+    """Tester que le mode append-only utilise la syntaxe exiftool correcte."""
     meta = SidecarData(
         filename="a.jpg",
         description="desc",
@@ -124,17 +124,17 @@ def test_build_args_append_only() -> None:
 
     # Append-only mode
     args_append = build_exiftool_args(meta, append_only=True)
-    # In append-only mode, we use -if conditions to only write if tag doesn't exist
+    # En mode append-only, nous utilisons des conditions -if pour n'écrire que si la balise n'existe pas
     assert "-if" in args_append
     assert "not $EXIF:ImageDescription" in args_append
     assert "-EXIF:ImageDescription=desc" in args_append
-    # People use += to add without removing existing values
+    # Les personnes utilisent += pour ajouter sans supprimer les valeurs existantes
     assert "-XMP-iptcExt:PersonInImage+=alice" in args_append
     assert "-XMP-iptcExt:PersonInImage+=bob" in args_append
 
 
 def test_build_args_favorite() -> None:
-    """Test favorite photos get rating=5."""
+    """Tester que les photos favorites obtiennent rating=5."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -150,16 +150,16 @@ def test_build_args_favorite() -> None:
     args = build_exiftool_args(meta, append_only=False)
     assert "-XMP:Rating=5" in args
 
-    # Test append-only mode (now the default behavior)
+    # Tester le mode append-only (maintenant le comportement par défaut)
     args_append = build_exiftool_args(meta, append_only=True)
-    # Should use conditional writing with -if
+    # Devrait utiliser l'écriture conditionnelle avec -if
     assert "-if" in args_append
     assert "not $XMP:Rating" in args_append
     assert "-XMP:Rating=5" in args_append
 
 
 def test_build_args_no_favorite() -> None:
-    """Test non-favorite photos don't get rating."""
+    """Tester que les photos non favorites n'obtiennent pas de rating."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -177,7 +177,7 @@ def test_build_args_no_favorite() -> None:
 
 
 def test_build_args_albums() -> None:
-    """Test that albums are written as keywords with Album: prefix."""
+    """Tester que les albums sont écrits comme mots-clés avec le préfixe Album:."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -199,7 +199,7 @@ def test_build_args_albums() -> None:
 
 
 def test_build_args_video_append_only() -> None:
-    """Test that video-specific tags are included in append-only mode."""
+    """Tester que les balises spécifiques aux vidéos sont incluses en mode append-only."""
     meta = SidecarData(
         filename="video.mp4",
         description="Video description",
@@ -215,32 +215,32 @@ def test_build_args_video_append_only() -> None:
     video_path = Path("video.mp4")
     args = build_exiftool_args(meta, media_path=video_path, append_only=True)
     
-    # Check video-specific description uses conditional logic
+    # Vérifier que la description spécifique à la vidéo utilise une logique conditionnelle
     assert "-if" in args
     assert "not $Keys:Description" in args
     assert "-Keys:Description=Video description" in args
     
-    # Check QuickTime dates use conditional logic
+    # Vérifier que les dates QuickTime utilisent une logique conditionnelle
     assert "not $QuickTime:CreateDate" in args
     assert "not $QuickTime:ModifyDate" in args
     
-    # Check video-specific GPS fields use conditional logic
+    # Vérifier que les champs GPS spécifiques à la vidéo utilisent une logique conditionnelle
     assert "not $QuickTime:GPSCoordinates" in args
     assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
     assert "not $Keys:Location" in args
     assert "-Keys:Location=48.8566,2.3522" in args
     
-    # Check altitude uses conditional logic
+    # Vérifier que l'altitude utilise une logique conditionnelle
     assert "not $GPSAltitude" in args
     assert "-GPSAltitude=35.0" in args
     
-    # Check video config
+    # Vérifier la configuration vidéo
     assert "-api" in args
     assert "QuickTimeUTC=1" in args
 
 
 def test_build_args_albums_append_only() -> None:
-    """Test albums in append-only mode."""
+    """Tester les albums en mode append-only."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -255,13 +255,13 @@ def test_build_args_albums_append_only() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=True)
-    # Albums use += to add without removing existing values
+    # Les albums utilisent += pour ajouter sans supprimer les valeurs existantes
     assert "-XMP-dc:Subject+=Album: Test Album" in args
     assert "-IPTC:Keywords+=Album: Test Album" in args
 
 
 def test_build_args_no_albums() -> None:
-    """Test that empty albums list doesn't add any album tags."""
+    """Tester que la liste d'albums vide n'ajoute aucune balise d'album."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -280,7 +280,7 @@ def test_build_args_no_albums() -> None:
 
 
 def test_build_args_default_behavior() -> None:
-    """Test that default behavior is append-only (safe mode)."""
+    """Tester que le comportement par défaut est append-only (mode sécurisé)."""
     meta = SidecarData(
         filename="a.jpg",
         description="Safe description",
@@ -293,25 +293,25 @@ def test_build_args_default_behavior() -> None:
         favorite=True,
     )
 
-    # Default behavior should be append-only (safe)
+    # Le comportement par défaut devrait être append-only (sécurisé)
     args = build_exiftool_args(meta)
     
-    # Should use -if conditions for descriptions and ratings
+    # Devrait utiliser des conditions -if pour les descriptions et les ratings
     assert "-if" in args
     assert "not $EXIF:ImageDescription" in args
     assert "-EXIF:ImageDescription=Safe description" in args
-    # Should use += for people (lists)
+    # Devrait utiliser += pour les personnes (listes)
     assert "-XMP-iptcExt:PersonInImage+=Safe Person" in args
-    # Should use -if condition for rating
+    # Devrait utiliser une condition -if pour le rating
     assert "not $XMP:Rating" in args
     assert "-XMP:Rating=5" in args
-    # Should use -if condition for GPS
+    # Devrait utiliser une condition -if pour le GPS
     assert "not $GPSLatitude" in args
     assert "-GPSLatitude=48.8566" in args
 
 
 def test_build_args_overwrite_mode() -> None:
-    """Test explicit overwrite mode (destructive)."""
+    """Mode de réécriture explicite (destructif)."""
     meta = SidecarData(
         filename="a.jpg",
         description="Overwrite description",
@@ -324,14 +324,14 @@ def test_build_args_overwrite_mode() -> None:
         favorite=True,
     )
 
-    # Explicit overwrite mode
+    # Mode de réécriture explicite
     args = build_exiftool_args(meta, append_only=False)
     
-    # Should use direct assignment for descriptions and ratings
+    # Devrait utiliser l'assignation directe pour les descriptions et les ratings
     assert "-EXIF:ImageDescription=Overwrite description" in args
     assert "-XMP-iptcExt:PersonInImage+=Overwrite Person" in args
     assert "-XMP:Rating=5" in args
-    # Should NOT have -if conditions
+    # Ne devrait PAS avoir de conditions -if
     assert "-if" not in args
     assert "not $EXIF:ImageDescription" not in args
     assert "not $XMP-iptcExt:PersonInImage" not in args
@@ -339,7 +339,7 @@ def test_build_args_overwrite_mode() -> None:
 
 
 def test_build_args_people_default() -> None:
-    """Test that people are handled safely by default."""
+    """Tester que les personnes sont gérées de manière sécurisée par défaut."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -352,23 +352,23 @@ def test_build_args_people_default() -> None:
         favorite=False,
     )
 
-    # Default behavior (append-only)
+    # Comportement par défaut (append-only)
     args = build_exiftool_args(meta)
     
-    # Each person should use += (append to list)
+    # Chaque personne devrait utiliser += (ajouter à la liste)
     for person in ["Alice Dupont", "Bob Martin", "Charlie Bernard"]:
         assert f"-XMP-iptcExt:PersonInImage+={person}" in args
         assert f"-XMP-dc:Subject+={person}" in args
         assert f"-IPTC:Keywords+={person}" in args
     
-    # Should NOT have -if conditions for people (they are lists, use +=)
+    # Ne devrait PAS avoir de conditions -if pour les personnes (elles sont des listes, utiliser +=)
     assert "not $XMP-iptcExt:PersonInImage" not in args
     assert "not $XMP-dc:Subject" not in args
     assert "not $IPTC:Keywords" not in args
 
 
 def test_build_args_albums_default() -> None:
-    """Test that albums are handled safely by default."""
+    """Tester que les albums sont gérés de manière sécurisée par défaut."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -382,15 +382,15 @@ def test_build_args_albums_default() -> None:
         albums=["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]
     )
 
-    # Default behavior (append-only)
+    # Comportement par défaut (append-only)
     args = build_exiftool_args(meta)
     
-    # Each album should use += (append to list)
+    # Chaque album devrait utiliser += (ajouter à la liste)
     for album in ["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]:
         album_keyword = f"Album: {album}"
         assert f"-XMP-dc:Subject+={album_keyword}" in args
         assert f"-IPTC:Keywords+={album_keyword}" in args
     
-    # Should NOT have -if conditions for albums (they are lists, use +=)
+    # Ne devrait PAS avoir de conditions -if pour les albums (ils sont des listes, utiliser +=)
     assert "not $XMP-dc:Subject" not in args
     assert "not $IPTC:Keywords" not in args

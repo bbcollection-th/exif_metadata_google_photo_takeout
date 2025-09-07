@@ -35,7 +35,7 @@ def test_title_mismatch(tmp_path: Path) -> None:
 
 
 def test_parse_sidecar_supplemental_metadata_format(tmp_path: Path) -> None:
-    """Test parsing new Google Takeout format: IMG_001.jpg.supplemental-metadata.json"""
+    """Tester l'analyse du nouveau format Google Takeout : IMG_001.jpg.supplemental-metadata.json"""
     sample = {
         "title": "IMG_001.jpg",
         "description": "Test photo with new format",
@@ -56,11 +56,11 @@ def test_parse_sidecar_supplemental_metadata_format(tmp_path: Path) -> None:
 
 
 def test_title_mismatch_supplemental_metadata(tmp_path: Path) -> None:
-    """Test title validation with supplemental-metadata format."""
+    """Tester la validation du titre avec le format supplemental-metadata."""
     data = {"title": "wrong_name.jpg"}
     json_path = tmp_path / "IMG_001.jpg.supplemental-metadata.json"
     json_path.write_text(json.dumps(data), encoding="utf-8")
-    with pytest.raises(ValueError, match="Sidecar title.*does not match expected filename"):
+    with pytest.raises(ValueError, match="Le titre du sidecar.*ne correspond pas au nom de fichier attendu"):
         parse_sidecar(json_path)
 
 
@@ -79,35 +79,35 @@ def test_zero_coordinates(tmp_path: Path) -> None:
     json_path = tmp_path / "a.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    # 0/0 coordinates should be filtered out as unreliable
+    # Les coordonnées 0/0 doivent être filtrées car peu fiables
     assert meta.latitude is None
     assert meta.longitude is None
     assert meta.altitude is None
 
 
 def test_people_deduplication(tmp_path: Path) -> None:
-    """Test that people names are deduplicated and trimmed."""
+    """Tester que les noms de personnes sont dédupliqués et nettoyés."""
     sample = {
         "title": "a.jpg",
         "people": [
             {"name": "alice"},
-            {"name": " alice "},  # with spaces
-            {"name": "alice"},   # duplicate
+            {"name": " alice "},  # avec espaces
+            {"name": "alice"},   # doublon
             {"name": "bob"},
-            {"name": "  "},      # empty after strip
+            {"name": "  "},      # vide après nettoyage
             {"name": "charlie"},
-            {"name": " bob "},   # another duplicate with spaces
+            {"name": " bob "},   # autre doublon avec espaces
         ]
     }
     json_path = tmp_path / "a.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    # Should have deduplicated and trimmed: ["alice", "bob", "charlie"]
+    # Devrait avoir dédupliqué et nettoyé : ["alice", "bob", "charlie"]
     assert meta.people == ["alice", "bob", "charlie"]
 
 
 def test_parse_favorite_true(tmp_path: Path) -> None:
-    """Test parsing favorited photo."""
+    """Tester l'analyse d'une photo favorite."""
     sample = {
         "title": "favorite.jpg",
         "favorited": {"value": True}
@@ -119,7 +119,7 @@ def test_parse_favorite_true(tmp_path: Path) -> None:
 
 
 def test_parse_favorite_false(tmp_path: Path) -> None:
-    """Test parsing non-favorited photo."""
+    """Tester l'analyse d'une photo non favorite."""
     sample = {
         "title": "not_favorite.jpg",
         "favorited": {"value": False}
@@ -131,7 +131,7 @@ def test_parse_favorite_false(tmp_path: Path) -> None:
 
 
 def test_parse_no_favorite_field(tmp_path: Path) -> None:
-    """Test parsing photo without favorite field."""
+    """Tester l'analyse d'une photo sans champ favori."""
     sample = {
         "title": "no_fav.jpg",
         "description": "Test photo"
@@ -143,7 +143,7 @@ def test_parse_no_favorite_field(tmp_path: Path) -> None:
 
 
 def test_parse_zero_geo_coordinates(tmp_path: Path) -> None:
-    """Test that 0/0 coordinates are filtered out as unreliable."""
+    """Tester que les coordonnées 0/0 sont filtrées car peu fiables."""
     sample = {
         "title": "geo_zero.jpg",
         "geoData": {"latitude": 0.0, "longitude": 0.0, "altitude": 100.0}
@@ -151,14 +151,14 @@ def test_parse_zero_geo_coordinates(tmp_path: Path) -> None:
     json_path = tmp_path / "geo_zero.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    # 0/0 coordinates should be filtered out
+    # Les coordonnées 0/0 doivent être filtrées
     assert meta.latitude is None
     assert meta.longitude is None
     assert meta.altitude is None
 
 
 def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
-    """Test that valid coordinates are preserved."""
+    """Tester que les coordonnées valides sont préservées."""
     sample = {
         "title": "geo_valid.jpg",
         "geoData": {"latitude": 48.8566, "longitude": 2.3522, "altitude": 35.0}
@@ -172,13 +172,13 @@ def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
 
 
 def test_parse_people_nested_format(tmp_path: Path) -> None:
-    """Test parsing people in nested format: [{"person": {"name": "X"}}]."""
+    """Tester l'analyse des personnes au format imbriqué : [{"person": {"name": "X"}}]."""
     sample = {
         "title": "nested_people.jpg",
         "people": [
             {"person": {"name": "alice"}},
             {"person": {"name": "bob"}},
-            {"name": "charlie"}  # mixed format
+            {"name": "charlie"}  # format mixte
         ]
     }
     json_path = tmp_path / "nested_people.jpg.json"
@@ -188,7 +188,7 @@ def test_parse_people_nested_format(tmp_path: Path) -> None:
 
 
 def test_parse_missing_timestamps(tmp_path: Path) -> None:
-    """Test parsing when timestamps are missing."""
+    """Tester l'analyse quand les horodatages sont manquants."""
     sample = {
         "title": "no_dates.jpg",
         "description": "Photo without dates"
@@ -201,10 +201,10 @@ def test_parse_missing_timestamps(tmp_path: Path) -> None:
 
 
 def test_parse_album_metadata(tmp_path: Path) -> None:
-    """Test parsing album metadata from metadata.json files."""
+    """Tester l'analyse des métadonnées d'album depuis les fichiers metadata.json."""
     from google_takeout_metadata.sidecar import parse_album_metadata
     
-    # Test basic album metadata
+    # Tester les métadonnées d'album de base
     album_data = {
         "title": "Vacances 2024",
         "description": "Photos des vacances d'été"
@@ -217,7 +217,7 @@ def test_parse_album_metadata(tmp_path: Path) -> None:
 
 
 def test_parse_album_metadata_multiple_albums(tmp_path: Path) -> None:
-    """Test parsing multiple album references."""
+    """Tester l'analyse de plusieurs références d'albums."""
     from google_takeout_metadata.sidecar import parse_album_metadata
     
     album_data = {
@@ -236,10 +236,10 @@ def test_parse_album_metadata_multiple_albums(tmp_path: Path) -> None:
 
 
 def test_find_albums_for_directory(tmp_path: Path) -> None:
-    """Test finding albums for a directory."""
+    """Tester la recherche d'albums pour un répertoire."""
     from google_takeout_metadata.sidecar import find_albums_for_directory
     
-    # Create album metadata
+    # Créer les métadonnées d'album
     album_data = {"title": "Mon Album"}
     metadata_path = tmp_path / "metadata.json"
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
@@ -249,7 +249,7 @@ def test_find_albums_for_directory(tmp_path: Path) -> None:
 
 
 def test_find_albums_for_directory_no_metadata(tmp_path: Path) -> None:
-    """Test finding albums when no metadata exists."""
+    """Tester la recherche d'albums quand aucune métadonnée n'existe."""
     from google_takeout_metadata.sidecar import find_albums_for_directory
     
     albums = find_albums_for_directory(tmp_path)
@@ -257,10 +257,10 @@ def test_find_albums_for_directory_no_metadata(tmp_path: Path) -> None:
 
 
 def test_find_albums_french_metadata_format(tmp_path: Path) -> None:
-    """Test finding albums with French metadata file format."""
+    """Tester la recherche d'albums avec le format de fichier de métadonnées français."""
     from google_takeout_metadata.sidecar import find_albums_for_directory
     
-    # Create French album metadata
+    # Créer les métadonnées d'album français
     album_data = {"title": "Mon Album Français"}
     metadata_path = tmp_path / "métadonnées.json"
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
@@ -270,10 +270,10 @@ def test_find_albums_french_metadata_format(tmp_path: Path) -> None:
 
 
 def test_find_albums_french_numbered_metadata(tmp_path: Path) -> None:
-    """Test finding albums with numbered French metadata files."""
+    """Tester la recherche d'albums avec des fichiers de métadonnées français numérotés."""
     from google_takeout_metadata.sidecar import find_albums_for_directory
     
-    # Create multiple French metadata files
+    # Créer plusieurs fichiers de métadonnées français
     album_data1 = {"title": "Album 1"}
     metadata_path1 = tmp_path / "métadonnées.json"
     metadata_path1.write_text(json.dumps(album_data1), encoding="utf-8")
@@ -283,23 +283,21 @@ def test_find_albums_french_numbered_metadata(tmp_path: Path) -> None:
     metadata_path2.write_text(json.dumps(album_data2), encoding="utf-8")
     
     album_data3 = {"title": "Album 3"}
-    metadata_path3 = tmp_path / "métadonnées(2).json" 
+    metadata_path3 = tmp_path / "métadonnées(2).json"
     metadata_path3.write_text(json.dumps(album_data3), encoding="utf-8")
     
     albums = find_albums_for_directory(tmp_path)
     assert set(albums) == {"Album 1", "Album 2", "Album 3"}
-
-
 def test_find_albums_mixed_formats(tmp_path: Path) -> None:
-    """Test finding albums with mixed English and French metadata files."""
+    """Tester la recherche d'albums avec des fichiers de métadonnées mixtes anglais et français."""
     from google_takeout_metadata.sidecar import find_albums_for_directory
     
-    # Create English metadata
+    # Créer les métadonnées anglais
     album_data_en = {"title": "English Album"}
     metadata_path_en = tmp_path / "metadata.json"
     metadata_path_en.write_text(json.dumps(album_data_en), encoding="utf-8")
     
-    # Create French metadata
+    # Créer les métadonnées français
     album_data_fr = {"title": "Album Français"}
     metadata_path_fr = tmp_path / "métadonnées.json"
     metadata_path_fr.write_text(json.dumps(album_data_fr), encoding="utf-8")
@@ -309,21 +307,21 @@ def test_find_albums_mixed_formats(tmp_path: Path) -> None:
 
 
 def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
-    """Test that albums are added from directory metadata when processing sidecars."""
+    """Tester que les albums sont ajoutés depuis les métadonnées de répertoire lors du traitement des sidecars."""
     from google_takeout_metadata.processor import process_sidecar_file
     from google_takeout_metadata.sidecar import parse_sidecar
     
-    # Create album metadata
+    # Créer les métadonnées d'album
     album_data = {"title": "Album Test"}
     metadata_path = tmp_path / "metadata.json"
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
     
-    # Create a dummy image file
+    # Créer un fichier image factice
     media_path = tmp_path / "test.jpg"
     with open(media_path, 'wb') as f:
-        f.write(b'\xFF\xD8\xFF\xE0')  # Minimal JPEG header
+        f.write(b'\xFF\xD8\xFF\xE0')  # En-tête JPEG minimal
     
-    # Create sidecar
+    # Créer le sidecar
     sidecar_data = {
         "title": "test.jpg",
         "description": "Test photo"
@@ -331,9 +329,9 @@ def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
     json_path = tmp_path / "test.jpg.json"
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
-    # Parse the sidecar - albums should be empty initially
+    # Analyser le sidecar - les albums devraient être vides initialement
     meta = parse_sidecar(json_path)
     assert meta.albums == []
     
-    # Note: We can't test process_sidecar_file without exiftool
-    # but we can test the album finding logic separately
+    # Note: Nous ne pouvons pas tester process_sidecar_file sans exiftool
+    # mais nous pouvons tester la logique de recherche d'albums séparément

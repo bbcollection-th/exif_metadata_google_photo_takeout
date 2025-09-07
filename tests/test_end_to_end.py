@@ -10,10 +10,10 @@ from google_takeout_metadata.processor import process_directory
 
 @pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
 def test_end_to_end(tmp_path: Path) -> None:
-    # create dummy image
+    # créer une image factice
     img_path = tmp_path / "sample.jpg"
     Image.new("RGB", (10, 10), color="red").save(img_path)
-    # create matching sidecar
+    # créer le sidecar correspondant
     data = {
         "title": "sample.jpg",
         "description": 'Magicien "en" or',
@@ -41,8 +41,8 @@ def test_end_to_end(tmp_path: Path) -> None:
     )
     tags = json.loads(result.stdout)[0]
     
-    # exiftool returns single values as strings, multiple values as lists
-    # Normalize to lists for comparison
+    # exiftool retourne les valeurs uniques en chaînes, les valeurs multiples en listes
+    # Normaliser en listes pour la comparaison
     def normalize_to_list(value):
         if value is None:
             return []

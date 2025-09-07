@@ -1,4 +1,4 @@
-"""Utilities to merge Google Takeout sidecar metadata into image files."""
+"""Utilitaires pour fusionner les métadonnées annexes Google Takeout dans des fichiers image."""
 
 __all__ = [
     "sidecar",
