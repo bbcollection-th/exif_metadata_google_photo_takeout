@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from .processor import process_directory
-
+from .processor_batch import process_directory_batch
 
 def main(argv: list[str] | None = None) -> None:
     # Vérifier que exiftool est disponible
@@ -39,6 +39,10 @@ def main(argv: list[str] | None = None) -> None:
         "-v", "--verbose", action="store_true",
         help="Enable verbose logging (DEBUG level)"
     )
+    parser.add_argument(
+        "--batch", action="store_true",
+        help="Process files in batches"
+    )
     args = parser.parse_args(argv)
 
     # Configuration du logging avec le niveau approprié
@@ -56,11 +60,17 @@ def main(argv: list[str] | None = None) -> None:
     if args.append_only:
         logging.warning("--append-only is deprecated and now the default behavior. Use --overwrite to allow overwriting existing metadata.")
     
+    if not args.path.is_dir():
+        logging.error("The specified path is not a directory: %s", args.path)
+        sys.exit(1)
     # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
     # L'option --overwrite permet d'écraser les métadonnées existantes
     append_only = not args.overwrite
-    
-    process_directory(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
+
+    if args.batch:
+        process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
+    else:
+        process_directory(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
