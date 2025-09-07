@@ -116,8 +116,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
         else:
             error_type = "exiftool_error"
             error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
-            logger.error(f"❌ Échec du lot de {len(batch)} fichier(s). {error_msg}")
-        
+            logger.error(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
         # Marquer tous les fichiers du lot comme échoués
         for media_path, _, _ in batch:
             stats.add_failed_file(media_path, error_type, error_msg)
