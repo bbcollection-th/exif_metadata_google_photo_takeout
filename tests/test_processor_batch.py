@@ -49,7 +49,7 @@ def test_process_batch_success(mock_subprocess_run, tmp_path):
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
 def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
-    """Vérifier que fichier d'arguments est créé avec le contenu correct."""
+    """Vérifier que le fichier d'arguments est créé avec le contenu correct."""
     # Setup
     mock_subprocess_run.return_value = Mock(returncode=0)
     
