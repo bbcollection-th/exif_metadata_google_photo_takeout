@@ -219,9 +219,13 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
     current_dir = directory
     depth = 0
     
+    # Motifs de répertoires marqueurs (insensibles à la casse)
+    takeout_markers = ["google photos", "takeout", "google takeout"]
+    
     while current_dir != current_dir.parent and depth < max_depth:
-        # Vérifier les motifs standards
+        # Vérifier les motifs standards (insensible à la casse)
         for pattern in metadata_patterns:
+            # Rechercher le fichier avec la casse exacte d'abord
             metadata_file = current_dir / pattern
             if metadata_file.exists():
                 try:
@@ -229,11 +233,28 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
                 except Exception as e:
                     # Ignorer les erreurs de parsing et continuer
                     logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+            else:
+                # Rechercher de manière insensible à la casse si pas trouvé
+                try:
+                    for existing_file in current_dir.iterdir():
+                        if existing_file.is_file() and existing_file.name.lower() == pattern.lower():
+                            try:
+                                albums.extend(parse_album_metadata(existing_file))
+                            except Exception as e:
+                                logger.debug(f"Erreur lors du parsing de {existing_file}: {e}")
+                            break  # Un seul fichier correspondant par motif
+                except (OSError, PermissionError):
+                    # Ignorer les erreurs d'accès au répertoire
+                    logger.debug(f"Impossible d'accéder au répertoire {current_dir}")
         
         # Vérifier les variations numérotées comme métadonnées(1).json, métadonnées(2).json, etc.
+        # (recherche insensible à la casse)
         try:
-            for metadata_file in current_dir.glob("métadonnées*.json"):
-                if metadata_file.name not in ["métadonnées.json"]:  # déjà vérifié ci-dessus
+            for metadata_file in current_dir.iterdir():
+                if (metadata_file.is_file() and 
+                    metadata_file.name.lower().startswith("métadonnées") and 
+                    metadata_file.name.lower().endswith(".json") and
+                    metadata_file.name.lower() not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
                     try:
                         albums.extend(parse_album_metadata(metadata_file))
                     except Exception as e:
@@ -245,7 +266,7 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
         
         # Arrêter si on atteint un répertoire "marqueur" de Google Takeout
         # pour éviter de remonter trop haut dans l'arborescence
-        if current_dir.name.lower() in ["google photos", "takeout", "google takeout"]:
+        if any(marker in current_dir.name.lower() for marker in takeout_markers):
             logger.debug(f"Arrêt de la recherche d'albums au répertoire marqueur: {current_dir}")
             break
         

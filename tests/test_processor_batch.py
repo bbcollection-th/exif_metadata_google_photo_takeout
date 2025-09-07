@@ -23,7 +23,7 @@ def test_process_batch_empty_batch():
 def test_process_batch_success(mock_subprocess_run, tmp_path):
     """Tester le traitement par lots réussi."""
     # Configuration
-    mock_subprocess_run.return_value = Mock(returncode=0)
+    mock_subprocess_run.return_value = Mock(returncode=0, stdout="    1 image files updated")
     
     media_path = tmp_path / "test.jpg"
     json_path = tmp_path / "test.jpg.json"
@@ -51,7 +51,7 @@ def test_process_batch_success(mock_subprocess_run, tmp_path):
 def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
     """Vérifier que le fichier d'arguments est créé avec le contenu correct."""
     # Setup
-    mock_subprocess_run.return_value = Mock(returncode=0)
+    mock_subprocess_run.return_value = Mock(returncode=0, stdout="    2 image files updated")
     
     media_path1 = tmp_path / "test1.jpg"
     media_path2 = tmp_path / "test2.jpg"
@@ -86,7 +86,7 @@ def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
 def test_process_batch_clean_sidecars(mock_subprocess_run, tmp_path):
     """Vérifier que les fichiers de sidecar sont nettoyés lorsqu'on le demande."""
     # Setup
-    mock_subprocess_run.return_value = Mock(returncode=0)
+    mock_subprocess_run.return_value = Mock(returncode=0, stdout="    1 image files updated")
     
     media_path = tmp_path / "test.jpg"
     json_path = tmp_path / "test.jpg.json"
