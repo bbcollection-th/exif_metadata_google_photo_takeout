@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import logging
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -187,15 +190,19 @@ def parse_album_metadata(path: Path) -> List[str]:
     return albums
 
 
-def find_albums_for_directory(directory: Path) -> List[str]:
+def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
     """Trouver tous les noms d'albums applicables aux photos du répertoire donné.
     
     Recherche des fichiers metadata.json dans le répertoire et ses parents
     pour collecter les informations d'album.
     
+    Args:
+        directory: Répertoire de départ pour la recherche
+        max_depth: Nombre maximum de niveaux parents à vérifier (défaut: 5)
+    
     Prend en charge plusieurs motifs de fichiers metadata :
     - metadata.json (anglais)
-    - métadonnées.json (français)
+    - métadonnées.json (français)  
     - métadonnées(1).json, métadonnées(2).json, etc. (français avec doublons)
     - album_metadata.json, folder_metadata.json (hérités)
     """
@@ -208,21 +215,51 @@ def find_albums_for_directory(directory: Path) -> List[str]:
         "folder_metadata.json"
     ]
     
-    # Rechercher dans le répertoire courant et ses parents
+    # Rechercher dans le répertoire courant et ses parents avec limite de profondeur
     current_dir = directory
-    while current_dir != current_dir.parent:  # Éviter la boucle infinie à la racine
+    depth = 0
+    
+    while current_dir != current_dir.parent and depth < max_depth:
         # Vérifier les motifs standards
         for pattern in metadata_patterns:
             metadata_file = current_dir / pattern
             if metadata_file.exists():
-                albums.extend(parse_album_metadata(metadata_file))
+                try:
+                    albums.extend(parse_album_metadata(metadata_file))
+                except Exception as e:
+                    # Ignorer les erreurs de parsing et continuer
+                    logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
         
         # Vérifier les variations numérotées comme métadonnées(1).json, métadonnées(2).json, etc.
-        for metadata_file in current_dir.glob("métadonnées*.json"):
-            if metadata_file.name not in ["métadonnées.json"]:  # déjà vérifié ci-dessus
-                albums.extend(parse_album_metadata(metadata_file))
+        try:
+            for metadata_file in current_dir.glob("métadonnées*.json"):
+                if metadata_file.name not in ["métadonnées.json"]:  # déjà vérifié ci-dessus
+                    try:
+                        albums.extend(parse_album_metadata(metadata_file))
+                    except Exception as e:
+                        # Ignorer les erreurs de parsing et continuer
+                        logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+        except (OSError, PermissionError):
+            # Ignorer les erreurs d'accès au répertoire et continuer
+            logger.debug(f"Impossible d'accéder au répertoire {current_dir}")
+        
+        # Arrêter si on atteint un répertoire "marqueur" de Google Takeout
+        # pour éviter de remonter trop haut dans l'arborescence
+        if current_dir.name.lower() in ["google photos", "takeout", "google takeout"]:
+            logger.debug(f"Arrêt de la recherche d'albums au répertoire marqueur: {current_dir}")
+            break
         
         # Remonter au répertoire parent
         current_dir = current_dir.parent
+        depth += 1
     
-    return sorted(set(albums))
+    # Déduplication et tri tout en préservant l'ordre de priorité
+    # (répertoires plus proches en premier)
+    unique_albums = []
+    seen = set()
+    for album in albums:
+        if album not in seen:
+            unique_albums.append(album)
+            seen.add(album)
+    
+    return unique_albums
