@@ -10,6 +10,8 @@ from pathlib import Path
 
 from .processor import process_directory
 from .processor_batch import process_directory_batch
+from .statistics import ProcessingStats
+import google_takeout_metadata.statistics as stats_module
 
 def main(argv: list[str] | None = None) -> None:
     # Vérifier que exiftool est disponible
@@ -63,6 +65,10 @@ def main(argv: list[str] | None = None) -> None:
     if not args.path.is_dir():
         logging.error("Le chemin indiqué n'est pas un répertoire : %s", args.path)
         sys.exit(1)
+    
+    # Réinitialiser les statistiques pour cette exécution (nouvelle instance)
+    stats_module.stats = ProcessingStats()
+    
     # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
     # L'option --overwrite permet d'écraser les métadonnées existantes
     append_only = not args.overwrite

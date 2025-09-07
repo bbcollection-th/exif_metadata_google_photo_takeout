@@ -4,10 +4,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import List, Tuple
+from datetime import datetime
 
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
 from .processor import IMAGE_EXTS, VIDEO_EXTS, ALL_MEDIA_EXTS, detect_file_type, fix_file_extension_mismatch, _is_sidecar_file 
+from .statistics import stats
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                 argfile.write(f"{media_path}\n")
                 argfile.write("-execute\n")
 
-        logger.info(f"Traitement d'un batch de {len(batch)} fichier(s) avec exiftool...")
+        logger.info(f"📦 Traitement d'un lot de {len(batch)} fichier(s)...")
 
         cmd = [
             "exiftool",
@@ -47,24 +49,40 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             cmd, capture_output=True, text=True, check=True, timeout=timeout_seconds, encoding='utf-8'
         )
         
-        # Journaliser le succès avec des détails si pertinents
-        if result.stdout and result.stdout.strip() and isinstance(result.stdout, str):
-            # Compter les fichiers mis à jour dans la sortie exiftool
+        # Analyser la sortie pour compter les fichiers traités
+        processed_count = 0
+        if result.stdout and result.stdout.strip():
             stdout_lines = result.stdout.strip().split('\n')
-            update_lines = [line for line in stdout_lines if 'files updated' in line.lower() or 'image files updated' in line.lower()]
-            if update_lines:
-                logger.info(f"Batch de {len(batch)} fichiers traité avec succès. {', '.join(update_lines)}")
-            else:
-                logger.info(f"Batch de {len(batch)} fichiers traité avec succès.")
-        else:
-            logger.info(f"Batch de {len(batch)} fichiers traité avec succès.")
+            for line in stdout_lines:
+                if 'image files updated' in line.lower() or 'files updated' in line.lower():
+                    # Extraire le nombre de fichiers mis à jour
+                    try:
+                        numbers = [int(word) for word in line.split() if word.isdigit()]
+                        if numbers:
+                            processed_count = numbers[0]
+                    except (ValueError, IndexError):
+                        pass
+                    logger.info(f"✅ {line.strip()}")
+        
+        # Si on n'a pas pu extraire le nombre, utiliser la taille du lot
+        if processed_count == 0:
+            processed_count = len(batch)
+            logger.info(f"✅ Lot de {len(batch)} fichier(s) traité avec succès")
+        
+        # Mettre à jour les statistiques pour chaque fichier du lot
+        for media_path, _, _ in batch:
+            is_image = media_path.suffix.lower() in IMAGE_EXTS
+            stats.add_processed_file(media_path, is_image)
 
         if clean_sidecars:
+            cleaned_count = 0
             for _, json_path, _ in batch:
                 try:
                     json_path.unlink()
+                    cleaned_count += 1
                 except OSError as e:
                     logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
+            stats.sidecars_cleaned += cleaned_count
         
         return len(batch)
 
@@ -76,20 +94,34 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
         
         # Analyser le type d'erreur pour donner un message plus clair
         if "files failed condition" in stderr_msg or "files failed condition" in stdout_msg:
-            logger.warning(f"Traitement par lot terminé avec des conditions non remplies (normal en mode append-only). "
-                          f"{len(batch)} fichiers traités. Certaines métadonnées existaient déjà.")
+            logger.info(f"ℹ️ Lot traité avec conditions non remplies (normal en mode append-only). "
+                       f"Certaines métadonnées existaient déjà pour {len(batch)} fichier(s).")
+            # En mode append-only, considérer ceci comme un succès partiel
+            for media_path, _, _ in batch:
+                is_image = media_path.suffix.lower() in IMAGE_EXTS
+                stats.add_processed_file(media_path, is_image)
+            return len(batch)
         elif "doesn't exist or isn't writable" in stderr_msg:
-            logger.warning(f"Certains champs de métadonnées ne sont pas supportés par certains fichiers du batch. "
-                          f"Ceci est normal pour les vidéos ou certains formats. Détails: {stderr_msg.strip()}")
+            logger.warning(f"⚠️ Certains champs de métadonnées non supportés par les fichiers du lot. "
+                          f"Normal pour vidéos ou certains formats. Détails: {stderr_msg.strip()}")
+            # Considérer comme un succès partiel
+            for media_path, _, _ in batch:
+                is_image = media_path.suffix.lower() in IMAGE_EXTS  
+                stats.add_processed_file(media_path, is_image)
+            return len(batch)
         elif "character(s) could not be encoded" in stderr_msg:
-            logger.warning(f"Problème d'encodage de caractères dans les noms de fichiers. "
-                          f"Certains caractères spéciaux (émojis, accents) peuvent causer ce problème. "
-                          f"Fichiers concernés visibles dans: {stderr_msg.strip()}")
+            error_type = "encoding_error"
+            error_msg = "Problème d'encodage de caractères (émojis, accents)"
+            logger.warning(f"⚠️ {error_msg}. Détails: {stderr_msg.strip()}")
         else:
-            logger.error(f"Échec du traitement par lot pour {len(batch)} fichiers. "
-                        f"Code d'erreur: {exc.returncode}. "
-                        f"Erreur: {stderr_msg.strip() if stderr_msg.strip() else 'Aucune erreur détaillée'}. "
-                        f"Sortie: {stdout_msg.strip() if stdout_msg.strip() else 'Aucune sortie détaillée'}")
+            error_type = "exiftool_error"
+            error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
+            logger.error(f"❌ Échec du lot de {len(batch)} fichier(s). {error_msg}")
+        
+        # Marquer tous les fichiers du lot comme échoués
+        for media_path, _, _ in batch:
+            stats.add_failed_file(media_path, error_type, error_msg)
+        
         return 0
     finally:
         if argfile_path and Path(argfile_path).exists():
@@ -100,14 +132,19 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots."""
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
-    total_processed = 0
+    
+    # Initialiser les statistiques
+    stats.start_processing()
     
     sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
-    total_sidecars = len(sidecar_files)
+    stats.total_sidecars_found = len(sidecar_files)
     
-    if total_sidecars == 0:
+    if stats.total_sidecars_found == 0:
         logger.warning("Aucun fichier de métadonnées (.json) trouvé dans %s", root)
+        stats.end_processing()
         return
+
+    logger.info("🔍 Traitement par lots de %d fichier(s) de métadonnées dans %s", stats.total_sidecars_found, root)
 
     for json_path in sidecar_files:
         try:
@@ -118,7 +155,9 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             
             media_path = json_path.with_name(meta.filename)
             if not media_path.exists():
-                logger.warning(f"Fichier image introuvable pour les métadonnées {json_path.name}, ignoré.")
+                error_msg = f"Fichier image introuvable : {meta.filename}"
+                stats.add_failed_file(json_path, "file_not_found", error_msg)
+                logger.warning(f"❌ {error_msg}")
                 continue
 
             fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
@@ -134,17 +173,27 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                 batch.append((fixed_media_path, fixed_json_path, args))
 
             if len(batch) >= BATCH_SIZE:
-                processed_count = process_batch(batch, clean_sidecars)
-                total_processed += processed_count
+                process_batch(batch, clean_sidecars)
                 batch = []
 
         except (ValueError, RuntimeError) as exc:
-            logger.warning("Échec de la préparation de %s pour le traitement par lot : %s", json_path.name, exc)
+            error_msg = f"Erreur de préparation : {exc}"
+            stats.add_failed_file(json_path, "preparation_error", error_msg)
+            logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
-        processed_count = process_batch(batch, clean_sidecars)
-        total_processed += processed_count
+        process_batch(batch, clean_sidecars)
 
-    logger.info("%d / %d fichier(s) sidecar traité(s) dans %s", total_processed, total_sidecars, root)
-    if clean_sidecars and total_processed > 0:
-        logger.info("%d fichier(s) sidecar supprimé(s)", total_processed)
+    stats.end_processing()
+    
+    # Affichage du résumé
+    stats.print_console_summary()
+    
+    # Créer un dossier logs s'il n'existe pas
+    logs_dir = root / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Sauvegarde du rapport détaillé avec un nom incluant la date
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = logs_dir / f"traitement_log_{timestamp}.json"
+    stats.save_detailed_report(log_file)
