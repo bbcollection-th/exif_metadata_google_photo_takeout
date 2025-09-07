@@ -44,8 +44,10 @@ def detect_file_type(file_path: Path) -> str | None:
                 return ".gif"
             elif "webp" in output:
                 return ".webp"
-            elif "heic" in output or "heif" in output:
+            elif "heic" in output:
                 return ".heic"
+            elif "heif" in output:
+                return ".heif"
             elif "mp4" in output:
                 return ".mp4"
             elif "quicktime" in output or "mov" in output:
@@ -143,7 +145,7 @@ def fix_file_extension_mismatch(media_path: Path, json_path: Path) -> tuple[Path
                 logger.info("🔄 Annulation du renommage : %s → %s", new_media_path.name, media_path.name)
                 return media_path, json_path
             except (OSError, IOError) as rollback_exc:
-                logger.error("❌ Échec de l'annulation du renommage %s → %s : %s. "
+                logger.exception("❌ Échec de l'annulation du renommage %s → %s : %s. "
                            "ATTENTION : État incohérent - fichier image renommé mais JSON non mis à jour.", 
                            new_media_path.name, media_path.name, rollback_exc)
                 # Retourner les nouveaux chemins afin de refléter l'état courant
@@ -235,9 +237,11 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             # Tenter de corriger l'incohérence d'extension
             fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
             
+
             if fixed_media_path != media_path or fixed_json_path != json_path:
                 # Les fichiers ont été renommés (au moins partiellement), re-analyser le JSON et réessayer
                 # Gérer le cas où l'image a été renommée mais pas le JSON (échec de rollback partiel)
+                is_image_after_fix = fixed_media_path.suffix.lower() in IMAGE_EXTS
                 actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
                 
                 meta = parse_sidecar(actual_json_path)
@@ -248,7 +252,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 current_json_path = actual_json_path
                 
                 # Enregistrer le succès après correction
-                statistics.stats.add_processed_file(fixed_media_path, is_image)
+                statistics.stats.add_processed_file(fixed_media_path, is_image_after_fix)
                 logger.info("✅ Traitement réussi de %s après correction d'extension", fixed_media_path.name)
             else:
                 # Échec de la correction d'extension, relancer l'erreur originale
@@ -293,8 +297,6 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     logger.info("🔍 Traitement de %d fichier(s) de métadonnées dans %s", statistics.stats.total_sidecars_found, root)
     
     for json_file in sidecar_files:
-        if not _is_sidecar_file(json_file):
-            continue
             
         try:
             process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, clean_sidecars=clean_sidecars)

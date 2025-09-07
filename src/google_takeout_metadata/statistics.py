@@ -128,7 +128,7 @@ class ProcessingStats:
         
         # Erreurs principales
         if self.errors_by_type:
-            print(f"\n🔍 Types d'erreurs principales :")
+            print("\n🔍 Types d'erreurs principales :")
             for error_type, count in sorted(self.errors_by_type.items(), key=lambda x: x[1], reverse=True)[:3]:
                 print(f"   • {error_type}: {count} fichier(s)")
                 

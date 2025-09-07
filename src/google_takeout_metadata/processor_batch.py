@@ -1,4 +1,3 @@
-import json
 import logging
 import subprocess
 import tempfile
@@ -8,7 +7,7 @@ from datetime import datetime
 
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
-from .processor import IMAGE_EXTS, VIDEO_EXTS, ALL_MEDIA_EXTS, detect_file_type, fix_file_extension_mismatch, _is_sidecar_file 
+from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file 
 from . import statistics
 
 
@@ -100,6 +99,18 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS
                 statistics.stats.add_processed_file(media_path, is_image)
+            
+            # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
+            if clean_sidecars:
+                cleaned_count = 0
+                for _, json_path, _ in batch:
+                    try:
+                        json_path.unlink()
+                        cleaned_count += 1
+                    except OSError as e:
+                        logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
+                statistics.stats.sidecars_cleaned += cleaned_count
+            
             return len(batch)
         elif "doesn't exist or isn't writable" in stderr_msg:
             logger.warning(f"⚠️ Certains champs de métadonnées non supportés par les fichiers du lot. "
@@ -108,6 +119,18 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS  
                 statistics.stats.add_processed_file(media_path, is_image)
+            
+            # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
+            if clean_sidecars:
+                cleaned_count = 0
+                for _, json_path, _ in batch:
+                    try:
+                        json_path.unlink()
+                        cleaned_count += 1
+                    except OSError as e:
+                        logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
+                statistics.stats.sidecars_cleaned += cleaned_count
+            
             return len(batch)
         elif "character(s) could not be encoded" in stderr_msg:
             error_type = "encoding_error"
@@ -116,7 +139,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
         else:
             error_type = "exiftool_error"
             error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
-            logger.error(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
+            logger.exception(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
         # Marquer tous les fichiers du lot comme échoués
         for media_path, _, _ in batch:
             statistics.stats.add_failed_file(media_path, error_type, error_msg)
@@ -170,6 +193,10 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
 
             if args:
                 batch.append((fixed_media_path, fixed_json_path, args))
+            else:
+                # Aucun tag à écrire pour ce sidecar
+                statistics.stats.total_skipped += 1
+                statistics.stats.skipped_files.append(json_path.name)
 
             if len(batch) >= BATCH_SIZE:
                 process_batch(batch, clean_sidecars)

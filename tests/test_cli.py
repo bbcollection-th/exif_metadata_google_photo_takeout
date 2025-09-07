@@ -179,7 +179,7 @@ def test_main_integration_normal_mode(tmp_path):
         assert metadata.get("ImageDescription") == "CLI integration test"
         
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping CLI integration test")
+        pytest.skip("exiftool introuvable - skipping CLI integration test")
 
 
 @pytest.mark.integration
@@ -226,7 +226,7 @@ def test_main_integration_batch_mode(tmp_path):
             assert metadata.get("ImageDescription") == expected_description
         
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping CLI batch integration test")
+        pytest.skip("exiftool introuvable - skipping CLI batch integration test")
 
 
 @pytest.mark.integration
@@ -269,7 +269,7 @@ def test_main_integration_clean_sidecars(tmp_path):
         assert metadata.get("ImageDescription") == "CLI cleanup test"
         
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping CLI cleanup integration test")
+        pytest.skip("exiftool introuvable - skipping CLI cleanup integration test")
 
 
 def test_main_entry_point():

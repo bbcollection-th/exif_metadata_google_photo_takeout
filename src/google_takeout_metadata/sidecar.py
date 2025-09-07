@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-"""Analyse des fichiers annexes JSON de Google Takeout."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import json
 import logging
 from typing import List, Optional
+"""Analyse des fichiers annexes JSON de Google Takeout."""
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,8 @@ class SidecarData:
     favorite: bool = False
     lat_span: Optional[float] = None
     lon_span: Optional[float] = None
-    albums: List[str] = None
+    albums: List[str] = field(default_factory=list)
     archived: bool = False
-
-    def __post_init__(self):
-        """Initialiser ``albums`` comme liste vide si ``None``."""
-        if self.albums is None:
-            self.albums = []
 
 
 def parse_sidecar(path: Path) -> SidecarData:
@@ -230,7 +225,7 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
             if metadata_file.exists():
                 try:
                     albums.extend(parse_album_metadata(metadata_file))
-                except Exception as e:
+                except (OSError, PermissionError) as e:
                     # Ignorer les erreurs de parsing et continuer
                     logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
             else:
@@ -240,7 +235,7 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
                         if existing_file.is_file() and existing_file.name.lower() == pattern.lower():
                             try:
                                 albums.extend(parse_album_metadata(existing_file))
-                            except Exception as e:
+                            except (OSError, PermissionError) as e:
                                 logger.debug(f"Erreur lors du parsing de {existing_file}: {e}")
                             break  # Un seul fichier correspondant par motif
                 except (OSError, PermissionError):
@@ -257,7 +252,7 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
                     metadata_file.name.lower() not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
                     try:
                         albums.extend(parse_album_metadata(metadata_file))
-                    except Exception as e:
+                    except (OSError, PermissionError) as e:
                         # Ignorer les erreurs de parsing et continuer
                         logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
         except (OSError, PermissionError):

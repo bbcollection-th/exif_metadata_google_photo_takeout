@@ -1,13 +1,16 @@
 """Tests unitaires pour les améliorations des statistiques et de la recherche d'albums."""
 
-import pytest
-import tempfile
 import json
+import pytest
+import subprocess
+import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+from PIL import Image
 
-from src.google_takeout_metadata.sidecar import find_albums_for_directory, parse_album_metadata
-from src.google_takeout_metadata.statistics import ProcessingStats
+from google_takeout_metadata.processor_batch import process_batch
+from google_takeout_metadata.sidecar import find_albums_for_directory
+from google_takeout_metadata.statistics import ProcessingStats
 
 
 class TestProcessingStats:
@@ -250,8 +253,8 @@ class TestFindAlbumsForDirectory:
             
             # Doit trouver l'album valide
             assert "ValidAlbum" in result
-    
-    @patch('src.google_takeout_metadata.sidecar.logger')
+
+    @patch('google_takeout_metadata.sidecar.logger')
     def test_debug_logging(self, mock_logger):
         """Test des logs debug."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -270,7 +273,7 @@ class TestFindAlbumsForDirectory:
             # Ajouter un album au niveau root pour forcer la remontée
             (root_dir / "metadata.json").write_text('{"title": "RootAlbum"}', encoding='utf-8')
             
-            result = find_albums_for_directory(photos_dir)
+            find_albums_for_directory(photos_dir)
             
             # Vérifier que le debug a été appelé (pour n'importe quel message debug)
             assert mock_logger.debug.called, "Aucun appel au logger.debug détecté"
@@ -284,6 +287,92 @@ class TestFindAlbumsForDirectory:
             calls = [call for call in mock_logger.debug.call_args_list 
                     if "répertoire marqueur" in str(call)]
             assert len(calls) > 0
+
+
+@pytest.mark.integration
+def test_batch_sidecar_cleanup_with_condition_failure(tmp_path: Path) -> None:
+    """Tester que les sidecars sont supprimés même quand 'files failed condition' survient en mode batch."""
+    
+    # Créer une image de test
+    media_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='blue')
+    img.save(media_path)
+    
+    # Ajouter des métadonnées existantes (description EXIF)
+    try:
+        subprocess.run([
+            "exiftool", "-overwrite_original",
+            "-EXIF:ImageDescription=Existing description",
+            str(media_path)
+        ], capture_output=True, text=True, check=True, timeout=30)
+    except FileNotFoundError:
+        pytest.skip("exiftool introuvable - skipping integration test")
+    
+    # Créer le sidecar JSON avec une description différente (qui causera "files failed condition")
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "New description that should not overwrite existing"
+    }
+    json_path = tmp_path / "test.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Vérifier que le sidecar existe avant traitement
+    assert json_path.exists()
+    
+    # Créer le lot avec clean_sidecars=True
+    batch = [(media_path, json_path, [])]  # Liste vide pour les args car on teste juste le nettoyage
+    
+    # Traiter le lot avec nettoyage activé
+    # Ceci devrait déclencher "files failed condition" car la description existe déjà
+    # ET devrait quand même supprimer le sidecar
+    result = process_batch(batch, clean_sidecars=True)
+    
+    # Vérifier que le traitement a réussi (malgré "files failed condition")
+    assert result > 0
+    
+    # Vérifier que le sidecar a été supprimé (le bug corrigé)
+    assert not json_path.exists(), "Le sidecar aurait dû être supprimé après traitement réussi avec 'files failed condition'"
+
+
+def test_batch_cleanup_logic_unit() -> None:
+    """Test unitaire pour vérifier la logique de nettoyage en cas de 'files failed condition'."""
+    # Ce test vérifie que notre modification de code est cohérente
+    # Il ne teste pas exiftool mais la logique interne
+    
+    from google_takeout_metadata.processor_batch import process_batch
+    import tempfile
+    from pathlib import Path
+    import json
+    from unittest.mock import patch
+    
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        
+        # Créer des fichiers factices
+        media_path = tmp_path / "test.jpg"
+        media_path.write_text("fake image content")
+        
+        json_path = tmp_path / "test.jpg.supplemental-metadata.json"
+        sidecar_data = {"title": "test.jpg", "description": "Test description"}
+        json_path.write_text(json.dumps(sidecar_data))
+        
+        batch = [(media_path, json_path, ["-description=test"])]
+        
+        # Mock subprocess.run pour simuler "files failed condition"
+        mock_error = subprocess.CalledProcessError(2, "exiftool")
+        mock_error.stderr = "2 files failed condition"
+        mock_error.stdout = ""
+        
+        with patch('google_takeout_metadata.processor_batch.subprocess.run', side_effect=mock_error):
+            # Vérifier que le fichier existe avant
+            assert json_path.exists()
+            
+            # Appeler process_batch avec clean_sidecars=True
+            result = process_batch(batch, clean_sidecars=True)
+            
+            # Vérifier le succès et la suppression
+            assert result == 1, "Le batch devrait être considéré comme réussi"
+            assert not json_path.exists(), "Le sidecar aurait dû être supprimé même avec 'files failed condition'"
 
 
 if __name__ == "__main__":

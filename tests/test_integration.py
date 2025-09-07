@@ -3,7 +3,6 @@
 from pathlib import Path
 import json
 import subprocess
-import tempfile
 import pytest
 from PIL import Image
 
@@ -28,7 +27,7 @@ def _run_exiftool_read(media_path: Path) -> dict:
         data = json.loads(result.stdout)
         return data[0] if data else {}
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping integration tests")
+        pytest.skip("exiftool introuvable - skipping integration tests")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"exiftool failed: {e.stderr}")
 
@@ -182,7 +181,7 @@ def test_append_only_mode(tmp_path: Path) -> None:
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping integration tests")
+        pytest.skip("exiftool introuvable - skipping integration tests")
     
     # Créer le fichier JSON annexe avec une description différente
     sidecar_data = {
@@ -403,7 +402,6 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     write_metadata(media_path, first_meta, append_only=False)
     
     # Vérifier que les métadonnées initiales ont été écrites
-    initial_metadata = _run_exiftool_read(media_path)
     sidecar_data = {
         "title": "test.jpg",
         "description": "New description",
@@ -436,7 +434,7 @@ def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
     project_root = Path(__file__).parent.parent
     source_video = project_root / "Google Photos" / "essais" / "1686356837983.mp4"
     if not source_video.exists():
-        pytest.skip("Real MP4 test file not found")
+        pytest.skip("Real MP4 test file introuvable")
     
     # Copier le fichier vidéo dans le répertoire temporaire
     video_path_append = tmp_path / "test_append.mp4"
@@ -554,7 +552,7 @@ def test_batch_vs_normal_mode_equivalence(tmp_path: Path) -> None:
             assert expected_person in normal_people
             
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping batch vs normal mode test")
+        pytest.skip("exiftool introuvable - skipping batch vs normal mode test")
 
 
 @pytest.mark.integration
@@ -603,14 +601,13 @@ def test_batch_mode_performance_benefit(tmp_path: Path) -> None:
         print(f"Batch mode processed {num_files} files in {batch_time:.2f} seconds")
         
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping batch performance test")
+        pytest.skip("exiftool introuvable - skipping batch performance test")
 
 
 @pytest.mark.integration  
 def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
     """Tester le mode batch avec différents types de fichiers et métadonnées complexes."""
     from google_takeout_metadata.processor_batch import process_directory_batch
-    import shutil
     
     # Créer des fichiers de test avec différents types et métadonnées
     test_files = [
@@ -674,4 +671,4 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
                 assert gps_lat is not None
         
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping mixed file types batch test")
+        pytest.skip("exiftool introuvable - skipping mixed file types batch test")

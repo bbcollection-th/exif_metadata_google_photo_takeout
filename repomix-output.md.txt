@@ -516,7 +516,7 @@ from .processor import process_directory
 def main(argv: list[str] | None = None) -> None:
     # Vérifier que exiftool est disponible
     if shutil.which("exiftool") is None:
-        logging.error("exiftool not found. Please install it to use this script.")
+        logging.error("exiftool introuvable. Please install it to use this script.")
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description="Merge Google Takeout metadata into images")
@@ -601,7 +601,7 @@ def _run_exiftool_read(media_path: Path) -> dict:
         data = json.loads(result.stdout)
         return data[0] if data else {}
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping integration tests")
+        pytest.skip("exiftool introuvable - skipping integration tests")
     except subprocess.CalledProcessError as e:
         pytest.fail(f"exiftool failed: {e.stderr}")
 
@@ -755,7 +755,7 @@ def test_append_only_mode(tmp_path: Path) -> None:
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
     except FileNotFoundError:
-        pytest.skip("exiftool not found - skipping integration tests")
+        pytest.skip("exiftool introuvable - skipping integration tests")
     
     # Create sidecar JSON with different description
     sidecar_data = {
@@ -1008,7 +1008,7 @@ def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
     project_root = Path(__file__).parent.parent
     source_video = project_root / "Google Photos" / "essais" / "1686356837983.mp4"
     if not source_video.exists():
-        pytest.skip("Real MP4 test file not found")
+        pytest.skip("Real MP4 test file introuvable")
     
     # Create two copies for testing
     video_path_append = tmp_path / "test_append.mp4"
@@ -1572,7 +1572,7 @@ def parse_sidecar(path: Path) -> SidecarData:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
     except FileNotFoundError as exc:  # pragma: no cover - simple wrapper
-        raise FileNotFoundError(f"Sidecar not found: {path}") from exc
+        raise FileNotFoundError(f"Sidecar introuvable: {path}") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in {path}") from exc
 
@@ -1947,7 +1947,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     
     media_path = json_path.with_name(meta.filename)
     if not media_path.exists():
-        raise FileNotFoundError(f"Image file not found for sidecar {json_path}")
+        raise FileNotFoundError(f"Image file introuvable for sidecar {json_path}")
     
     # Try to write metadata to image
     try:
@@ -2789,7 +2789,7 @@ def _run_exiftool_command(media_path: Path, args: list[str], append_only: bool, 
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60, encoding='utf-8')
     except FileNotFoundError as exc:
-        raise RuntimeError("exiftool not found") from exc
+        raise RuntimeError("exiftool introuvable") from exc
     except subprocess.CalledProcessError as exc:
         # Exit code 2 means "files failed condition" when using -if
         # This is expected behavior in append-only mode when tags already exist

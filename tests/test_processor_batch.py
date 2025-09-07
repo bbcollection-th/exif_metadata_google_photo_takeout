@@ -107,7 +107,7 @@ def test_process_batch_clean_sidecars(mock_subprocess_run, tmp_path):
 def test_process_batch_exiftool_not_found(mock_subprocess_run):
     """Vérifier la gestion d'erreurs lorsque exiftool n'est pas trouvé."""
     # Setup
-    mock_subprocess_run.side_effect = FileNotFoundError("exiftool not found")
+    mock_subprocess_run.side_effect = FileNotFoundError("exiftool introuvable")
     
     media_path = Path("test.jpg")
     json_path = Path("test.jpg.json")
