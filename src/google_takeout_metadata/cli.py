@@ -14,11 +14,6 @@ from .statistics import ProcessingStats
 import google_takeout_metadata.statistics as stats_module
 
 def main(argv: list[str] | None = None) -> None:
-    # Vérifier que exiftool est disponible
-    if shutil.which("exiftool") is None:
-        logging.error("exiftool introuvable. Veuillez l'installer pour utiliser ce script.")
-        sys.exit(1)
-
     parser = argparse.ArgumentParser(description="Fusionner les métadonnées Google Takeout dans les images")
     parser.add_argument("path", type=Path, help="Répertoire à analyser récursivement")
     parser.add_argument(
@@ -72,6 +67,11 @@ def main(argv: list[str] | None = None) -> None:
     # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
     # L'option --overwrite permet d'écraser les métadonnées existantes
     append_only = not args.overwrite
+
+    # Vérifier que exiftool est disponible uniquement si on va traiter
+    if shutil.which("exiftool") is None:
+        logging.error("exiftool introuvable. Veuillez l'installer pour utiliser ce script.")
+        sys.exit(1)
 
     if args.batch:
         process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)

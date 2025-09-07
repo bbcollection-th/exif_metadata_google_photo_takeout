@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .sidecar import parse_sidecar, find_albums_for_directory
 from .exif_writer import write_metadata
-from .statistics import stats
+from . import statistics
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ def fix_file_extension_mismatch(media_path: Path, json_path: Path) -> tuple[Path
         logger.info("✅ Métadonnées mises à jour : %s → %s", json_path.name, new_json_path.name)
         
         # Enregistrer la correction dans les statistiques
-        stats.add_fixed_extension(media_path.name, new_media_path.name)
+        statistics.stats.add_fixed_extension(media_path.name, new_media_path.name)
         
         return new_media_path, new_json_path
         
@@ -199,7 +199,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     try:
         meta = parse_sidecar(json_path)
     except ValueError as exc:
-        stats.add_failed_file(json_path, "parse_error", f"Erreur de lecture JSON : {exc}")
+        statistics.stats.add_failed_file(json_path, "parse_error", f"Erreur de lecture JSON : {exc}")
         raise
     
     # Trouver les albums du répertoire
@@ -209,7 +209,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     media_path = json_path.with_name(meta.filename)
     if not media_path.exists():
         error_msg = f"Fichier image introuvable : {meta.filename}"
-        stats.add_failed_file(json_path, "file_not_found", error_msg)
+        statistics.stats.add_failed_file(json_path, "file_not_found", error_msg)
         raise FileNotFoundError(error_msg)
     
     # Détecter le type de fichier (image ou vidéo)
@@ -221,7 +221,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         current_json_path = json_path
         
         # Enregistrer le succès
-        stats.add_processed_file(media_path, is_image)
+        statistics.stats.add_processed_file(media_path, is_image)
         
     except RuntimeError as exc:
         # Vérifier s'il s'agit d'une erreur d'incohérence d'extension
@@ -248,22 +248,22 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 current_json_path = actual_json_path
                 
                 # Enregistrer le succès après correction
-                stats.add_processed_file(fixed_media_path, is_image)
+                statistics.stats.add_processed_file(fixed_media_path, is_image)
                 logger.info("✅ Traitement réussi de %s après correction d'extension", fixed_media_path.name)
             else:
                 # Échec de la correction d'extension, relancer l'erreur originale
-                stats.add_failed_file(media_path, "extension_mismatch", str(exc))
+                statistics.stats.add_failed_file(media_path, "extension_mismatch", str(exc))
                 raise
         else:
             # Ce n'est pas une erreur d'incohérence d'extension, relancer
-            stats.add_failed_file(media_path, "metadata_write_error", str(exc))
+            statistics.stats.add_failed_file(media_path, "metadata_write_error", str(exc))
             raise
     
     # Nettoyer le sidecar si demandé et si l'écriture a réussi
     if clean_sidecars:
         try:
             current_json_path.unlink()
-            stats.sidecars_cleaned += 1
+            statistics.stats.sidecars_cleaned += 1
             logger.info("🗑️ Fichier de métadonnées supprimé : %s", current_json_path.name)
         except OSError as exc:
             logger.warning("Échec de la suppression du fichier de métadonnées %s : %s", current_json_path, exc)
@@ -280,17 +280,17 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     """
     
     # Initialiser les statistiques
-    stats.start_processing()
+    statistics.stats.start_processing()
     
     sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
-    stats.total_sidecars_found = len(sidecar_files)
+    statistics.stats.total_sidecars_found = len(sidecar_files)
     
-    if stats.total_sidecars_found == 0:
+    if statistics.stats.total_sidecars_found == 0:
         logger.warning("Aucun fichier de métadonnées (.json) trouvé dans %s", root)
-        stats.end_processing()
+        statistics.stats.end_processing()
         return
 
-    logger.info("🔍 Traitement de %d fichier(s) de métadonnées dans %s", stats.total_sidecars_found, root)
+    logger.info("🔍 Traitement de %d fichier(s) de métadonnées dans %s", statistics.stats.total_sidecars_found, root)
     
     for json_file in sidecar_files:
         if not _is_sidecar_file(json_file):
@@ -302,10 +302,10 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
             logger.warning("❌ Échec du traitement de %s : %s", json_file.name, exc)
             # Les statistiques sont déjà mises à jour dans process_sidecar_file
     
-    stats.end_processing()
+    statistics.stats.end_processing()
     
     # Affichage du résumé
-    stats.print_console_summary()
+    statistics.stats.print_console_summary()
     
     # Créer un dossier logs s'il n'existe pas
     logs_dir = root / "logs"
@@ -314,4 +314,4 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     # Sauvegarde du rapport détaillé avec un nom incluant la date
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = logs_dir / f"traitement_log_{timestamp}.json"
-    stats.save_detailed_report(log_file)
+    statistics.stats.save_detailed_report(log_file)

@@ -107,10 +107,11 @@ def parse_sidecar(path: Path) -> SidecarData:
     lat_span = geo.get("latitudeSpan")
     lon_span = geo.get("longitudeSpan")
     
-    # Nettoyer les coordonnées si latitude et longitude sont None
+    # Nettoyer les coordonnées seulement si les DEUX sont à 0/None
     # Conserver les vraies coordonnées 0.0 car elles peuvent être valides (équateur/méridien de Greenwich)
-    # Google met parfois 0/0 quand pas de géo fiable → on nettoie
-    if any(v in (0, 0.0, None) for v in (latitude, longitude)):
+    # Google met parfois 0/0 quand pas de géo fiable → on nettoie uniquement dans ce cas
+    if ((latitude in (0, 0.0, None)) and (longitude in (0, 0.0, None))) or \
+       (latitude is None or longitude is None):
         latitude = longitude = altitude = None
 
     # Extraire le statut favori - support des deux formats
@@ -200,7 +201,6 @@ def find_albums_for_directory(directory: Path) -> List[str]:
     """
     albums = []
     
-    # Check current directory for various metadata file patterns
     metadata_patterns = [
         "metadata.json",
         "métadonnées.json", 
@@ -208,14 +208,21 @@ def find_albums_for_directory(directory: Path) -> List[str]:
         "folder_metadata.json"
     ]
     
-    for pattern in metadata_patterns:
-        metadata_file = directory / pattern
-        if metadata_file.exists():
-            albums.extend(parse_album_metadata(metadata_file))
-    
-    # Also check for numbered variations like métadonnées(1).json, métadonnées(2).json, etc.
-    for metadata_file in directory.glob("métadonnées*.json"):
-        if metadata_file.name not in ["métadonnées.json"]:  # already checked above
-            albums.extend(parse_album_metadata(metadata_file))
+    # Rechercher dans le répertoire courant et ses parents
+    current_dir = directory
+    while current_dir != current_dir.parent:  # Éviter la boucle infinie à la racine
+        # Vérifier les motifs standards
+        for pattern in metadata_patterns:
+            metadata_file = current_dir / pattern
+            if metadata_file.exists():
+                albums.extend(parse_album_metadata(metadata_file))
+        
+        # Vérifier les variations numérotées comme métadonnées(1).json, métadonnées(2).json, etc.
+        for metadata_file in current_dir.glob("métadonnées*.json"):
+            if metadata_file.name not in ["métadonnées.json"]:  # déjà vérifié ci-dessus
+                albums.extend(parse_album_metadata(metadata_file))
+        
+        # Remonter au répertoire parent
+        current_dir = current_dir.parent
     
     return sorted(set(albums))

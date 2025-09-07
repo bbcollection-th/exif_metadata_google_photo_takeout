@@ -9,7 +9,7 @@ from datetime import datetime
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
 from .processor import IMAGE_EXTS, VIDEO_EXTS, ALL_MEDIA_EXTS, detect_file_type, fix_file_extension_mismatch, _is_sidecar_file 
-from .statistics import stats
+from . import statistics
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
         # Mettre à jour les statistiques pour chaque fichier du lot
         for media_path, _, _ in batch:
             is_image = media_path.suffix.lower() in IMAGE_EXTS
-            stats.add_processed_file(media_path, is_image)
+            statistics.stats.add_processed_file(media_path, is_image)
 
         if clean_sidecars:
             cleaned_count = 0
@@ -82,7 +82,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                     cleaned_count += 1
                 except OSError as e:
                     logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
-            stats.sidecars_cleaned += cleaned_count
+            statistics.stats.sidecars_cleaned += cleaned_count
         
         return len(batch)
 
@@ -99,7 +99,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             # En mode append-only, considérer ceci comme un succès partiel
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS
-                stats.add_processed_file(media_path, is_image)
+                statistics.stats.add_processed_file(media_path, is_image)
             return len(batch)
         elif "doesn't exist or isn't writable" in stderr_msg:
             logger.warning(f"⚠️ Certains champs de métadonnées non supportés par les fichiers du lot. "
@@ -107,7 +107,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             # Considérer comme un succès partiel
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS  
-                stats.add_processed_file(media_path, is_image)
+                statistics.stats.add_processed_file(media_path, is_image)
             return len(batch)
         elif "character(s) could not be encoded" in stderr_msg:
             error_type = "encoding_error"
@@ -119,7 +119,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             logger.error(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
         # Marquer tous les fichiers du lot comme échoués
         for media_path, _, _ in batch:
-            stats.add_failed_file(media_path, error_type, error_msg)
+            statistics.stats.add_failed_file(media_path, error_type, error_msg)
         
         return 0
     finally:
@@ -133,17 +133,17 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     BATCH_SIZE = 100
     
     # Initialiser les statistiques
-    stats.start_processing()
+    statistics.stats.start_processing()
     
     sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
-    stats.total_sidecars_found = len(sidecar_files)
+    statistics.stats.total_sidecars_found = len(sidecar_files)
     
-    if stats.total_sidecars_found == 0:
+    if statistics.stats.total_sidecars_found == 0:
         logger.warning("Aucun fichier de métadonnées (.json) trouvé dans %s", root)
-        stats.end_processing()
+        statistics.stats.end_processing()
         return
 
-    logger.info("🔍 Traitement par lots de %d fichier(s) de métadonnées dans %s", stats.total_sidecars_found, root)
+    logger.info("🔍 Traitement par lots de %d fichier(s) de métadonnées dans %s", statistics.stats.total_sidecars_found, root)
 
     for json_path in sidecar_files:
         try:
@@ -155,7 +155,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             media_path = json_path.with_name(meta.filename)
             if not media_path.exists():
                 error_msg = f"Fichier image introuvable : {meta.filename}"
-                stats.add_failed_file(json_path, "file_not_found", error_msg)
+                statistics.stats.add_failed_file(json_path, "file_not_found", error_msg)
                 logger.warning(f"❌ {error_msg}")
                 continue
 
@@ -177,16 +177,16 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
 
         except (ValueError, RuntimeError) as exc:
             error_msg = f"Erreur de préparation : {exc}"
-            stats.add_failed_file(json_path, "preparation_error", error_msg)
+            statistics.stats.add_failed_file(json_path, "preparation_error", error_msg)
             logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
         process_batch(batch, clean_sidecars)
 
-    stats.end_processing()
+    statistics.stats.end_processing()
     
     # Affichage du résumé
-    stats.print_console_summary()
+    statistics.stats.print_console_summary()
     
     # Créer un dossier logs s'il n'existe pas
     logs_dir = root / "logs"
@@ -195,4 +195,4 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     # Sauvegarde du rapport détaillé avec un nom incluant la date
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = logs_dir / f"traitement_log_{timestamp}.json"
-    stats.save_detailed_report(log_file)
+    statistics.stats.save_detailed_report(log_file)

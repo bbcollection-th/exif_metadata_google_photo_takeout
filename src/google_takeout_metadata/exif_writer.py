@@ -253,9 +253,10 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
         _write_metadata_append_only(media_path, meta, use_localtime)
     else:
         # En mode écrasement, utiliser l'approche standard en une seule commande
+        is_video = _is_video_file(media_path)
         args = build_exiftool_args(meta, media_path, use_localtime=use_localtime, append_only=False)
         if args:
-            _run_exiftool_command(media_path, args, append_only=False)
+            _run_exiftool_command(media_path, args, append_only=False, is_video=is_video)
 
 
 def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localtime: bool) -> None:
@@ -264,34 +265,29 @@ def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localti
     # Vérifier s'il s'agit d'un fichier vidéo
     is_video = _is_video_file(media_path)
     
-    # Ajouter la configuration spécifique vidéo
-    if is_video:
-        video_config_args = ["-api", "QuickTimeUTC=1"]
-        _run_exiftool_command(media_path, video_config_args, append_only=True)
-    
     # 1. Écrire la description seulement si elle n'existe pas (conditionnel)
     if meta.description:
         desc_args = [
             "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={meta.description}",
         ]
-        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         desc_args = [
             "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={meta.description}",
         ]
-        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         desc_args = [
             "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={meta.description}",
         ]
-        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         # Ajouter le champ de description spécifique aux vidéos
         if is_video:
             desc_args = [
                 "-if", "not $Keys:Description", f"-Keys:Description={meta.description}",
             ]
-            _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True)
+            _run_exiftool_command(media_path, desc_args, append_only=True, allow_condition_failure=True, is_video=is_video)
     
     # 2. Ajouter les personnes sans condition (listes, donc += est sûr)
     if meta.people:
@@ -302,7 +298,7 @@ def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localti
                 f"-XMP-dc:Subject+={person}",
                 f"-IPTC:Keywords+={person}",
             ]
-        _run_exiftool_command(media_path, people_args, append_only=True)
+        _run_exiftool_command(media_path, people_args, append_only=True, is_video=is_video)
     
     # 3. Ajouter les albums sans condition (listes, donc += est sûr)
     if meta.albums:
@@ -313,35 +309,35 @@ def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localti
                 f"-XMP-dc:Subject+={album_keyword}",
                 f"-IPTC:Keywords+={album_keyword}",
             ]
-        _run_exiftool_command(media_path, album_args, append_only=True)
+        _run_exiftool_command(media_path, album_args, append_only=True, is_video=is_video)
     
     # 4. Écrire le rating uniquement s'il n'existe pas (conditionnel)
     if meta.favorite:
         rating_args = ["-if", "not $XMP:Rating", f"-XMP:Rating=5"]
-        _run_exiftool_command(media_path, rating_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, rating_args, append_only=True, allow_condition_failure=True, is_video=is_video)
     
     # 5. Écrire les dates uniquement si elles n'existent pas (conditionnel)
     if (s := _fmt_dt(meta.taken_at, use_localtime)):
         date_args = ["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"]
-        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         # Ajouter QuickTime:CreateDate pour les vidéos
         if is_video:
             date_args = ["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"]
-            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True, is_video=is_video)
     
     base_ts = meta.created_at or meta.taken_at
     if (s := _fmt_dt(base_ts, use_localtime)):
         date_args = ["-if", "not $CreateDate", f"-CreateDate={s}"]
-        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         date_args = ["-if", "not $ModifyDate", f"-ModifyDate={s}"]
-        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         # Ajouter QuickTime:ModifyDate pour les vidéos
         if is_video:
             date_args = ["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"]
-            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True)
+            _run_exiftool_command(media_path, date_args, append_only=True, allow_condition_failure=True, is_video=is_video)
     
     # 6. Écrire le GPS uniquement s'il n'existe pas (conditionnel)
     if meta.latitude is not None and meta.longitude is not None:
@@ -349,37 +345,37 @@ def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localti
         lon_ref = "E" if meta.longitude >= 0 else "W"
         
         gps_args = ["-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         gps_args = ["-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         gps_args = ["-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         gps_args = ["-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         # Ajouter les champs GPS spécifiques aux vidéos
         if is_video:
             gps_args = ["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
-            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
             
             gps_args = ["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"]
-            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+            _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
     
     # 7. Écrire l'altitude GPS uniquement si elle n'existe pas (conditionnel)
     if meta.altitude is not None:
         alt_ref = "1" if meta.altitude < 0 else "0"
         
         gps_args = ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
         
         gps_args = ["-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
-        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True)
+        _run_exiftool_command(media_path, gps_args, append_only=True, allow_condition_failure=True, is_video=is_video)
 
 
-def _run_exiftool_command(media_path: Path, args: list[str], append_only: bool, allow_condition_failure: bool = False) -> None:
+def _run_exiftool_command(media_path: Path, args: list[str], append_only: bool, allow_condition_failure: bool = False, is_video: bool = False) -> None:
     """Exécuter une commande exiftool avec les arguments fournis."""
     if not args:
         return
@@ -390,9 +386,14 @@ def _run_exiftool_command(media_path: Path, args: list[str], append_only: bool, 
         "-charset", "filename=UTF8",
         "-charset", "iptc=UTF8",
         "-charset", "exif=UTF8",
-        *args,
-        str(media_path),
     ]
+    
+    # Ajouter l'API QuickTimeUTC pour les vidéos à chaque invocation
+    if is_video:
+        cmd.extend(["-api", "QuickTimeUTC=1"])
+    
+    cmd.extend(args)
+    cmd.append(str(media_path))
 
     try:
         subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60, encoding='utf-8')
