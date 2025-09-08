@@ -20,6 +20,8 @@ def test_build_args() -> None:
 
     args = build_exiftool_args(meta, append_only=False)
     assert "-EXIF:ImageDescription=desc" in args
+    # En mode overwrite, on vide d'abord puis on ajoute
+    assert "-XMP-iptcExt:PersonInImage=" in args
     assert "-XMP-iptcExt:PersonInImage+=alice" in args
     assert "-GPSLatitude=1.0" in args
     assert "-GPSLatitudeRef=S" in args
@@ -104,7 +106,12 @@ def test_build_args_localtime():
 
 
 def test_build_args_append_only() -> None:
-    """Tester que le mode append-only utilise la syntaxe exiftool correcte."""
+    """Tester que le mode append-only utilise la syntaxe exiftool correcte.
+    
+    Note: En production, la logique append-only est maintenant dans write_metadata()
+    et sépare les commandes. Ce test vérifie seulement build_exiftool_args pour
+    référence, mais les vrais tests append-only sont dans test_integration.py
+    """
     meta = SidecarData(
         filename="a.jpg",
         description="desc",
@@ -120,15 +127,17 @@ def test_build_args_append_only() -> None:
     # Normal mode
     args_normal = build_exiftool_args(meta, append_only=False)
     assert "-EXIF:ImageDescription=desc" in args_normal
+    # En mode overwrite, on vide d'abord puis on ajoute
+    assert "-XMP-iptcExt:PersonInImage=" in args_normal
     assert "-XMP-iptcExt:PersonInImage+=alice" in args_normal
 
-    # Append-only mode
+    # Append-only mode (pour référence - la vraie logique est dans write_metadata)
     args_append = build_exiftool_args(meta, append_only=True)
     # En mode append-only, nous utilisons des conditions -if pour n'écrire que si la balise n'existe pas
     assert "-if" in args_append
     assert "not $EXIF:ImageDescription" in args_append
     assert "-EXIF:ImageDescription=desc" in args_append
-    # Les personnes utilisent += pour ajouter sans supprimer les valeurs existantes
+    # Les personnes utilisent += pour l'accumulation en mode append-only
     assert "-XMP-iptcExt:PersonInImage+=alice" in args_append
     assert "-XMP-iptcExt:PersonInImage+=bob" in args_append
 
@@ -192,6 +201,9 @@ def test_build_args_albums() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=False)
+    # En mode overwrite, on vide d'abord puis on ajoute
+    assert "-XMP-dc:Subject=" in args
+    assert "-IPTC:Keywords=" in args
     assert "-XMP-dc:Subject+=Album: Vacances 2024" in args
     assert "-IPTC:Keywords+=Album: Vacances 2024" in args
     assert "-XMP-dc:Subject+=Album: Famille" in args
@@ -255,7 +267,7 @@ def test_build_args_albums_append_only() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=True)
-    # Les albums utilisent += pour ajouter sans supprimer les valeurs existantes
+    # Les albums utilisent += qui ajoute et accumule pour les balises de type liste en mode append-only
     assert "-XMP-dc:Subject+=Album: Test Album" in args
     assert "-IPTC:Keywords+=Album: Test Album" in args
 
@@ -300,7 +312,7 @@ def test_build_args_default_behavior() -> None:
     assert "-if" in args
     assert "not $EXIF:ImageDescription" in args
     assert "-EXIF:ImageDescription=Safe description" in args
-    # Devrait utiliser += pour les personnes (listes)
+    # Devrait utiliser += pour les personnes (accumulation en mode append-only)
     assert "-XMP-iptcExt:PersonInImage+=Safe Person" in args
     # Devrait utiliser une condition -if pour le rating
     assert "not $XMP:Rating" in args
@@ -329,6 +341,8 @@ def test_build_args_overwrite_mode() -> None:
     
     # Devrait utiliser l'assignation directe pour les descriptions et les ratings
     assert "-EXIF:ImageDescription=Overwrite description" in args
+    # En mode overwrite, on vide d'abord puis on ajoute
+    assert "-XMP-iptcExt:PersonInImage=" in args
     assert "-XMP-iptcExt:PersonInImage+=Overwrite Person" in args
     assert "-XMP:Rating=5" in args
     # Ne devrait PAS avoir de conditions -if
@@ -355,7 +369,7 @@ def test_build_args_people_default() -> None:
     # Comportement par défaut (append-only)
     args = build_exiftool_args(meta)
     
-    # Chaque personne devrait utiliser += (ajouter à la liste)
+    # Chaque personne devrait utiliser += (accumulation en mode append-only)
     for person in ["Alice Dupont", "Bob Martin", "Charlie Bernard"]:
         assert f"-XMP-iptcExt:PersonInImage+={person}" in args
         assert f"-XMP-dc:Subject+={person}" in args
@@ -385,7 +399,7 @@ def test_build_args_albums_default() -> None:
     # Comportement par défaut (append-only)
     args = build_exiftool_args(meta)
     
-    # Chaque album devrait utiliser += (ajouter à la liste)
+    # Chaque album devrait utiliser += (accumulation en mode append-only)
     for album in ["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]:
         album_keyword = f"Album: {album}"
         assert f"-XMP-dc:Subject+={album_keyword}" in args

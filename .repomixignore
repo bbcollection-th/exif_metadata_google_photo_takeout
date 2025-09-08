@@ -11,3 +11,7 @@ repomix.config.json
 src/google_takeout_metadata.egg-info/
 .repomixignore
 CORRECTION_SIGNATURES_FONCTION.md
+.history/
+exiftool_test/
+exiftool-doc.md
+repomix-output.md.txt

@@ -112,16 +112,9 @@ def parse_sidecar(path: Path) -> SidecarData:
        (latitude is None or longitude is None):
         latitude = longitude = altitude = None
 
-    # Extraire le statut favori - support des deux formats
-    favorited_data = data.get("favorited")
-    if isinstance(favorited_data, bool):
-        # Format booléen direct : "favorited": true
-        favorite = favorited_data
-    elif isinstance(favorited_data, dict):
-        # Format objet : "favorited": {"value": true}
-        favorite = bool(favorited_data.get("value", False))
-    else:
-        favorite = False
+    # Extraire le statut favori - format booléen Google Takeout
+    # Note : "favorited": true si favori, champ absent si pas favori (pas false)
+    favorite = bool(data.get("favorited", False))
 
     # Extraire le statut archivé
     archived = bool(data.get("archived", False))

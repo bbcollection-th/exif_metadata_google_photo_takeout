@@ -107,10 +107,10 @@ def test_people_deduplication(tmp_path: Path) -> None:
 
 
 def test_parse_favorite_true(tmp_path: Path) -> None:
-    """Tester l'analyse d'une photo favorite."""
+    """Tester l'analyse d'une photo favorite avec le format Google Takeout réel."""
     sample = {
         "title": "favorite.jpg",
-        "favorited": {"value": True}
+        "favorited": True
     }
     json_path = tmp_path / "favorite.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
@@ -119,10 +119,10 @@ def test_parse_favorite_true(tmp_path: Path) -> None:
 
 
 def test_parse_favorite_false(tmp_path: Path) -> None:
-    """Tester l'analyse d'une photo non favorite."""
+    """Tester l'analyse d'une photo non favorite avec le format Google Takeout réel."""
     sample = {
         "title": "not_favorite.jpg",
-        "favorited": {"value": False}
+        "favorited": False
     }
     json_path = tmp_path / "not_favorite.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")

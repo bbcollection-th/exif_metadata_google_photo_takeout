@@ -9,7 +9,7 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 - Personnes identifiées (avec déduplication automatique)
 - Dates de prise de vue et de création
 - Coordonnées GPS (filtrage automatique des coordonnées 0/0 peu fiables)
-- Favoris (mappés sur Rating=5)
+- Favoris (mappés sur le tag Favorite booléen)
 - **Albums** (détectés depuis les fichiers metadata.json de dossier et ajoutés comme mots-clés "Album: <nom>")
 
 ✅ **Mode de fonctionnement sûr par défaut:**
@@ -27,6 +27,8 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 - Tests unitaires complets
 - Tests d'intégration E2E avec exiftool
 - Support des formats photo et vidéo
+- **Arguments sécurisés** : Protection contre l'injection shell avec noms contenant des espaces
+- **Opérateur `+=` optimisé** : Utilise l'opérateur exiftool `+=` pour accumulation sûre des tags de type liste
 
 ## Installation
 
@@ -121,6 +123,46 @@ Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` e
 
 ### ⚠️ Mode destructif:
 Utilisez `--overwrite` seulement si vous voulez explicitement écraser les métadonnées existantes.
+
+## Détails techniques
+
+### Opérateur exiftool `+=` pour les listes
+Notre implémentation utilise l'opérateur `+=` d'exiftool pour une gestion sûre des tags de type liste :
+
+```bash
+# ✅ Correct : L'opérateur += ajoute ET crée le tag si nécessaire
+exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
+
+# ❌ Incorrect : L'opérateur += seul ne crée pas un tag inexistant
+# (ancien comportement qui échouait)
+```
+
+**Avantages de notre approche :**
+- **Création automatique** : `+=` crée le tag s'il n'existe pas
+- **Accumulation sûre** : Ajoute aux listes existantes sans duplication
+- **Sécurité** : Arguments séparés préviennent l'injection shell avec espaces
+- **Mode overwrite** : Vide explicitement puis reremplit avec `+=`
+
+### Format Google Takeout supporté
+```json
+{
+  "title": "IMG_20240716_200232.jpg",
+  "description": "Description de la photo",
+  "photoTakenTime": {"timestamp": "1721152952"},
+  "creationTime": {"timestamp": "1721152952"},
+  "geoData": {
+    "latitude": 48.8566,
+    "longitude": 2.3522,
+    "altitude": 35.0
+  },
+  "people": [
+    {"name": "John Doe"},
+    {"name": "Jane Smith"}
+  ],
+  "favorited": true,
+  "archived": false
+}
+```
 
 ## Tests
 
