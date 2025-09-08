@@ -13,5 +13,5 @@ src/google_takeout_metadata.egg-info/
 CORRECTION_SIGNATURES_FONCTION.md
 .history/
 exiftool_test/
-
+exiftool-doc.md
 repomix-output.md.txt

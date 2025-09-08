@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import json
 import logging
-from typing import List, Optional, Dict
+from typing import List, Optional
 """Analyse des fichiers annexes JSON de Google Takeout."""
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class SidecarData:
 
     filename: str
     description: Optional[str]
-    people: List[Dict[str, str]]
+    people: List[str]
     taken_at: Optional[int]
     created_at: Optional[int]
     latitude: Optional[float]

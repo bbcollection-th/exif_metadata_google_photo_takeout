@@ -143,95 +143,9 @@ def build_exiftool_args(meta: SidecarData, media_path: Path | None = None, use_l
 
 def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
     """Écrit les métadonnées sur un média en utilisant ExifTool."""
-    
-    if append_only:
-        # En mode append-only, séparer les opérations :
-        # 1. Description avec conditions (pour ne pas écraser)
-        # 2. Personnes/mots-clés sans conditions (pour accumuler)
-        
-        # Commande 1 : Descriptions conditionnelles
-        desc_args = []
-        
-        # Configuration vidéo si nécessaire
-        if _is_video_file(media_path):
-            desc_args.extend(["-api", "QuickTimeUTC=1"])
-        
-        if meta.description:
-            safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
-            desc_args.extend(["-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={safe_desc}"])
-            desc_args.extend(["-if", "not $XMP-dc:Description", f"-XMP-dc:Description={safe_desc}"])
-            desc_args.extend(["-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={safe_desc}"])
-            if _is_video_file(media_path):
-                desc_args.extend(["-if", "not $Keys:Description", f"-Keys:Description={safe_desc}"])
-        
-        # Dates conditionnelles
-        if (s := _fmt_dt(meta.taken_at, use_localtime)):
-            desc_args.extend(["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"])
-            if _is_video_file(media_path):
-                desc_args.extend(["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"])
-
-        base_ts = meta.created_at or meta.taken_at
-        if (s := _fmt_dt(base_ts, use_localtime)):
-            desc_args.extend(["-if", "not $CreateDate", f"-CreateDate={s}"])
-            desc_args.extend(["-if", "not $ModifyDate", f"-ModifyDate={s}"])
-            if _is_video_file(media_path):
-                desc_args.extend(["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"])
-        
-        # GPS conditionnel
-        if meta.latitude is not None and meta.longitude is not None:
-            lat = str(abs(meta.latitude))
-            lon = str(abs(meta.longitude))
-            lat_ref = "N" if meta.latitude >= 0 else "S"
-            lon_ref = "E" if meta.longitude >= 0 else "W"
-            gps_coords = f"{meta.latitude},{meta.longitude}"
-            
-            desc_args.extend(["-if", "not $GPSLatitude", f"-GPSLatitude={lat}"])
-            desc_args.extend(["-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}"])
-            desc_args.extend(["-if", "not $GPSLongitude", f"-GPSLongitude={lon}"])
-            desc_args.extend(["-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}"])
-            if _is_video_file(media_path):
-                desc_args.extend(["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={gps_coords}"])
-                desc_args.extend(["-if", "not $Keys:Location", f"-Keys:Location={gps_coords}"])
-
-            if meta.altitude is not None:
-                alt = str(abs(meta.altitude))
-                alt_ref = "1" if meta.altitude < 0 else "0"
-                desc_args.extend(["-if", "not $GPSAltitude", f"-GPSAltitude={alt}"])
-                desc_args.extend(["-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"])
-        
-        # Rating conditionnel
-        if meta.favorite:
-            desc_args.extend(["-if", "not $XMP:Rating", "-XMP:Rating=5"])
-        
-        # Exécuter la commande conditionnelle
-        if desc_args:
-            _run_exiftool_command(media_path, desc_args, _append_only=True)
-        
-        # Commande 2 : Personnes et mots-clés (accumulation sans conditions)
-        keywords_args = []
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
-        
-        if meta.people or meta.albums:
-            keywords_args.extend(["-api", "NoDups=1"])
-        
-        if meta.people:
-            for person in meta.people:
-                keywords_args.append(f"-XMP-iptcExt:PersonInImage+={person}")
-        
-        if all_keywords:
-            for keyword in all_keywords:
-                keywords_args.append(f"-XMP-dc:Subject+={keyword}")
-                keywords_args.append(f"-IPTC:Keywords+={keyword}")
-        
-        # Exécuter la commande d'accumulation 
-        if keywords_args:
-            _run_exiftool_command(media_path, keywords_args, _append_only=True)
-            
-    else:
-        # Mode écrasement : utiliser la fonction originale
-        args = build_exiftool_args(meta, media_path, use_localtime, append_only)
-        if args:
-            _run_exiftool_command(media_path, args, _append_only=append_only)
+    args = build_exiftool_args(meta, media_path, use_localtime, append_only)
+    if args:
+        _run_exiftool_command(media_path, args, _append_only=append_only)
 
 def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool) -> None:
     """Exécute une commande exiftool avec les arguments fournis."""
