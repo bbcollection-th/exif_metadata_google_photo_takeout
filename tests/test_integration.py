@@ -367,7 +367,7 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
     assert final_metadata.get("ImageDescription") == "Original description"
 
     # Les mots-clés devraient toujours contenir les données d'origine, et les nouvelles personnes devraient être AJOUTÉES (pas remplacées)
-    # car nous utilisons += pour les personnes
+    # car nous utilisons = qui accumule pour les balises de type liste
     final_keywords = final_metadata.get("Keywords", [])
     if isinstance(final_keywords, str):
         final_keywords = [final_keywords]
@@ -417,12 +417,12 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     final_metadata = _run_exiftool_read(media_path)
 
     # En mode écrasement, la nouvelle description doit remplacer l'ancienne
-    # Note: Nous utilisons l'opérateur += donc les personnes sont ajoutées, pas remplacées
+    # Note: Nous utilisons l'opérateur = donc les personnes sont ajoutées et accumulent
     final_keywords = final_metadata.get("Keywords", [])
     if isinstance(final_keywords, str):
         final_keywords = [final_keywords]
 
-    # Les deux personnes, originale et nouvelle, devraient être présentes (car += ajoute)
+    # Les deux personnes, originale et nouvelle, devraient être présentes (car = accumule pour les listes)
     assert "Original Person" in final_keywords
     assert "New Person" in final_keywords
 
