@@ -58,6 +58,12 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Pour le format hérité : IMG_001.jpg.json -> titre attendu : IMG_001.jpg
     if path.name.lower().endswith(".supplemental-metadata.json"):
         expected_title = path.name[:-len(".supplemental-metadata.json")]
+    elif path.name.lower().endswith(".supplemental-metadat.json"):
+        expected_title = path.name[:-len(".supplemental-metadat.json")]
+    elif path.name.lower().endswith(".supplemental-me.json"):
+        expected_title = path.name[:-len(".supplemental-me.json")]
+    elif path.name.lower().endswith(".supplemental-meta.json"):
+        expected_title = path.name[:-len(".supplemental-meta.json")]
     elif path.name.lower().endswith(".json"):
         expected_title = path.stem
     else:
@@ -69,15 +75,13 @@ def parse_sidecar(path: Path) -> SidecarData:
 
     description = data.get("description")
     # Extraire les noms de personnes, supprimer les espaces et dédupliquer
-    # people peut être [{ "name": "X" }] ou parfois [{ "person": { "name": "X" } }]
+    # people est [{ "name": "X" }]
     raw_people = data.get("people", []) or []
     people = []
     for p in raw_people:
         if isinstance(p, dict):
             if isinstance(p.get("name"), str):
                 people.append(p["name"].strip())
-            elif isinstance(p.get("person"), dict) and isinstance(p["person"].get("name"), str):
-                people.append(p["person"]["name"].strip())
     # déduplication
     people = sorted(set(filter(None, people)))
 

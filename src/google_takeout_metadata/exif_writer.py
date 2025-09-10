@@ -20,41 +20,23 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")
 
+def _build_keywords(meta: SidecarData) -> list[str]:
+    """Centralise la logique de création des mots-clés à partir des personnes et albums."""
+    return (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+
+def _sanitize_description(desc: str) -> str:
+    """Centralise le nettoyage des descriptions pour ExifTool."""
+    return desc.replace("\r", " ").replace("\n", " ").strip()
+
 def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
     """Écrit les métadonnées sur un média en utilisant ExifTool."""
     
     if append_only:
-        # Mode append-only : approche hybride en 3 étapes
-        # 1. Tags à valeur unique avec -wm cg (créer seulement si vide)
-        # 2. Tags de liste avec += (peut créer des doublons temporairement)
-        # 3. Nettoyage avec NoDups pour éliminer les doublons
+        # Mode append-only : utiliser build_exiftool_args qui gère déjà tout avec -wm cg
+        args = build_exiftool_args(meta, media_path, use_localtime, append_only=True)
         
-        # Étape 1 : Tags à valeur unique (Description, Dates, GPS, Rating)
-        single_args = build_exiftool_args(meta, media_path, use_localtime, append_only=True)
-        
-        # Exécuter la commande pour tags uniques
-        if single_args:
-            _run_exiftool_command(media_path, single_args, _append_only=True)
-        
-        # Étape 2 : Tags de liste avec accumulation (peut créer des doublons)
-        list_args = []
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
-        
-        if meta.people:
-            for person in meta.people:
-                list_args.append(f"-XMP-iptcExt:PersonInImage+={person}")
-        
-        if all_keywords:
-            for keyword in all_keywords:
-                list_args.append(f"-XMP-dc:Subject+={keyword}")
-                list_args.append(f"-IPTC:Keywords+={keyword}")
-        
-        # Exécuter la commande pour tags de liste (avec doublons possibles)
-        if list_args:
-            _run_exiftool_command(media_path, list_args, _append_only=True)
-            
-            # Étape 3 : Nettoyage des doublons avec fonction NoDups
-            _cleanup_duplicates(media_path)
+        if args:
+            _run_exiftool_command(media_path, args, _append_only=True)
             
     else:
         # Mode écrasement : utiliser build_exiftool_args directement
@@ -64,54 +46,40 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
         if all_args:
             _run_exiftool_command(media_path, all_args, _append_only=False)
 
-def _cleanup_duplicates(media_path: Path) -> None:
-    """Nettoie les doublons dans les tags de liste en utilisant l'API NoDups d'ExifTool."""
-    cleanup_cmd = [
-        "exiftool",
-        "-tagsfromfile", "@",
-        "-XMP-iptcExt:PersonInImage",
-        "-XMP-dc:Subject", 
-        "-IPTC:Keywords",
-        "-api", "nodups",
-        "-overwrite_original",
-        str(media_path)
-    ]
-    
-    try:
-        result = subprocess.run(cleanup_cmd, capture_output=True, text=True, timeout=30, encoding='utf-8')
-        logger.debug("Cleanup duplicates for %s: %s", media_path.name, result.stdout.strip())
-    except (subprocess.SubprocessError, OSError) as exc:
-        logger.warning("Échec du nettoyage des doublons pour %s: %s", media_path.name, exc)
-
 def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtime: bool = False, append_only: bool = True) -> list[str]:
     """Construit les arguments exiftool pour traiter un fichier média avec les métadonnées fournies.
     
-    Note: En mode append_only=True, cette fonction inclut tous les tags mais peut créer des doublons
-    dans les tags de liste. Pour un traitement optimal sans doublons, utilisez write_metadata() directement.
+    Args:
+        meta: Métadonnées à écrire
+        media_path: Chemin du fichier média (optionnel, pour la détection vidéo)
+        use_localtime: Utiliser l'heure locale au lieu d'UTC
+        append_only: Mode append-only (-wm cg) ou mode écrasement
+    
+    Returns:
+        Liste des arguments exiftool
     """
     args = []
     
     if append_only:
         # Mode append-only : inclusion de tous les tags avec -wm cg pour compatibilité batch
-        # Note: Cela peut créer des doublons dans les tags de liste
         if media_path and _is_video_file(media_path):
             args.extend(["-api", "QuickTimeUTC=1"])
         args.extend(["-wm", "cg"])
         
         # Description
         if meta.description:
-            safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
+            safe_desc = _sanitize_description(meta.description)
             args.extend([f"-EXIF:ImageDescription={safe_desc}", f"-XMP-dc:Description={safe_desc}", f"-IPTC:Caption-Abstract={safe_desc}"])
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
         
-        # Tags de liste avec += (peut créer des doublons en mode batch)
+        # Tags de liste avec += 
         if meta.people:
             for person in meta.people:
                 args.append(f"-XMP-iptcExt:PersonInImage+={person}")
         
         # Mots-clés (personnes + albums)
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+        all_keywords = _build_keywords(meta)
         if all_keywords:
             for keyword in all_keywords:
                 args.append(f"-XMP-dc:Subject+={keyword}")
@@ -163,7 +131,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         
         # Description
         if meta.description:
-            safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
+            safe_desc = _sanitize_description(meta.description)
             args.extend([f"-EXIF:ImageDescription={safe_desc}", f"-XMP-dc:Description={safe_desc}", f"-IPTC:Caption-Abstract={safe_desc}"])
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
@@ -177,7 +145,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
                 args.append(f"-XMP-iptcExt:PersonInImage+={person}")
         
         # Ajouter mots-clés (personnes + albums)
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+        all_keywords = _build_keywords(meta)
         if all_keywords:
             for keyword in all_keywords:
                 args.append(f"-XMP-dc:Subject+={keyword}")
@@ -235,6 +203,7 @@ def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool)
         "-charset", "filename=UTF8",
         "-charset", "iptc=UTF8",
         "-charset", "exif=UTF8",
+        "-api","NoDups=1"
     ]
 
     # Ajouter les arguments métadonnées

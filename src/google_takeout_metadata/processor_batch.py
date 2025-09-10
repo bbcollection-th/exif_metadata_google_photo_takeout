@@ -40,6 +40,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             "-charset", "filename=UTF8",
             "-charset", "iptc=UTF8",
             "-charset", "exif=UTF8",
+            "-api","NoDups=1",
             "-@", argfile_path,
         ]
         

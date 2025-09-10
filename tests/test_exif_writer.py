@@ -5,13 +5,6 @@ import pytest
 from pathlib import Path
 
 
-def test_build_args() -> None:
-    """Test désactivé car build_exiftool_args a été remplacé par l'approche hybride."""
-    # Cette fonction a été supprimée dans la nouvelle implémentation hybride
-    # Les tests d'intégration via write_metadata() couvrent maintenant cette fonctionnalité
-    pass
-
-
 def test_write_metadata_error(tmp_path, monkeypatch):
     meta = SidecarData(
         filename="a.jpg",
