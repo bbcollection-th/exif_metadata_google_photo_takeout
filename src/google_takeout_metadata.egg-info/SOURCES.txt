@@ -8,6 +8,7 @@ src/google_takeout_metadata/exif_writer.py
 src/google_takeout_metadata/processor.py
 src/google_takeout_metadata/processor_batch.py
 src/google_takeout_metadata/sidecar.py
+src/google_takeout_metadata/statistics.py
 src/google_takeout_metadata.egg-info/PKG-INFO
 src/google_takeout_metadata.egg-info/SOURCES.txt
 src/google_takeout_metadata.egg-info/dependency_links.txt
@@ -17,6 +18,7 @@ src/google_takeout_metadata.egg-info/top_level.txt
 tests/test_cli.py
 tests/test_end_to_end.py
 tests/test_exif_writer.py
+tests/test_improvements.py
 tests/test_integration.py
 tests/test_processor.py
 tests/test_processor_batch.py
