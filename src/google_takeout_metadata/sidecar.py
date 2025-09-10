@@ -75,13 +75,19 @@ def parse_sidecar(path: Path) -> SidecarData:
 
     description = data.get("description")
     # Extraire les noms de personnes, supprimer les espaces et dédupliquer
-    # people est [{ "name": "X" }]
+    # Gère plusieurs formats :
+    # - [{ "name": "X" }]
+    # - [{ "person": { "name": "X" } }]
     raw_people = data.get("people", []) or []
     people = []
     for p in raw_people:
         if isinstance(p, dict):
+            # Format standard : {"name": "X"}
             if isinstance(p.get("name"), str):
                 people.append(p["name"].strip())
+            # Format imbriqué : {"person": {"name": "X"}}
+            elif isinstance(p.get("person"), dict) and isinstance(p["person"].get("name"), str):
+                people.append(p["person"]["name"].strip())
     # déduplication
     people = sorted(set(filter(None, people)))
 

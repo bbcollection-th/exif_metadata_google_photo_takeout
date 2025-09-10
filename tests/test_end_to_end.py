@@ -51,7 +51,7 @@ def test_end_to_end(tmp_path: Path) -> None:
         else:
             return [value]
     
-    assert normalize_to_list(tags.get("PersonInImage")) == ["anthony vincent"]
-    assert normalize_to_list(tags.get("Subject")) == ["anthony vincent"]
-    assert normalize_to_list(tags.get("Keywords")) == ["anthony vincent"]
+    assert normalize_to_list(tags.get("PersonInImage")) == ["Anthony Vincent"]
+    assert normalize_to_list(tags.get("Subject")) == ["Anthony Vincent"]
+    assert normalize_to_list(tags.get("Keywords")) == ["Anthony Vincent"]
     assert tags.get("ImageDescription") == 'Magicien "en" or'

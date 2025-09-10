@@ -2,10 +2,13 @@
 
 import subprocess
 import logging
+import tempfile
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Iterable
+from typing import Union, List, Sequence, Iterable
+from dataclasses import dataclass
 
 from .sidecar import SidecarData
 
@@ -48,12 +51,8 @@ def normalize_person_name(name: str) -> str:
     return " ".join(fixed)
 
 def normalize_keyword(keyword: str) -> str:
-    """Normaliser un mot-clé: trim + capitaliser chaque mot."""
-    if not keyword:
-        return ""
-    parts = [p.strip() for p in keyword.strip().split() if p.strip()]
-    # Capitaliser chaque partie (similaire à normalize_person_name mais plus simple)
-    return " ".join(p[:1].upper() + p[1:].lower() for p in parts)
+    """Normaliser un mot-clé: trim + Capitalize simple."""
+    return keyword.strip().capitalize() if keyword else ""
 
 def _sanitize_description(desc: str) -> str:
     """Centralise le nettoyage des descriptions pour ExifTool."""
@@ -72,22 +71,26 @@ def build_remove_then_add_args_for_people(people: Iterable[str]) -> List[str]:
         person = normalize_person_name(raw)
         if not person:
             continue
-        add_remove_then_add(args, "XMP-iptcExt:PersonInImage", person)
+        args.extend([
+            f"-XMP-iptcExt:PersonInImage-={person}",
+            f"-XMP-iptcExt:PersonInImage+={person}"
+        ])
     return args
 
 def build_remove_then_add_args_for_keywords(keywords: Iterable[str]) -> List[str]:
-    """Construction robuste pour Subject/Keywords avec déduplication.
-    
-    ATTENTION: Les keywords sont supposés déjà normalisés (personnes avec normalize_person_name, 
-    albums avec normalize_keyword). Ne pas normaliser à nouveau.
-    """
+    """Construction robuste pour Subject/Keywords avec déduplication."""
     args: List[str] = []
-    for kw in keywords:
-        if not kw.strip():  # Ignorer les valeurs vides
+    for raw in keywords:
+        kw = normalize_keyword(raw)
+        if not kw:
             continue
         # XMP-dc:Subject (bag) + IPTC:Keywords (liste IPTC)
-        add_remove_then_add(args, "XMP-dc:Subject", kw)
-        add_remove_then_add(args, "IPTC:Keywords", kw)
+        args.extend([
+            f"-XMP-dc:Subject-={kw}",
+            f"-XMP-dc:Subject+={kw}",
+            f"-IPTC:Keywords-={kw}",
+            f"-IPTC:Keywords+={kw}"
+        ])
     return args
 
 # === VARIANTE CONDITIONNELLE (POUR PERFORMANCE) ===
@@ -111,39 +114,12 @@ def build_conditional_add_args_for_people(people: Iterable[str]) -> List[str]:
         ])
     return args
 
-def build_overwrite_args_for_people(people: Iterable[str]) -> List[str]:
-    """Arguments mode overwrite : vider puis ajouter chaque personne."""
-    args: List[str] = []
-    if people:
-        # Vider d'abord
-        args.append("-XMP-iptcExt:PersonInImage=")
-        # Puis ajouter chaque personne normalisée
-        for raw in people:
-            person = normalize_person_name(raw)
-            if person:
-                args.append(f"-XMP-iptcExt:PersonInImage+={person}")
-    return args
-
-def build_overwrite_args_for_keywords(keywords: Iterable[str]) -> List[str]:
-    """Arguments mode overwrite : vider puis ajouter chaque keyword."""
-    args: List[str] = []
-    if keywords:
-        # Vider d'abord
-        args.extend(["-XMP-dc:Subject=", "-IPTC:Keywords="])
-        # Puis ajouter chaque keyword 
-        for kw in keywords:
-            if kw.strip():
-                args.extend([f"-XMP-dc:Subject+={kw}", f"-IPTC:Keywords+={kw}"])
-    return args
-
 def build_conditional_add_args_for_keywords(keywords: Iterable[str]) -> List[str]:
-    """Option conditionnelle pour keywords.
-    
-    ATTENTION: Les keywords sont supposés déjà normalisés.
-    """
+    """Option conditionnelle pour keywords."""
     args: List[str] = []
-    for kw in keywords:
-        if not kw.strip():
+    for raw in keywords:
+        kw = normalize_keyword(raw)
+        if not kw:
             continue
         regex = _regex_escape_word(kw)
         args.extend([
@@ -154,29 +130,15 @@ def build_conditional_add_args_for_keywords(keywords: Iterable[str]) -> List[str
         ])
     return args
 
-# === HELPER POUR GARANTIR L'ORDRE SUPPRIMER-PUIS-AJOUTER ===
-
-def add_remove_then_add(args: List[str], tag: str, value: str) -> None:
-    """Helper pour garantir l'ordre supprime puis ajoute et éviter les coquilles.
-    
-    Args:
-        args: Liste d'arguments à laquelle ajouter
-        tag: Tag exiftool (ex: "XMP-iptcExt:PersonInImage")  
-        value: Valeur à supprimer puis ajouter
-    """
-    args.extend([f"-{tag}-={value}", f"-{tag}+={value}"])
-
 # === CONSTRUCTION DES ARGUMENTS PRINCIPAUX ===
 
-def build_people_keywords_args(meta: SidecarData, *, conditional_mode: bool = False, overwrite_mode: bool = False) -> List[str]:
+def build_people_keywords_args(meta: SidecarData, *, conditional_mode: bool = False) -> List[str]:
     """Construit les arguments pour PersonInImage et Keywords selon la stratégie choisie."""
     args: List[str] = []
     
     # PersonInImage
     if meta.people:
-        if overwrite_mode:
-            args.extend(build_overwrite_args_for_people(meta.people))
-        elif conditional_mode:
+        if conditional_mode:
             args.extend(build_conditional_add_args_for_people(meta.people))
         else:
             args.extend(build_remove_then_add_args_for_people(meta.people))
@@ -193,9 +155,7 @@ def build_people_keywords_args(meta: SidecarData, *, conditional_mode: bool = Fa
         all_keywords.extend(album_keywords)
     
     if all_keywords:
-        if overwrite_mode:
-            args.extend(build_overwrite_args_for_keywords(all_keywords))
-        elif conditional_mode:
+        if conditional_mode:
             args.extend(build_conditional_add_args_for_keywords(all_keywords))
         else:
             args.extend(build_remove_then_add_args_for_keywords(all_keywords))
@@ -247,12 +207,10 @@ def build_datetime_args(meta: SidecarData, use_localtime: bool, is_video: bool) 
     if (s := _fmt_dt(base_ts, use_localtime)):
         args.append(f"-CreateDate={s}")
         args.append(f"-ModifyDate={s}")
-        if is_video:
-            args.append(f"-QuickTime:ModifyDate={s}")
     
     return args
 
-def build_gps_args(meta: SidecarData, is_video: bool = False) -> List[str]:
+def build_gps_args(meta: SidecarData) -> List[str]:
     """Construit les arguments pour GPS."""
     args: List[str] = []
     
@@ -260,19 +218,9 @@ def build_gps_args(meta: SidecarData, is_video: bool = False) -> List[str]:
         args.extend([
             f"-GPS:GPSLatitude={meta.latitude}",
             f"-GPS:GPSLongitude={meta.longitude}",
-            f"-GPS:GPSLatitudeRef={'N' if meta.latitude >= 0 else 'S'}",
-            f"-GPS:GPSLongitudeRef={'E' if meta.longitude >= 0 else 'W'}",
         ])
         if meta.altitude is not None:
-            args.append(f"-GPSAltitude={meta.altitude}")
-        
-        # Pour les vidéos, ajouter aussi Keys:Location et QuickTime:GPSCoordinates
-        if is_video:
-            location = f"{meta.latitude},{meta.longitude}"
-            args.extend([
-                f"-Keys:Location={location}",
-                f"-QuickTime:GPSCoordinates={location}"
-            ])
+            args.append(f"-GPS:GPSAltitude={meta.altitude}")
     
     return args
 
@@ -281,7 +229,7 @@ def build_rating_args(meta: SidecarData) -> List[str]:
     args: List[str] = []
     
     if meta.favorite:
-        args.append("-XMP:Rating=5")
+        args.append("-XMP-xmp:Rating=5")
     
     return args
 
@@ -317,45 +265,11 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         args.extend(build_description_args(meta, conditional_mode=True))
         
         # PersonInImage et Keywords avec approche robuste (supprimer-puis-ajouter)
-        # IMPORTANT: Pas de -wm cg car incompatible avec -TAG-= (suppression = édition)
-        args.extend(build_people_keywords_args(meta, conditional_mode=False, overwrite_mode=False))
+        # IMPORTANT: On utilise conditional_mode=False pour la déduplication robuste
+        args.extend(build_people_keywords_args(meta, conditional_mode=False))
         
         # Autres champs avec mode append-only classique
-        # IMPORTANT: -wm cg seulement pour les champs suivants, pas les précédents
-        datetime_args = build_datetime_args(meta, use_localtime, is_video)
-        if datetime_args:
-            args.extend(["-wm", "cg"])  # Activer pour les dates
-            args.extend(datetime_args)
-        
-        # Vidéo spécifique
-        if is_video and meta.description:
-            safe_desc = _sanitize_description(meta.description)
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.append(f"-Keys:Description={safe_desc}")
-        
-        # GPS (pas besoin de -wm cg, création de nouvelles coordonnées)
-        gps_args = build_gps_args(meta, is_video)
-        if gps_args:
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.extend(gps_args)
-        
-        # Rating (pas besoin de -wm cg, création)
-        rating_args = build_rating_args(meta)
-        if rating_args:
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.extend(rating_args)
-        
-    else:
-        # Mode écrasement : pas de -wm cg, pas de conditions
-        
-        # Description
-        args.extend(build_description_args(meta, conditional_mode=False))
-        
-        # PersonInImage et Keywords (mode overwrite: vider puis ajouter)
-        args.extend(build_people_keywords_args(meta, conditional_mode=False, overwrite_mode=True))
+        args.extend(["-wm", "cg"])  # Réactiver pour les champs suivants
         
         # Dates
         args.extend(build_datetime_args(meta, use_localtime, is_video))
@@ -366,7 +280,30 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             args.append(f"-Keys:Description={safe_desc}")
         
         # GPS
-        args.extend(build_gps_args(meta, is_video))
+        args.extend(build_gps_args(meta))
+        
+        # Rating
+        args.extend(build_rating_args(meta))
+        
+    else:
+        # Mode écrasement : pas de -wm cg, pas de conditions
+        
+        # Description
+        args.extend(build_description_args(meta, conditional_mode=False))
+        
+        # PersonInImage et Keywords (mode robuste)
+        args.extend(build_people_keywords_args(meta, conditional_mode=False))
+        
+        # Dates
+        args.extend(build_datetime_args(meta, use_localtime, is_video))
+        
+        # Vidéo spécifique
+        if is_video and meta.description:
+            safe_desc = _sanitize_description(meta.description)
+            args.append(f"-Keys:Description={safe_desc}")
+        
+        # GPS
+        args.extend(build_gps_args(meta))
         
         # Rating
         args.extend(build_rating_args(meta))
@@ -377,14 +314,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
 
 def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool = True) -> None:
     """Exécute une commande exiftool avec gestion d'erreurs."""
-    cmd = [
-        "exiftool", 
-        "-overwrite_original", 
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8", 
-        "-codedcharacterset=utf8"
-    ]
+    cmd = ["exiftool", "-overwrite_original", "-charset", "filename=UTF8"]
     
     if not _append_only:
         # En mode écrasement, on peut utiliser des options plus agressives
@@ -402,62 +332,23 @@ def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool 
         if result.stderr.strip():
             logger.warning(f"exiftool stderr: {result.stderr.strip()}")
     except subprocess.CalledProcessError as e:
-        # En mode append_only, le code de sortie 2 avec "files failed condition" est normal
-        # (cela signifie que les métadonnées existent déjà)
-        if _append_only and e.returncode == 2 and e.stdout and "files failed condition" in e.stdout:
-            logger.debug(f"Mode append-only: métadonnées existantes ignorées pour {media_path}")
-            return
-        
         logger.error(f"Erreur exiftool pour {media_path}: code {e.returncode}")
         logger.error(f"stdout: {e.stdout}")
         logger.error(f"stderr: {e.stderr}")
-        raise RuntimeError(f"Échec de la commande exiftool pour {media_path}: {e.stderr}")
+        raise
     except subprocess.TimeoutExpired:
         logger.error(f"Timeout exiftool pour {media_path}")
-        raise RuntimeError(f"Timeout exiftool pour {media_path}")
+        raise
 
 def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
     """Écrit les métadonnées sur un média en utilisant ExifTool."""
     
     if append_only:
-        # Mode append-only : séparer les opérations conditionnelles des opérations remove-then-add
+        # Mode append-only : utiliser build_exiftool_args qui gère déjà tout avec -wm cg
+        args = build_exiftool_args(meta, media_path, use_localtime, append_only=True)
         
-        # 1. D'abord traiter les champs conditionnels (description, dates) avec -wm cg
-        conditional_args = []
-        conditional_args.extend(build_description_args(meta, conditional_mode=True))
-        
-        is_video = _is_video_file(media_path)
-        if is_video:
-            conditional_args.extend(["-api", "QuickTimeUTC=1"])
-        
-        datetime_args = build_datetime_args(meta, use_localtime, is_video)
-        if datetime_args:
-            conditional_args.extend(datetime_args)
-        
-        # Vidéo spécifique (description)
-        if is_video and meta.description:
-            safe_desc = _sanitize_description(meta.description)
-            conditional_args.append(f"-Keys:Description={safe_desc}")
-        
-        if conditional_args:
-            _run_exiftool_command(media_path, conditional_args, _append_only=True)
-        
-        # 2. Ensuite traiter les personnes/keywords avec remove-then-add (sans -wm cg)
-        people_args = []
-        people_args.extend(build_people_keywords_args(meta, conditional_mode=False, overwrite_mode=False))
-        
-        # GPS (pas besoin de -wm cg)
-        gps_args = build_gps_args(meta, is_video)
-        if gps_args:
-            people_args.extend(gps_args)
-        
-        # Rating
-        rating_args = build_rating_args(meta)
-        if rating_args:
-            people_args.extend(rating_args)
-        
-        if people_args:
-            _run_exiftool_command(media_path, people_args, _append_only=True)
+        if args:
+            _run_exiftool_command(media_path, args, _append_only=True)
             
     else:
         # Mode écrasement : utiliser build_exiftool_args directement
@@ -466,20 +357,6 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
         # Exécuter en mode écrasement
         if all_args:
             _run_exiftool_command(media_path, all_args, _append_only=False)
-            
-        # En mode écrasement, pour les personnes on veut accumuler (pas écraser complètement)
-        # selon les attentes du test test_explicit_overwrite_behavior
-        if meta.people:
-            people_args = []
-            # Utiliser remove-then-add pour les personnes pour garantir l'ajout
-            people_args.extend(build_remove_then_add_args_for_people(meta.people))
-            
-            # Keywords pour les personnes aussi
-            normalized_people = [normalize_person_name(person) for person in meta.people]
-            people_args.extend(build_remove_then_add_args_for_keywords(normalized_people))
-            
-            if people_args:
-                _run_exiftool_command(media_path, people_args, _append_only=False)
 
 # Fonctions utilitaires héritées
 

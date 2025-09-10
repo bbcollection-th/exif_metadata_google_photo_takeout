@@ -281,19 +281,20 @@ def test_build_args_default_behavior() -> None:
         favorite=True,
     )
 
-    # Le comportement par défaut devrait être append-only (sécurisé)
+    # Le comportement par défaut devrait être append-only avec déduplication robuste
     args = build_exiftool_args(meta)
     
-    # Devrait utiliser -wm cg pour l'écriture conditionnelle
+    # Devrait utiliser -wm cg pour l'écriture conditionnelle de la description
     assert "-wm" in args
     assert "cg" in args
     assert "-EXIF:ImageDescription=Safe description" in args
-    # Devrait utiliser += pour les personnes (accumulation en mode append-only)
+    # Devrait utiliser l'approche robuste pour les personnes (déduplication)
+    assert "-XMP-iptcExt:PersonInImage-=Safe Person" in args
     assert "-XMP-iptcExt:PersonInImage+=Safe Person" in args
     # Le rating devrait être présent
     assert "-XMP:Rating=5" in args
-    # GPS devrait être présent
-    assert "-GPSLatitude=48.8566" in args
+    # GPS devrait être présent  
+    assert "-GPS:GPSLatitude=48.8566" in args
 
 
 def test_build_args_overwrite_mode() -> None:

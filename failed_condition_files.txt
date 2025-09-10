@@ -1,0 +1,10 @@
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_batch_vs_normal_mode_equi0/batch_mode/photo1.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_batch_vs_normal_mode_equi0/batch_mode/photo2.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_batch_vs_normal_mode_equi0/batch_mode/photo3.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_batch_mode_with_mixed_fil0/mixed1.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_batch_mode_with_mixed_fil0/mixed2.png
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_process_directory_batch_s0/test.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_process_directory_batch_m0/test1.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_process_directory_batch_m0/test2.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_process_directory_batch_m0/test3.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-185/test_process_directory_batch_w0/Album Test/album_photo.jpg

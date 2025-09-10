@@ -149,9 +149,23 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             error_type = "exiftool_error"
             error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
             logger.exception(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
+        
         # Marquer tous les fichiers du lot comme échoués
         for media_path, _, _ in batch:
             statistics.stats.add_failed_file(media_path, error_type, error_msg)
+        
+        # Nettoyer les sidecars même en cas d'échec si demandé
+        if clean_sidecars:
+            cleaned_count = 0
+            for _, json_path, _ in batch:
+                try:
+                    json_path.unlink()
+                    cleaned_count += 1
+                except OSError as e:
+                    logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
+            statistics.stats.sidecars_cleaned += cleaned_count
+            # Retourner le nombre de fichiers traités même si échec (pour le nettoyage des sidecars)
+            return len(batch)
         
         return 0
     finally:
