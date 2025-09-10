@@ -6,12 +6,14 @@ from pathlib import Path
 import logging
 import json
 import subprocess
+import shutil
 from datetime import datetime
 
 from .sidecar import parse_sidecar, find_albums_for_directory
 from .exif_writer import write_metadata
 from . import sidecar_safety
 from . import statistics
+from .file_organizer import FileOrganizer, should_organize_file
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +191,7 @@ def _is_sidecar_file(path: Path) -> bool:
     return False
 
 
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
     Args:
@@ -198,11 +200,13 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         append_only: Ajouter uniquement les champs manquants
         immediate_delete: Mode destructeur - supprimer immédiatement le JSON après succès 
                          (par défaut: mode sécurisé avec préfixe OK_)
+        organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
     """
     
     # Vérifier si ce sidecar a déjà été traité (préfixe OK_)
     if sidecar_safety.is_sidecar_processed(json_path):
         logger.debug("Sidecar déjà traité, ignoré: %s", json_path)
+        statistics.stats.add_skipped_file(json_path, "Déjà traité (préfixe OK_)")
         return
 
     try:
@@ -230,7 +234,25 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         current_json_path = json_path
         
         # Enregistrer le succès
-        statistics.stats.add_processed_file(media_path, is_image)
+        statistics.stats.add_processed_file(is_image)
+        
+        # Organisation des fichiers selon leur statut (si activée)
+        if organize_files and should_organize_file(meta):
+            try:
+                organizer = FileOrganizer(media_path.parent)
+                new_media_path, new_sidecar_path = organizer.move_file_with_sidecar(
+                    media_path, current_json_path, meta
+                )
+                
+                # Mettre à jour les chemins si déplacement effectué
+                if new_media_path and new_sidecar_path:
+                    media_path = new_media_path
+                    current_json_path = new_sidecar_path
+                    logger.info(f"📁 Fichier organisé selon statut: {meta.filename}")
+                    
+            except (OSError, shutil.Error) as exc:
+                logger.warning(f"Échec de l'organisation du fichier {media_path.name}: {exc}")
+                # Continuer le traitement même si l'organisation échoue
         
     except RuntimeError as exc:
         # Vérifier s'il s'agit d'une erreur d'incohérence d'extension
@@ -259,7 +281,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 current_json_path = actual_json_path
                 
                 # Enregistrer le succès après correction
-                statistics.stats.add_processed_file(fixed_media_path, is_image_after_fix)
+                statistics.stats.add_processed_file(is_image_after_fix)
                 logger.info("✅ Traitement réussi de %s après correction d'extension", fixed_media_path.name)
             else:
                 # Échec de la correction d'extension, relancer l'erreur originale
@@ -289,7 +311,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             logger.warning("Échec du marquage du sidecar %s : %s", current_json_path, exc)
 
 
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
     """Traiter récursivement tous les fichiers annexes sous ``root``.
     
     Args:
@@ -298,6 +320,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
         append_only: Ajouter uniquement les champs manquants
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
+        organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
     """
     
     # Initialiser les statistiques
@@ -307,10 +330,14 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     all_json_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
     sidecar_files = [path for path in all_json_files if not sidecar_safety.is_sidecar_processed(path)]
     
-    # Afficher les statistiques de filtrage
+    # Afficher les statistiques de filtrage et les comptabiliser
     processed_count = len(all_json_files) - len(sidecar_files)
     if processed_count > 0:
         logger.info("📋 %d sidecars déjà traités ignorés (préfixe OK_)", processed_count)
+        # Ajouter les fichiers déjà traités aux statistiques
+        for path in all_json_files:
+            if sidecar_safety.is_sidecar_processed(path):
+                statistics.stats.add_skipped_file(path, "Déjà traité (préfixe OK_)")
     
     statistics.stats.total_sidecars_found = len(sidecar_files)
     
@@ -324,7 +351,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     for json_file in sidecar_files:
             
         try:
-            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete)
+            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=organize_files)
         except (FileNotFoundError, ValueError, RuntimeError) as exc:
             logger.warning("❌ Échec du traitement de %s : %s", json_file.name, exc)
             # Les statistiques sont déjà mises à jour dans process_sidecar_file

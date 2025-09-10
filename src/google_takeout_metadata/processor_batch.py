@@ -10,6 +10,7 @@ from .sidecar import find_albums_for_directory, parse_sidecar
 from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file 
 from . import sidecar_safety
 from . import statistics
+from .file_organizer import FileOrganizer
 
 
 logger = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
         # Mettre à jour les statistiques pour chaque fichier du lot
         for media_path, _, _ in batch:
             is_image = media_path.suffix.lower() in IMAGE_EXTS
-            statistics.stats.add_processed_file(media_path, is_image)
+            statistics.stats.add_processed_file(is_image)
 
         # Gestion des sidecars après traitement réussi
         if immediate_delete:
@@ -121,7 +122,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             # En mode append-only, considérer ceci comme un succès partiel
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS
-                statistics.stats.add_processed_file(media_path, is_image)
+                statistics.stats.add_processed_file(is_image)
             
             # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
             if immediate_delete:
@@ -151,7 +152,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             # Considérer comme un succès partiel
             for media_path, _, _ in batch:
                 is_image = media_path.suffix.lower() in IMAGE_EXTS  
-                statistics.stats.add_processed_file(media_path, is_image)
+                statistics.stats.add_processed_file(is_image)
             
             # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
             if immediate_delete:
@@ -196,7 +197,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             Path(argfile_path).unlink()
 
 
-def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
+def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
     """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots.
     
     Args:
@@ -205,6 +206,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
         append_only: Ajouter uniquement les champs manquants
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
+        organize_files: Organiser les fichiers selon leur statut (archivé/supprimé/vérouillé)
     """
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
@@ -212,14 +214,24 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     # Initialiser les statistiques
     statistics.stats.start_processing()
     
+    # Initialiser l'organisateur de fichiers si demandé
+    file_organizer = None
+    if organize_files:
+        file_organizer = FileOrganizer(root)
+        logger.info("📁 Mode organisation activé : les fichiers seront organisés selon leur statut")
+    
     # Exclure les sidecars déjà traités (préfixe OK_)
     all_sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
     sidecar_files = [path for path in all_sidecar_files if not sidecar_safety.is_sidecar_processed(path)]
     
-    # Afficher les statistiques de filtrage
+    # Afficher les statistiques de filtrage et les comptabiliser
     processed_count = len(all_sidecar_files) - len(sidecar_files)
     if processed_count > 0:
         logger.info("📋 %d sidecars déjà traités ignorés (préfixe OK_)", processed_count)
+        # Ajouter les fichiers déjà traités aux statistiques
+        for path in all_sidecar_files:
+            if sidecar_safety.is_sidecar_processed(path):
+                statistics.stats.add_skipped_file(path, "Déjà traité (préfixe OK_)")
     
     statistics.stats.total_sidecars_found = len(sidecar_files)
     
@@ -248,6 +260,18 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             if fixed_json_path != json_path:
                 meta = parse_sidecar(fixed_json_path)
                 meta.albums.extend(find_albums_for_directory(fixed_json_path.parent))
+            
+            # Organisation des fichiers si demandée
+            if file_organizer and (meta.archived or meta.trashed or meta.locked):
+                try:
+                    moved_media, moved_json = file_organizer.move_file_with_sidecar(fixed_media_path, fixed_json_path, meta)
+                    if moved_media and moved_json:
+                        # Mettre à jour les chemins pour la suite du traitement
+                        fixed_media_path = moved_media
+                        fixed_json_path = moved_json
+                        logger.info(f"📁 Fichier organisé : {media_path.name} → {moved_media.parent.name}/")
+                except Exception as e:
+                    logger.warning(f"⚠️ Échec de l'organisation du fichier {media_path.name}: {e}")
             
             args = build_exiftool_args(
                 meta, media_path=fixed_media_path, use_localtime=use_localtime, append_only=append_only

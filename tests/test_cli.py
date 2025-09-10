@@ -58,7 +58,7 @@ def test_main_normal_mode(mock_process_directory, tmp_path):
     main([str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, clean_sidecars=False
+        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False
     )
 
 
@@ -68,7 +68,7 @@ def test_main_batch_mode(mock_process_directory_batch, tmp_path):
     main(["--batch", str(tmp_path)])
     
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, clean_sidecars=False
+        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False
     )
 
 
@@ -78,7 +78,7 @@ def test_main_localtime_option(mock_process_directory, tmp_path):
     main(["--localtime", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=True, clean_sidecars=False
+        tmp_path, use_localtime=True, append_only=True, immediate_delete=False, organize_files=False
     )
 
 
@@ -88,47 +88,27 @@ def test_main_overwrite_option(mock_process_directory, tmp_path):
     main(["--overwrite", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=False, clean_sidecars=False
+        tmp_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False
     )
 
 
 @patch('google_takeout_metadata.cli.process_directory')
-def test_main_clean_sidecars_option(mock_process_directory, tmp_path):
-    """Tester la CLI avec l'option clean-sidecars."""
-    main(["--clean-sidecars", str(tmp_path)])
+def test_main_immediate_delete_option(mock_process_directory, tmp_path):
+    """Tester la CLI avec l'option immediate-delete."""
+    main(["--immediate-delete", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, clean_sidecars=True
+        tmp_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False
     )
 
 
 @patch('google_takeout_metadata.cli.process_directory_batch')
 def test_main_batch_with_all_options(mock_process_directory_batch, tmp_path):
     """Tester le mode batch de la CLI avec toutes les options."""
-    main(["--batch", "--localtime", "--overwrite", "--clean-sidecars", str(tmp_path)])
+    main(["--batch", "--localtime", "--overwrite", "--immediate-delete", str(tmp_path)])
     
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=False, clean_sidecars=True
-    )
-
-
-def test_main_conflicting_options(capsys):
-    """Tester la CLI avec des options conflictuelles append-only et overwrite obsolètes."""
-    with pytest.raises(SystemExit):
-        main(["--append-only", "--overwrite", "/some/path"])
-    
-    # L'erreur est enregistrée mais pas affichée sur stderr avec la configuration actuelle
-    # Donc nous ne vérifions pas la sortie capturée, juste qu'elle se termine
-
-
-@patch('google_takeout_metadata.cli.process_directory')
-def test_main_deprecated_append_only_warning(mock_process_directory, tmp_path, caplog):
-    """Tester que la CLI avec l'option append-only obsolète affiche un avertissement."""
-    main(["--append-only", str(tmp_path)])
-    
-    assert "--append-only est obsolète" in caplog.text
-    mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, clean_sidecars=False
+        tmp_path, use_localtime=True, append_only=False, immediate_delete=True, organize_files=False
     )
 
 
@@ -229,8 +209,8 @@ def test_main_integration_batch_mode(tmp_path):
 
 
 @pytest.mark.integration
-def test_main_integration_clean_sidecars(tmp_path):
-    """Test d'intégration pour la CLI avec nettoyage des sidecars."""
+def test_main_integration_immediate_delete(tmp_path):
+    """Test d'intégration pour la CLI avec suppression immédiate des sidecars."""
     try:
         # Créer une image de test
         media_path = tmp_path / "cleanup.jpg"
@@ -240,7 +220,7 @@ def test_main_integration_clean_sidecars(tmp_path):
         # Créer le sidecar
         sidecar_data = {
             "title": "cleanup.jpg",
-            "description": "CLI cleanup test"
+            "description": "CLI immediate delete test"
         }
         json_path = tmp_path / "cleanup.jpg.json"
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
@@ -248,8 +228,8 @@ def test_main_integration_clean_sidecars(tmp_path):
         # Vérifier que le sidecar existe
         assert json_path.exists()
         
-        # Exécuter la CLI avec nettoyage
-        main(["--clean-sidecars", str(tmp_path)])
+        # Exécuter la CLI avec suppression immédiate
+        main(["--immediate-delete", str(tmp_path)])
         
         # Vérifier que le sidecar a été supprimé
         assert not json_path.exists()
@@ -265,10 +245,10 @@ def test_main_integration_clean_sidecars(tmp_path):
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         metadata = json.loads(result.stdout)[0]
         
-        assert metadata.get("ImageDescription") == "CLI cleanup test"
+        assert metadata.get("ImageDescription") == "CLI immediate delete test"
         
     except FileNotFoundError:
-        pytest.skip("exiftool introuvable - skipping CLI cleanup integration test")
+        pytest.skip("exiftool introuvable - skipping CLI immediate delete integration test")
 
 
 def test_main_entry_point():

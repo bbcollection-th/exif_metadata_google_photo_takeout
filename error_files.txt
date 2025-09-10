@@ -1,0 +1,17 @@
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-229/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-231/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/tmpmbt88zfm/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/tmpj3fxo9py/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-237/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-239/test_batch_sidecar_cleanup_wit0/non_existent.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-244/test_batch_sidecar_cleanup_wit0/non_existent.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-244/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/tmpf_ptzoug/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-245/test_batch_sidecar_cleanup_wit0/non_existent.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-245/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/tmph8ulm9ef/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-246/test_batch_sidecar_cleanup_wit0/non_existent.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-246/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/tmpc9pn2wg_/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-247/test_batch_sidecar_cleanup_wit0/non_existent.jpg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-247/test_process_directory_batch_f0/test.jpeg

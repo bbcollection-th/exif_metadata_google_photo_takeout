@@ -535,10 +535,10 @@ def test_batch_vs_normal_mode_equivalence(tmp_path: Path) -> None:
     
     try:
         # Proceder avec le mode normal
-        process_directory(normal_dir, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory(normal_dir, use_localtime=False, append_only=True, immediate_delete=False)
 
         # Traiter avec le mode par lot
-        process_directory_batch(batch_dir, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(batch_dir, use_localtime=False, append_only=True, immediate_delete=False)
         
         # Comparer les métadonnées des fichiers dans les deux répertoires
         for filename, expected_description, expected_person in test_files:
@@ -592,7 +592,7 @@ def test_batch_mode_performance_benefit(tmp_path: Path) -> None:
     try:
         # Mesurer le temps de traitement par lot
         start_time = time.time()
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
         end_time = time.time()
         
         batch_time = end_time - start_time
@@ -651,7 +651,7 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
     
     try:
         # Traiter avec le mode par lot
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
 
         # Vérifier que tous les fichiers ont été traités
         for filename, expected_description in test_files:

@@ -19,6 +19,10 @@ _SMALL_WORDS = {
     "de", "du", "des", "la", "le", "les", "van", "von", "da", "di", "of", "and",
     "der", "den", "het", "el", "al", "bin", "ibn", "af", "zu", "ben", "ap", "abu", "binti", "bint", "della", "delle", "dalla", "delle", "del", "dos", "das", "do", "mac", "fitz"
 }
+def get_all_keywords(meta: SidecarData) -> List[str]:
+    """Centralise la logique de création des mots-clés à partir des personnes et albums."""
+    keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+    return keywords
 
 def _is_video_file(path: Path) -> bool:
     return path.suffix.lower() in VIDEO_EXTS
@@ -188,14 +192,14 @@ def build_people_keywords_args(meta: SidecarData, *, conditional_mode: bool = Fa
         else:
             args.extend(build_remove_then_add_args_for_people(meta.people))
     
-    # Keywords (personnes + albums)
+    # Keywords (personnes + albums Google Photos uniquement)
     all_keywords = []
     if meta.people:
         # Ajouter les personnes normalisées comme mots-clés
         normalized_people = [normalize_person_name(person) for person in meta.people]
         all_keywords.extend(normalized_people)
     if meta.albums:
-        # Ajouter les albums avec préfixe
+        # Ajouter SEULEMENT les vrais albums Google Photos avec préfixe
         album_keywords = [f"Album: {normalize_keyword(album)}" for album in meta.albums]
         all_keywords.extend(album_keywords)
     
@@ -231,7 +235,6 @@ def build_description_args(meta: SidecarData, *, conditional_mode: bool = False)
         ])
     else:
         # Mode écrasement ou append-only simple
-        args.extend(["-wm", "cg"])
         args.extend([
             f"-EXIF:ImageDescription={safe_desc}",
             f"-XMP-dc:Description={safe_desc}",
@@ -292,6 +295,35 @@ def build_rating_args(meta: SidecarData) -> List[str]:
     
     return args
 
+def build_source_app_args(meta: SidecarData, *, conditional_mode: bool = False) -> List[str]:
+    """Construit les arguments pour l'application/source d'origine (local_folder_name).
+    
+    Écrit dans les tags Software/CreatorTool pour indiquer l'application source
+    (Camera, WhatsApp, Instagram, etc.) plutôt que comme album.
+    """
+    args: List[str] = []
+    
+    if not meta.local_folder_name:
+        return args
+    
+    source_app = meta.local_folder_name.strip()
+    
+    if conditional_mode:
+        # Mode conditionnel : n'écrire que si absent
+        args.extend([
+            "-if", "not $EXIF:Software",
+            f"-EXIF:Software={source_app}",
+            "-if", "not $XMP-xmp:CreatorTool", 
+            f"-XMP-xmp:CreatorTool={source_app}"
+        ])
+    else:
+        # Mode écrasement ou append-only simple
+        args.extend([
+            f"-EXIF:Software={source_app}",
+            f"-XMP-xmp:CreatorTool={source_app}"
+        ])
+    
+    return args
 # === FONCTION PRINCIPALE REFACTORISÉE ===
 
 def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtime: bool = False, append_only: bool = True) -> list[str]:
@@ -338,33 +370,37 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         # IMPORTANT: Pas de -wm cg car incompatible avec -TAG-= (suppression = édition)
         args.extend(build_people_keywords_args(meta, conditional_mode=False, overwrite_mode=False))
         
-        # Autres champs avec mode append-only classique
-        # IMPORTANT: -wm cg seulement pour les champs suivants, pas les précédents
+        # Grouper tous les champs qui nécessitent -wm cg
+        append_only_args = []
+        
+        # Dates
         datetime_args = build_datetime_args(meta, use_localtime, is_video)
         if datetime_args:
-            args.extend(["-wm", "cg"])  # Activer pour les dates
-            args.extend(datetime_args)
+            append_only_args.extend(datetime_args)
         
         # Vidéo spécifique
         if is_video and meta.description:
             safe_desc = _sanitize_description(meta.description)
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.append(f"-Keys:Description={safe_desc}")
+            append_only_args.append(f"-Keys:Description={safe_desc}")
         
-        # GPS (pas besoin de -wm cg, création de nouvelles coordonnées)
+        # GPS et Rating 
         gps_args = build_gps_args(meta, is_video)
         if gps_args:
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.extend(gps_args)
+            append_only_args.extend(gps_args)
         
-        # Rating (pas besoin de -wm cg, création)
         rating_args = build_rating_args(meta)
         if rating_args:
-            if not any("-wm" in str(arg) for arg in args):  # Ajouter -wm cg si pas déjà présent
-                args.extend(["-wm", "cg"])
-            args.extend(rating_args)
+            append_only_args.extend(rating_args)
+        
+        # Application source (local_folder_name) 
+        source_app_args = build_source_app_args(meta, conditional_mode=True)
+        if source_app_args:
+            append_only_args.extend(source_app_args)
+
+        # Ajouter -wm cg une seule fois au début si nécessaire
+        if append_only_args:
+            args.extend(["-wm", "cg"])
+            args.extend(append_only_args)
         
     else:
         # Mode écrasement : pas de -wm cg, pas de conditions
@@ -389,6 +425,9 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         # Rating
         args.extend(build_rating_args(meta))
     
+        # Application source (local_folder_name)
+        args.extend(build_source_app_args(meta, conditional_mode=False))
+
     return args
 
 # === FONCTIONS EXISTANTES PRÉSERVÉES ===
@@ -450,6 +489,9 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
         
         datetime_args = build_datetime_args(meta, use_localtime, is_video)
         if datetime_args:
+            # CORRECTION P1: Toujours ajouter -wm cg pour les timestamps en mode append-only
+            # pour éviter d'écraser les valeurs existantes, même si pas de description
+            conditional_args.extend(["-wm", "cg"])
             conditional_args.extend(datetime_args)
         
         # Vidéo spécifique (description)
@@ -502,5 +544,8 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
 # Fonctions utilitaires héritées
 
 def _build_keywords(meta: SidecarData) -> list[str]:
-    """Centralise la logique de création des mots-clés à partir des personnes et albums."""
-    return (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+    """Centralise la logique de création des mots-clés à partir des personnes, albums et dossier source."""
+    keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+    if meta.local_folder_name:
+        keywords.append(f"Album: {meta.local_folder_name}")
+    return keywords

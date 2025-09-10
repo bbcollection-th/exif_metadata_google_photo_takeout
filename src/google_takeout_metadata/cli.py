@@ -25,16 +25,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Autoriser l'écrasement des champs de métadonnées existants (par défaut, les métadonnées existantes sont préservées)"
     )
     parser.add_argument(
-        "--append-only", action="store_true",
-        help=argparse.SUPPRESS  # Cache l'option dépréciée de l'aide
-    )
-    parser.add_argument(
-        "--clean-sidecars", action="store_true",
-        help="[DÉPRÉCIÉ] Utiliser --immediate-delete à la place"
-    )
-    parser.add_argument(
         "--immediate-delete", action="store_true",
         help="Mode destructeur: supprimer immédiatement les sidecars JSON après succès (par défaut: mode sécurisé avec préfixe OK_)"
+    )
+    parser.add_argument(
+        "--organize-files", action="store_true",
+        help="Organiser les fichiers selon leur statut: déplacer les fichiers archivés vers '_Archive' et supprimés vers '_Corbeille'"
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true",
@@ -53,19 +49,8 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
     
-    # Gestion de la rétrocompatibilité et validation des options
-    if args.append_only and args.overwrite:
-        logging.error("Impossible d'utiliser simultanément --append-only (obsolète) et --overwrite")
-        sys.exit(1)
-    
-    if args.append_only:
-        logging.warning("--append-only est obsolète et correspond désormais au comportement par défaut. Utilisez --overwrite pour autoriser l'écrasement des métadonnées existantes.")
-    
     # Gestion de la compatibilité du système de sécurité
     immediate_delete = args.immediate_delete
-    if args.clean_sidecars:
-        logging.warning("⚠️  --clean-sidecars est déprécié. Utilisez --immediate-delete pour le mode destructeur.")
-        immediate_delete = True
     
     if immediate_delete:
         logging.info("🔥 Mode destructeur activé : les sidecars seront supprimés immédiatement après succès")
@@ -89,9 +74,9 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     if args.batch:
-        process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete)
+        process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=args.organize_files)
     else:
-        process_directory(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete)
+        process_directory(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=args.organize_files)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry

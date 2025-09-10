@@ -64,7 +64,7 @@ class ProcessingStats:
             return 0.0
         return (self.total_processed / self.total_sidecars_found) * 100
     
-    def add_processed_file(self, file_path: Path, is_image: bool = True) -> None:
+    def add_processed_file(self, is_image: bool = True) -> None:
         """Ajouter un fichier traité avec succès."""
         self.total_processed += 1
         if is_image:
