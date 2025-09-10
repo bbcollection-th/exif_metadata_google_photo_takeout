@@ -26,7 +26,18 @@ def test_hybrid_approach_no_duplicates():
     
     with tempfile.TemporaryDirectory() as temp_dir:
         # Copier l'image test dans le répertoire temporaire
-        test_image_src = Path("test_assets/test_clean.jpg")
+# At the top of tests/test_hybrid_approach.py, add:
+import os
+
+def test_hybrid_approach_no_duplicates():
+    """Test de l'approche hybride : pas de doublons quand on ajoute des personnes existantes."""
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Copier l'image test dans le répertoire temporaire
+        test_dir = Path(os.path.dirname(__file__))
+        test_image_src = test_dir / "test_assets" / "test_clean.jpg"
+        test_image = Path(temp_dir) / "test_image.jpg"
+        shutil.copy2(test_image_src, test_image)
         test_image = Path(temp_dir) / "test_image.jpg"
         shutil.copy2(test_image_src, test_image)
         
