@@ -4,8 +4,9 @@ import shutil
 from pathlib import Path
 
 def run_exiftool_command(cmd_args, media_path):
-    cmd = ["exiftool", "-overwrite_original", "-charset", "filename=UTF8", str(media_path)]
+    cmd = ["exiftool", "-overwrite_original", "-charset", "filename=UTF8"]
     cmd.extend(cmd_args)
+    cmd.append(str(media_path))
     subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30, encoding='utf-8')
 
 def read_exif_tag(media_path, tag):
