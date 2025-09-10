@@ -10,6 +10,7 @@ from datetime import datetime
 
 from .sidecar import parse_sidecar, find_albums_for_directory
 from .exif_writer import write_metadata
+from . import sidecar_safety
 from . import statistics
 
 logger = logging.getLogger(__name__)
@@ -188,15 +189,21 @@ def _is_sidecar_file(path: Path) -> bool:
     return False
 
 
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
     Args:
         json_path: Chemin du fichier JSON annexe
         use_localtime: Convertir les dates en heure locale au lieu d'UTC
         append_only: Ajouter uniquement les champs manquants
-        clean_sidecars: Supprimer le JSON après un traitement réussi
+        immediate_delete: Mode destructeur - supprimer immédiatement le JSON après succès 
+                         (par défaut: mode sécurisé avec préfixe OK_)
     """
+    
+    # Vérifier si ce sidecar a déjà été traité (préfixe OK_)
+    if sidecar_safety.is_sidecar_processed(json_path):
+        logger.debug("Sidecar déjà traité, ignoré: %s", json_path)
+        return
 
     try:
         meta = parse_sidecar(json_path)
@@ -263,30 +270,48 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             statistics.stats.add_failed_file(media_path, "metadata_write_error", str(exc))
             raise
     
-    # Nettoyer le sidecar si demandé et si l'écriture a réussi
-    if clean_sidecars:
+    # Gestion du sidecar après succès
+    if immediate_delete:
+        # Mode destructeur : suppression immédiate (ancien comportement)
         try:
             current_json_path.unlink()
             statistics.stats.sidecars_cleaned += 1
             logger.info("🗑️ Fichier de métadonnées supprimé : %s", current_json_path.name)
         except OSError as exc:
             logger.warning("Échec de la suppression du fichier de métadonnées %s : %s", current_json_path, exc)
+    else:
+        # Mode sécurisé : marquage avec préfixe OK_ (nouveau comportement par défaut)
+        try:
+            if sidecar_safety.mark_sidecar_as_processed(current_json_path):
+                statistics.stats.sidecars_cleaned += 1  # Compteur réutilisé pour les "traités"
+                logger.info("✅ Sidecar marqué comme traité : %s", current_json_path.name)
+        except OSError as exc:
+            logger.warning("Échec du marquage du sidecar %s : %s", current_json_path, exc)
 
 
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
     """Traiter récursivement tous les fichiers annexes sous ``root``.
     
     Args:
         root: Répertoire racine à parcourir récursivement
         use_localtime: Convertir les dates en heure locale au lieu d'UTC
         append_only: Ajouter uniquement les champs manquants
-        clean_sidecars: Supprimer les JSON après un traitement réussi
+        immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
+                         (par défaut: mode sécurisé avec préfixe OK_)
     """
     
     # Initialiser les statistiques
     statistics.stats.start_processing()
     
-    sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
+    # Exclure les sidecars déjà traités (préfixe OK_)
+    all_json_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
+    sidecar_files = [path for path in all_json_files if not sidecar_safety.is_sidecar_processed(path)]
+    
+    # Afficher les statistiques de filtrage
+    processed_count = len(all_json_files) - len(sidecar_files)
+    if processed_count > 0:
+        logger.info("📋 %d sidecars déjà traités ignorés (préfixe OK_)", processed_count)
+    
     statistics.stats.total_sidecars_found = len(sidecar_files)
     
     if statistics.stats.total_sidecars_found == 0:
@@ -299,7 +324,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     for json_file in sidecar_files:
             
         try:
-            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, clean_sidecars=clean_sidecars)
+            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete)
         except (FileNotFoundError, ValueError, RuntimeError) as exc:
             logger.warning("❌ Échec du traitement de %s : %s", json_file.name, exc)
             # Les statistiques sont déjà mises à jour dans process_sidecar_file
@@ -308,6 +333,29 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     
     # Affichage du résumé
     statistics.stats.print_console_summary()
+    
+    # Générer les scripts de sécurité si des sidecars ont été traités (mode sécurisé uniquement)
+    if not immediate_delete and statistics.stats.sidecars_cleaned > 0:
+        logger.info("\n🔐 === SYSTÈME DE SÉCURITÉ ===")
+        
+        # Générer les scripts
+        cleanup_script = sidecar_safety.generate_cleanup_script(root)
+        rollback_script = sidecar_safety.generate_rollback_script(root)
+        
+        if cleanup_script and rollback_script:
+            logger.info("📜 Scripts de gestion générés :")
+            logger.info("   • Nettoyage : %s", cleanup_script)
+            logger.info("   • Rollback  : %s", rollback_script)
+            logger.info("")
+            logger.info("⚠️  Les sidecars traités ont été marqués avec le préfixe 'OK_'")
+            logger.info("   Vérifiez le traitement puis utilisez les scripts pour:")
+            logger.info("   1. Supprimer définitivement les sidecars traités (cleanup)")
+            logger.info("   2. Restaurer les noms originaux en cas d'erreur (rollback)")
+        
+        # Afficher le résumé de sécurité
+        nb_processed, nb_pending, messages = sidecar_safety.generate_scripts_summary(root)
+        for message in messages:
+            logger.info(message)
     
     # Créer un dossier logs s'il n'existe pas
     logs_dir = root / "logs"
