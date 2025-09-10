@@ -18,10 +18,11 @@ def test_batch_organization():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_dir = Path(temp_dir)
         
-        # 1. Créer un vrai fichier image minimal avec PIL
+        # 1. Créer un fichier média (vraie image JPEG)
         media_file = test_dir / "test_image.jpg"
-        img = Image.new('RGB', (100, 100), color='red')
-        img.save(media_file)
+        # Créer une vraie image JPEG avec PIL
+        img = Image.new('RGB', (100, 100), color='blue')
+        img.save(media_file, 'JPEG')
         
         # 2. Créer un sidecar avec statut trashed
         sidecar_file = test_dir / "test_image.jpg.json" 
@@ -31,7 +32,7 @@ def test_batch_organization():
             "photoTakenTime": {"timestamp": "1640995200"},
             "trashed": True,
             "archived": False,
-            "locked": False
+            "inLockedFolder": False
         }
         
         with open(sidecar_file, 'w', encoding='utf-8') as f:
@@ -62,9 +63,10 @@ def test_batch_organization():
         print(f"   Fichier média déplacé : {moved_media.exists()}")
         print(f"   Sidecar déplacé et marqué : {moved_sidecar.exists()}")
         
-        # Utiliser des assertions au lieu de return pour pytest
+        # Utiliser des assertions au lieu de return
         assert corbeille_dir.exists(), "Le dossier corbeille devrait être créé"
         assert moved_media.exists(), "Le fichier média devrait être déplacé dans la corbeille"
+        assert moved_sidecar.exists(), "Le sidecar devrait être déplacé et marqué OK"
         
         print("✅ Test batch avec organisation réussi !")
 
@@ -73,9 +75,10 @@ if __name__ == "__main__":
     print("🧪 Test d'organisation en mode batch")
     print("=" * 50)
     
-    success = test_batch_organization()
-    print("\n" + "=" * 50)
-    if success:
+    try:
+        test_batch_organization()
+        print("\n" + "=" * 50)
         print("🎉 Test d'intégration batch réussi !")
-    else:
-        print("💥 Test d'intégration batch échoué")
+    except AssertionError as e:
+        print("\n" + "=" * 50)
+        print(f"💥 Test d'intégration batch échoué: {e}")
