@@ -118,8 +118,16 @@ Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` e
 - **Ratings existants** ne sont jamais changés
 
 ### ✅ Métadonnées ajoutées:
-- **Personnes** sont ajoutées aux listes existantes (pas de suppression)
-- **Albums** sont ajoutés aux mots-clés existants (pas de suppression)
+- **Personnes** sont ajoutées aux listes existantes avec déduplication intelligente
+- **Albums** sont ajoutés aux mots-clés existants avec déduplication intelligente
+
+### 🔧 Déduplication intelligente:
+**Nouvelle fonctionnalité** : Le système évite automatiquement les doublons dans les tags de liste.
+
+- **Normalisation des noms** : "anthony vincent" et "Anthony Vincent" sont reconnus comme identiques
+- **Gestion des cas spéciaux** : Support intelligent pour "McDonald", "O'Connor", "van der Berg", etc.
+- **Déduplication robuste** : Utilise l'approche "supprimer puis ajouter" (-TAG-=val -TAG+=val) pour garantir zéro doublon final
+- **Performance optimisée** : Logs -efile pour reprises intelligentes en cas d'interruption
 
 ### ⚠️ Mode destructif:
 Utilisez `--overwrite` seulement si vous voulez explicitement écraser les métadonnées existantes.

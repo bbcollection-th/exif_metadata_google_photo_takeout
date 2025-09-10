@@ -16,3 +16,6 @@ exiftool_test/
 exiftool-doc.md
 repomix-output.md.txt
 experiments/
+exif-struct.txt
+exiftool.org/
+src/google_takeout_metadata/exif_writer.py.backup

@@ -30,7 +30,11 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument(
         "--clean-sidecars", action="store_true",
-        help="Supprimer les fichiers JSON annexes après un transfert de métadonnées réussi"
+        help="[DÉPRÉCIÉ] Utiliser --immediate-delete à la place"
+    )
+    parser.add_argument(
+        "--immediate-delete", action="store_true",
+        help="Mode destructeur: supprimer immédiatement les sidecars JSON après succès (par défaut: mode sécurisé avec préfixe OK_)"
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true",
@@ -57,6 +61,17 @@ def main(argv: list[str] | None = None) -> None:
     if args.append_only:
         logging.warning("--append-only est obsolète et correspond désormais au comportement par défaut. Utilisez --overwrite pour autoriser l'écrasement des métadonnées existantes.")
     
+    # Gestion de la compatibilité du système de sécurité
+    immediate_delete = args.immediate_delete
+    if args.clean_sidecars:
+        logging.warning("⚠️  --clean-sidecars est déprécié. Utilisez --immediate-delete pour le mode destructeur.")
+        immediate_delete = True
+    
+    if immediate_delete:
+        logging.info("🔥 Mode destructeur activé : les sidecars seront supprimés immédiatement après succès")
+    else:
+        logging.info("🔐 Mode sécurisé activé : les sidecars seront marqués avec le préfixe 'OK_' (défaut)")
+    
     if not args.path.is_dir():
         logging.error("Le chemin indiqué n'est pas un répertoire : %s", args.path)
         sys.exit(1)
@@ -74,9 +89,9 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     if args.batch:
-        process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
+        process_directory_batch(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete)
     else:
-        process_directory(args.path, use_localtime=args.localtime, append_only=append_only, clean_sidecars=args.clean_sidecars)
+        process_directory(args.path, use_localtime=args.localtime, append_only=append_only, immediate_delete=immediate_delete)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry

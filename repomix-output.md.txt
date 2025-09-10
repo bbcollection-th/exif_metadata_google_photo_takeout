@@ -8,13 +8,12 @@ src/google_takeout_metadata/__init__.py
 src/google_takeout_metadata/__main__.py
 src/google_takeout_metadata/cli.py
 src/google_takeout_metadata/exif_writer.py
-src/google_takeout_metadata/exif_writer.py.backup
 src/google_takeout_metadata/processor_batch.py
 src/google_takeout_metadata/processor.py
 src/google_takeout_metadata/sidecar.py
 src/google_takeout_metadata/statistics.py
 test_assets/README.md
-tests/CORRECT_test_hybrid_approach.py
+tests/test_hybrid_approach.py
 tests/test_cli.py
 tests/test_end_to_end.py
 tests/test_exif_writer.py
@@ -384,60 +383,34 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
         return None
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")
+def _build_keywords(meta: SidecarData) -> list[str]:
+    """Centralise la logique de création des mots-clés à partir des personnes et albums."""
+    return (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+def _sanitize_description(desc: str) -> str:
+    """Centralise le nettoyage des descriptions pour ExifTool."""
+    return desc.replace("\r", " ").replace("\n", " ").strip()
 def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
     """Écrit les métadonnées sur un média en utilisant ExifTool."""
     if append_only:
-        # Mode append-only : approche hybride en 3 étapes
-        # 1. Tags à valeur unique avec -wm cg (créer seulement si vide)
-        # 2. Tags de liste avec += (peut créer des doublons temporairement)
-        # 3. Nettoyage avec NoDups pour éliminer les doublons
-        # Étape 1 : Tags à valeur unique (Description, Dates, GPS, Rating)
-        single_args = build_exiftool_args(meta, media_path, use_localtime, append_only=True)
-        # Exécuter la commande pour tags uniques
-        if single_args:
-            _run_exiftool_command(media_path, single_args, _append_only=True)
-        # Étape 2 : Tags de liste avec accumulation (peut créer des doublons)
-        list_args = []
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
-        if meta.people:
-            for person in meta.people:
-                list_args.append(f"-XMP-iptcExt:PersonInImage+={person}")
-        if all_keywords:
-            for keyword in all_keywords:
-                list_args.append(f"-XMP-dc:Subject+={keyword}")
-                list_args.append(f"-IPTC:Keywords+={keyword}")
-        # Exécuter la commande pour tags de liste (avec doublons possibles)
-        if list_args:
-            _run_exiftool_command(media_path, list_args, _append_only=True)
-            # Étape 3 : Nettoyage des doublons avec fonction NoDups
-            _cleanup_duplicates(media_path)
+        # Mode append-only : utiliser build_exiftool_args qui gère déjà tout avec -wm cg
+        args = build_exiftool_args(meta, media_path, use_localtime, append_only=True)
+        if args:
+            _run_exiftool_command(media_path, args, _append_only=True)
     else:
         # Mode écrasement : utiliser build_exiftool_args directement
         all_args = build_exiftool_args(meta, media_path, use_localtime, append_only=False)
         # Exécuter en mode écrasement
         if all_args:
             _run_exiftool_command(media_path, all_args, _append_only=False)
-def _cleanup_duplicates(media_path: Path) -> None:
-    """Nettoie les doublons dans les tags de liste en utilisant l'API NoDups d'ExifTool."""
-    cleanup_cmd = [
-        "exiftool",
-        "-tagsfromfile", "@",
-        "-XMP-iptcExt:PersonInImage",
-        "-XMP-dc:Subject", 
-        "-IPTC:Keywords",
-        "-api", "nodups",
-        "-overwrite_original",
-        str(media_path)
-    ]
-    try:
-        result = subprocess.run(cleanup_cmd, capture_output=True, text=True, timeout=30, encoding='utf-8')
-        logger.debug("Cleanup duplicates for %s: %s", media_path.name, result.stdout.strip())
-    except (subprocess.SubprocessError, OSError) as exc:
-        logger.warning("Échec du nettoyage des doublons pour %s: %s", media_path.name, exc)
 def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtime: bool = False, append_only: bool = True) -> list[str]:
     """Construit les arguments exiftool pour traiter un fichier média avec les métadonnées fournies.
-    Note: En mode append_only=True, cette fonction inclut tous les tags mais peut créer des doublons
-    dans les tags de liste. Pour un traitement optimal sans doublons, utilisez write_metadata() directement.
+    Args:
+        meta: Métadonnées à écrire
+        media_path: Chemin du fichier média (optionnel, pour la détection vidéo)
+        use_localtime: Utiliser l'heure locale au lieu d'UTC
+        append_only: Mode append-only (-wm cg) ou mode écrasement
+    Returns:
+        Liste des arguments exiftool
     """
     args = []
     if append_only:
@@ -448,7 +421,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         args.extend(["-wm", "cg"])
         # Description
         if meta.description:
-            safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
+            safe_desc = _sanitize_description(meta.description)
             args.extend([f"-EXIF:ImageDescription={safe_desc}", f"-XMP-dc:Description={safe_desc}", f"-IPTC:Caption-Abstract={safe_desc}"])
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
@@ -457,7 +430,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             for person in meta.people:
                 args.append(f"-XMP-iptcExt:PersonInImage+={person}")
         # Mots-clés (personnes + albums)
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+        all_keywords = _build_keywords(meta)
         if all_keywords:
             for keyword in all_keywords:
                 args.append(f"-XMP-dc:Subject+={keyword}")
@@ -501,7 +474,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             args.extend(["-api", "QuickTimeUTC=1"])
         # Description
         if meta.description:
-            safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
+            safe_desc = _sanitize_description(meta.description)
             args.extend([f"-EXIF:ImageDescription={safe_desc}", f"-XMP-dc:Description={safe_desc}", f"-IPTC:Caption-Abstract={safe_desc}"])
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
@@ -512,7 +485,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             for person in meta.people:
                 args.append(f"-XMP-iptcExt:PersonInImage+={person}")
         # Ajouter mots-clés (personnes + albums)
-        all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
+        all_keywords = _build_keywords(meta)
         if all_keywords:
             for keyword in all_keywords:
                 args.append(f"-XMP-dc:Subject+={keyword}")
@@ -576,538 +549,6 @@ def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool)
             logger.info(f"Aucune métadonnée manquante à écrire pour {media_path.name} (comportement normal en mode append-only).")
             return
         error_msg = f"exiftool a échoué pour {media_path.name} (code {exc.returncode}): {exc.stderr.strip() or exc.stdout.strip()}"
-        raise RuntimeError(error_msg) from exc
-````
-
-## File: src/google_takeout_metadata/exif_writer.py.backup
-````
-# imports: supprime import shlex, tempfile
-import logging
-import subprocess
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import List
-
-from .sidecar import SidecarData
-
-logger = logging.getLogger(__name__)
-
-VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}  # ensemble plus large d'extensions vidéo
-
-def _analyze_exiftool_error(stderr: str, stdout: str, returncode: int, media_path: Path) -> str:
-    """Analyse les erreurs d'exiftool et retourne un message plus clair."""
-    stderr_msg = stderr.strip() if stderr else ""
-    stdout_msg = stdout.strip() if stdout else ""
-    
-    if "doesn't exist or isn't writable" in stderr_msg:
-        if "Keys:Location" in stderr_msg:
-            return (f"Le champ GPS 'Keys:Location' n'est pas supporté par {media_path.name}. "
-                   f"Ceci est normal pour certains formats de fichiers.")
-        elif "QuickTime:" in stderr_msg:
-            return (f"Certains champs vidéo QuickTime ne sont pas supportés par {media_path.name}. "
-                   f"Les métadonnées de base ont été écrites avec succès.")
-        else:
-            return (f"Certains champs de métadonnées ne sont pas supportés par {media_path.name}: "
-                   f"{stderr_msg}")
-    
-    if "character(s) could not be encoded" in stderr_msg:
-        return (f"Problème d'encodage de caractères dans le nom de fichier {media_path.name}. "
-               f"Les caractères spéciaux (émojis, accents) peuvent causer ce problème. "
-               f"Les métadonnées ont probablement été écrites malgré cet avertissement.")
-    
-    if "not supported" in stderr_msg.lower():
-        return (f"Certaines métadonnées ne sont pas supportées par le format de {media_path.name}. "
-               f"Détails: {stderr_msg}")
-    
-    if "nothing to do" in stderr_msg.lower():
-        return f"Aucune métadonnée à écrire pour {media_path.name} (le fichier a déjà toutes les métadonnées)."
-    
-    # Message d'erreur générique avec plus de contexte
-    error_detail = stderr_msg or stdout_msg or "Aucune information détaillée"
-    return (f"Erreur lors de l'écriture des métadonnées pour {media_path.name} "
-           f"(code {returncode}): {error_detail}")
-
-def _is_video_file(path: Path) -> bool:
-    return path.suffix.lower() in VIDEO_EXTS
-
-def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
-    if ts is None:
-        return None
-    dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
-    return dt.strftime("%Y:%m:%d %H:%M:%S")  # EXIF sans fuseau
-
-def _build_video_config_args(media_path: Path | None) -> List[str]:
-    """Construire les arguments de configuration pour les vidéos."""
-    args: List[str] = []
-    if media_path and _is_video_file(media_path):
-        args += ["-api", "QuickTimeUTC=1"]
-    return args
-
-
-def _build_description_args(meta: SidecarData, media_path: Path | None, append_only: bool) -> List[str]:
-    """Construire les arguments pour la description."""
-    args: List[str] = []
-    
-    if not meta.description:
-        return args
-    # Normaliser pour éviter les sauts de ligne/injection dans les fichiers -@
-    safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
-    if append_only:
-        # Mode strict "append-only" : écrire uniquement si la balise n'existe pas déjà
-        args.extend([
-            "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={safe_desc}",
-            "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={safe_desc}",
-            "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={safe_desc}",
-        ])
-        if media_path and _is_video_file(media_path):
-            args.extend([
-                "-if", "not $Keys:Description", f"-Keys:Description={safe_desc}"
-            ])
-    else:
-        # Mode écrasement : remplacer les descriptions existantes
-        args.extend([
-            f"-EXIF:ImageDescription={safe_desc}",
-            f"-XMP-dc:Description={safe_desc}",
-            f"-IPTC:Caption-Abstract={safe_desc}",
-        ])
-        if media_path and _is_video_file(media_path):
-            args.append(f"-Keys:Description={safe_desc}")
-
-    return args
-
-
-def _build_people_args(meta: SidecarData, media_path: Path | None = None, append_only: bool = False) -> List[str]:
-    """Construire les arguments pour les personnes."""
-    args: List[str] = []
-    
-    if not meta.people:
-        return args
-    
-    if append_only:
-        # En mode append-only, utiliser += avec l'API NoDups pour éviter les doublons
-        # et permettre la création de nouvelles listes (comme dans votre script Python)
-        args.extend(["-api", "NoDups=1"])
-        for person in meta.people:
-            # Séparer les arguments comme dans l'exemple Python sécurisé
-            args.extend(["-XMP-iptcExt:PersonInImage+=", person])
-            args.extend(["-XMP-dc:Subject+=", person]) 
-            args.extend(["-IPTC:Keywords+=", person])
-    else:
-        # En mode écrasement, vider d'abord les tags, puis les remplir
-        # C'est la manière la plus explicite de garantir un écrasement
-        args.extend([
-            "-XMP-iptcExt:PersonInImage=",
-            "-XMP-dc:Subject=", 
-            "-IPTC:Keywords="
-        ])
-        # Ensuite, ajouter toutes les nouvelles personnes à la liste maintenant vide
-        for person in meta.people:
-            args.extend(["-XMP-iptcExt:PersonInImage+=", person])
-            args.extend(["-XMP-dc:Subject+=", person])
-            args.extend(["-IPTC:Keywords+=", person])
-    
-    return args
-
-
-def _build_albums_args(meta: SidecarData, media_path: Path | None = None, append_only: bool = False) -> List[str]:
-    """Construire les arguments pour les albums."""
-    args: List[str] = []
-    
-    if not meta.albums:
-        return args
-    
-    if append_only:
-        # En mode append-only, utiliser += avec l'API NoDups
-        args.extend(["-api", "NoDups=1"])
-        for album in meta.albums:
-            album_tag = f"Album: {album}"
-            args.extend(["-XMP-dc:Subject+=", album_tag])
-            args.extend(["-IPTC:Keywords+=", album_tag])
-    else:
-        # En mode écrasement, les albums sont gérés avec les personnes
-        # donc on ajoute simplement (les tags ont déjà été vidés par _build_people_args)
-        for album in meta.albums:
-            album_tag = f"Album: {album}"
-            args.extend(["-XMP-dc:Subject+=", album_tag])
-            args.extend(["-IPTC:Keywords+=", album_tag])
-    
-    return args
-
-
-def _build_rating_args(meta: SidecarData, append_only: bool) -> List[str]:
-    """Construire les arguments pour le rating/favoris."""
-    args: List[str] = []
-    
-    if meta.favorite:
-        if append_only:
-            # Définir le rating uniquement s'il n'existe pas déjà
-            args.extend(["-if", "not $XMP:Rating", "-XMP:Rating=5"])
-        else:
-            # Mode écrasement : forcer le rating même s'il existe déjà
-            args.append("-XMP:Rating=5")
-    
-    return args
-
-
-def _build_date_args(meta: SidecarData, media_path: Path | None, use_localtime: bool, append_only: bool) -> List[str]:
-    """Construire les arguments pour les dates."""
-    args: List[str] = []
-    
-    # Définir les champs EXIF standard :
-    # - DateTimeOriginal est défini à partir de meta.taken_at (prise de vue)
-    # - CreateDate et ModifyDate sont définis à partir de meta.created_at si disponible, sinon meta.taken_at
-    if (s := _fmt_dt(meta.taken_at, use_localtime)):
-        if append_only:
-            args.extend(["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"])
-        else:
-            args.append(f"-DateTimeOriginal={s}")
-
-    base_ts = meta.created_at or meta.taken_at
-    if (s := _fmt_dt(base_ts, use_localtime)):
-        if append_only:
-            args.extend(["-if", "not $CreateDate", f"-CreateDate={s}"])
-            args.extend(["-if", "not $ModifyDate", f"-ModifyDate={s}"])
-        else:
-            args.extend([f"-CreateDate={s}", f"-ModifyDate={s}"])
-
-    # Dates QuickTime (vidéos)
-    if media_path and _is_video_file(media_path):
-        if (s := _fmt_dt(meta.taken_at, use_localtime)):
-            if append_only:
-                args.extend(["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"])
-            else:
-                args.append(f"-QuickTime:CreateDate={s}")
-        if (s := _fmt_dt(base_ts, use_localtime)):
-            if append_only:
-                args.extend(["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"])
-            else:
-                args.append(f"-QuickTime:ModifyDate={s}")
-    
-    return args
-
-
-def _build_gps_args(meta: SidecarData, media_path: Path | None, append_only: bool) -> List[str]:
-    """Construire les arguments pour les données GPS."""
-    args: List[str] = []
-    
-    if meta.latitude is None or meta.longitude is None:
-        return args
-    
-    lat_ref = "N" if meta.latitude >= 0 else "S"
-    lon_ref = "E" if meta.longitude >= 0 else "W"
-    
-    if append_only:
-        # Écrire le GPS uniquement s'il n'existe pas déjà
-        args += [
-            "-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}",
-            "-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}",
-            "-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}",
-            "-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}",
-        ]
-    else:
-        args += [
-            f"-GPSLatitude={abs(meta.latitude)}",
-            f"-GPSLatitudeRef={lat_ref}",
-            f"-GPSLongitude={abs(meta.longitude)}",
-            f"-GPSLongitudeRef={lon_ref}",
-        ]
-    
-    if meta.altitude is not None:
-        alt_ref = "1" if meta.altitude < 0 else "0"
-        if append_only:
-            args += ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}", "-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
-        else:
-            args += [f"-GPSAltitude={abs(meta.altitude)}", f"-GPSAltitudeRef={alt_ref}"]
-
-    if media_path and _is_video_file(media_path):
-        # QuickTime:GPSCoordinates accepte "lat lon" ou "lat,lon" selon les players ; cette forme marche en général
-        if append_only:
-            args.extend(["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"])
-            args.extend(["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"])
-        else:
-            args.append(f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}")
-            args.append(f"-Keys:Location={meta.latitude},{meta.longitude}")
-    
-    return args
-
-
-def build_exiftool_args(meta: SidecarData, media_path: Path | None = None, use_localtime: bool = False, append_only: bool = True) -> List[str]:
-    """Construire la liste complète des arguments pour exiftool en un seul appel."""
-    args: List[str] = []
-
-    # --- Configuration ---
-    if media_path and _is_video_file(media_path):
-        args.extend(["-api", "QuickTimeUTC=1"])
-    
-    # --- Description ---
-    if meta.description:
-        safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
-        if append_only:
-            args.extend(["-if", "not $EXIF:ImageDescription", "-EXIF:ImageDescription=", safe_desc])
-            args.extend(["-if", "not $XMP-dc:Description", "-XMP-dc:Description=", safe_desc])
-            args.extend(["-if", "not $IPTC:Caption-Abstract", "-IPTC:Caption-Abstract=", safe_desc])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-if", "not $Keys:Description", "-Keys:Description=", safe_desc])
-        else:
-            args.extend(["-EXIF:ImageDescription=", safe_desc])
-            args.extend(["-XMP-dc:Description=", safe_desc])
-            args.extend(["-IPTC:Caption-Abstract=", safe_desc])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-Keys:Description=", safe_desc])
-
-    # --- Personnes et Albums (regroupés car ils modifient les mêmes tags) ---
-    all_keywords = (meta.people or []) + [f"Album: {a}" for a in (meta.albums or [])]
-    
-    if append_only:
-        # Ajout sans doublons pour toutes les listes
-        if meta.people or meta.albums:
-            args.extend(["-api", "NoDups=1"])
-        if meta.people:
-            for person in meta.people:
-                args.extend(["-XMP-iptcExt:PersonInImage+=", person])
-        if all_keywords:
-            for keyword in all_keywords:
-                args.extend(["-XMP-dc:Subject+=", keyword])
-                args.extend(["-IPTC:Keywords+=", keyword])
-    else:
-        # Écrasement
-        args.extend(["-XMP-iptcExt:PersonInImage="]) # Vider la liste
-        if meta.people:
-            for person in meta.people:
-                args.extend(["-XMP-iptcExt:PersonInImage+=", person])
-
-        args.extend(["-XMP-dc:Subject=", "-IPTC:Keywords="]) # Vider les listes
-        if all_keywords:
-            for keyword in all_keywords:
-                args.extend(["-XMP-dc:Subject+=", keyword])
-                args.extend(["-IPTC:Keywords+=", keyword])
-
-    # --- Rating/Favoris ---
-    if meta.favorite:
-        if append_only:
-            args.extend(["-if", "not $XMP:Rating", "-XMP:Rating=", "5"])
-        else:
-            args.extend(["-XMP:Rating=", "5"])
-            
-    # --- Dates ---
-    if (s := _fmt_dt(meta.taken_at, use_localtime)):
-        if append_only:
-            args.extend(["-if", "not $DateTimeOriginal", "-DateTimeOriginal=", s])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-if", "not $QuickTime:CreateDate", "-QuickTime:CreateDate=", s])
-        else:
-            args.extend(["-DateTimeOriginal=", s])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-QuickTime:CreateDate=", s])
-
-    base_ts = meta.created_at or meta.taken_at
-    if (s := _fmt_dt(base_ts, use_localtime)):
-        if append_only:
-            args.extend(["-if", "not $CreateDate", "-CreateDate=", s])
-            args.extend(["-if", "not $ModifyDate", "-ModifyDate=", s])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-if", "not $QuickTime:ModifyDate", "-QuickTime:ModifyDate=", s])
-        else:
-            args.extend(["-CreateDate=", s, "-ModifyDate=", s])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-QuickTime:ModifyDate=", s])
-    
-    # --- GPS ---
-    if meta.latitude is not None and meta.longitude is not None:
-        lat, lon = abs(meta.latitude), abs(meta.longitude)
-        lat_ref, lon_ref = ("N" if meta.latitude >= 0 else "S"), ("E" if meta.longitude >= 0 else "W")
-        gps_coords = f"{meta.latitude},{meta.longitude}"
-
-        if append_only:
-            args.extend(["-if", "not $GPSLatitude", "-GPSLatitude=", str(lat)])
-            args.extend(["-if", "not $GPSLatitudeRef", "-GPSLatitudeRef=", lat_ref])
-            args.extend(["-if", "not $GPSLongitude", "-GPSLongitude=", str(lon)])
-            args.extend(["-if", "not $GPSLongitudeRef", "-GPSLongitudeRef=", lon_ref])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-if", "not $QuickTime:GPSCoordinates", "-QuickTime:GPSCoordinates=", gps_coords])
-                args.extend(["-if", "not $Keys:Location", "-Keys:Location=", gps_coords])
-        else:
-            args.extend(["-GPSLatitude=", str(lat), "-GPSLatitudeRef=", lat_ref])
-            args.extend(["-GPSLongitude=", str(lon), "-GPSLongitudeRef=", lon_ref])
-            if media_path and _is_video_file(media_path):
-                args.extend(["-QuickTime:GPSCoordinates=", gps_coords, "-Keys:Location=", gps_coords])
-
-        if meta.altitude is not None:
-            alt, alt_ref = abs(meta.altitude), ("1" if meta.altitude < 0 else "0")
-            if append_only:
-                args.extend(["-if", "not $GPSAltitude", "-GPSAltitude=", str(alt)])
-                args.extend(["-if", "not $GPSAltitudeRef", "-GPSAltitudeRef=", alt_ref])
-            else:
-                args.extend(["-GPSAltitude=", str(alt), "-GPSAltitudeRef=", alt_ref])
-
-    return args
-
-def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
-    """Écrit les métadonnées sur un média en utilisant un seul appel à ExifTool."""
-    args = build_exiftool_args(meta, media_path, use_localtime, append_only)
-    if args:
-        is_video = _is_video_file(media_path)
-        _run_exiftool_command(media_path, args, _append_only=append_only, is_video=is_video)
-
-
-def _write_metadata_append_only(media_path: Path, meta: SidecarData, use_localtime: bool) -> None:
-    """Écrire les métadonnées en mode append-only en utilisant la fonction générale."""
-    
-    # Utiliser la fonction générale pour construire tous les arguments avec append_only=True
-    args = build_exiftool_args(meta, media_path, use_localtime=use_localtime, append_only=True)
-    
-    if args:
-        is_video = _is_video_file(media_path)
-        _run_exiftool_command(media_path, args, _append_only=True, is_video=is_video)
-    
-    # 1. Écrire la description seulement si elle n'existe pas (conditionnel)
-    if meta.description:
-        safe_desc = meta.description.replace("\r", " ").replace("\n", " ").strip()
-        desc_args = [
-            "-if", "not $EXIF:ImageDescription", f"-EXIF:ImageDescription={safe_desc}",
-        ]
-        _run_exiftool_command(media_path, desc_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        desc_args = [
-            "-if", "not $XMP-dc:Description", f"-XMP-dc:Description={safe_desc}",
-        ]
-        _run_exiftool_command(media_path, desc_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        desc_args = [
-            "-if", "not $IPTC:Caption-Abstract", f"-IPTC:Caption-Abstract={safe_desc}",
-        ]
-        _run_exiftool_command(media_path, desc_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        # Ajouter le champ de description spécifique aux vidéos
-        if is_video:
-            desc_args = [
-                "-if", "not $Keys:Description", f"-Keys:Description={safe_desc}",
-            ]
-            _run_exiftool_command(media_path, desc_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-    
-    # 2. Ajouter les personnes et albums en mode append-only
-    # Utiliser les fonctions existantes avec append_only=True pour la lecture des valeurs existantes
-    if meta.people:
-        people_args = _build_people_args(meta, media_path, append_only=True)
-        if people_args:
-            _run_exiftool_command(media_path, people_args, _append_only=True, is_video=is_video)
-    
-    if meta.albums:
-        album_args = _build_albums_args(meta, media_path, append_only=True)
-        if album_args:
-            _run_exiftool_command(media_path, album_args, _append_only=True, is_video=is_video)
-    
-    # 3. Écrire le rating uniquement s'il n'existe pas (conditionnel)
-    if meta.favorite:
-        rating_args = ["-if", "not $XMP:Rating", "-XMP:Rating=5"]
-        _run_exiftool_command(media_path, rating_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-    
-    # 4. Écrire les dates uniquement si elles n'existent pas (conditionnel)
-    if (s := _fmt_dt(meta.taken_at, use_localtime)):
-        date_args = ["-if", "not $DateTimeOriginal", f"-DateTimeOriginal={s}"]
-        _run_exiftool_command(media_path, date_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        # Ajouter QuickTime:CreateDate pour les vidéos
-        if is_video:
-            date_args = ["-if", "not $QuickTime:CreateDate", f"-QuickTime:CreateDate={s}"]
-            _run_exiftool_command(media_path, date_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-    
-    base_ts = meta.created_at or meta.taken_at
-    if (s := _fmt_dt(base_ts, use_localtime)):
-        date_args = ["-if", "not $CreateDate", f"-CreateDate={s}"]
-        _run_exiftool_command(media_path, date_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        date_args = ["-if", "not $ModifyDate", f"-ModifyDate={s}"]
-        _run_exiftool_command(media_path, date_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        # Ajouter QuickTime:ModifyDate pour les vidéos
-        if is_video:
-            date_args = ["-if", "not $QuickTime:ModifyDate", f"-QuickTime:ModifyDate={s}"]
-            _run_exiftool_command(media_path, date_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-    
-    # 5. Écrire le GPS uniquement s'il n'existe pas (conditionnel)
-    if meta.latitude is not None and meta.longitude is not None:
-        lat_ref = "N" if meta.latitude >= 0 else "S"
-        lon_ref = "E" if meta.longitude >= 0 else "W"
-        
-        gps_args = ["-if", "not $GPSLatitude", f"-GPSLatitude={abs(meta.latitude)}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        gps_args = ["-if", "not $GPSLatitudeRef", f"-GPSLatitudeRef={lat_ref}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        gps_args = ["-if", "not $GPSLongitude", f"-GPSLongitude={abs(meta.longitude)}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        gps_args = ["-if", "not $GPSLongitudeRef", f"-GPSLongitudeRef={lon_ref}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        # Ajouter les champs GPS spécifiques aux vidéos
-        if is_video:
-            gps_args = ["-if", "not $QuickTime:GPSCoordinates", f"-QuickTime:GPSCoordinates={meta.latitude},{meta.longitude}"]
-            _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-            
-            gps_args = ["-if", "not $Keys:Location", f"-Keys:Location={meta.latitude},{meta.longitude}"]
-            _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-    
-    # 6. Écrire l'altitude GPS uniquement si elle n'existe pas (conditionnel)
-    if meta.altitude is not None:
-        alt_ref = "1" if meta.altitude < 0 else "0"
-        
-        gps_args = ["-if", "not $GPSAltitude", f"-GPSAltitude={abs(meta.altitude)}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-        
-        gps_args = ["-if", "not $GPSAltitudeRef", f"-GPSAltitudeRef={alt_ref}"]
-        _run_exiftool_command(media_path, gps_args, _append_only=True, allow_condition_failure=True, is_video=is_video)
-
-
-def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool, allow_condition_failure: bool = False, is_video: bool = False) -> None:
-    """Exécuter une commande exiftool avec les arguments fournis."""
-    if not args:
-        return
-
-    cmd = [
-        "exiftool",
-        "-overwrite_original",
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8",
-    ]
-    
-    # Ajouter l'API QuickTimeUTC pour les vidéos à chaque invocation
-    if is_video:
-        cmd.extend(["-api", "QuickTimeUTC=1"])
-    
-    cmd.extend(args)
-    cmd.append(str(media_path))
-
-    try:
-        subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60, encoding='utf-8')
-    except FileNotFoundError as exc:
-        raise RuntimeError("exiftool introuvable") from exc
-    except subprocess.CalledProcessError as exc:
-        # Le code de sortie 2 signifie "files failed condition" avec -if
-        # Comportement attendu en mode append-only quand les balises existent déjà
-        if (exc.returncode == 2 and allow_condition_failure and 
-            ("files failed condition" in (exc.stderr or "") or 
-             "files failed condition" in (exc.stdout or ""))):
-            # Attendu : les conditions ont empêché l'écriture car les balises existent
-            return
-            
-        # Le code 1 avec des avertissements sur des champs non inscriptibles est non fatal
-        # pour des balises vidéo qui ne sont pas toujours prises en charge
-        stderr_msg = exc.stderr or ""
-        if (exc.returncode == 1 and allow_condition_failure and 
-            ("doesn't exist or isn't writable" in stderr_msg or
-             "not supported" in stderr_msg.lower() or
-             "nothing to do" in stderr_msg.lower())):
-            # Avertissement non fatal pour des balises vidéo non supportées
-            logger.warning(_analyze_exiftool_error(exc.stderr or "", exc.stdout or "", 
-                                                 exc.returncode, media_path))
-            return
-            
-        error_msg = _analyze_exiftool_error(exc.stderr or "", exc.stdout or "", 
-                                          exc.returncode, media_path)
         raise RuntimeError(error_msg) from exc
 ````
 
@@ -1603,6 +1044,12 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Pour le format hérité : IMG_001.jpg.json -> titre attendu : IMG_001.jpg
     if path.name.lower().endswith(".supplemental-metadata.json"):
         expected_title = path.name[:-len(".supplemental-metadata.json")]
+    elif path.name.lower().endswith(".supplemental-metadat.json"):
+        expected_title = path.name[:-len(".supplemental-metadat.json")]
+    elif path.name.lower().endswith(".supplemental-me.json"):
+        expected_title = path.name[:-len(".supplemental-me.json")]
+    elif path.name.lower().endswith(".supplemental-meta.json"):
+        expected_title = path.name[:-len(".supplemental-meta.json")]
     elif path.name.lower().endswith(".json"):
         expected_title = path.stem
     else:
@@ -1613,15 +1060,13 @@ def parse_sidecar(path: Path) -> SidecarData:
         )
     description = data.get("description")
     # Extraire les noms de personnes, supprimer les espaces et dédupliquer
-    # people peut être [{ "name": "X" }] ou parfois [{ "person": { "name": "X" } }]
+    # people est [{ "name": "X" }]
     raw_people = data.get("people", []) or []
     people = []
     for p in raw_people:
         if isinstance(p, dict):
             if isinstance(p.get("name"), str):
                 people.append(p["name"].strip())
-            elif isinstance(p.get("person"), dict) and isinstance(p["person"].get("name"), str):
-                people.append(p["person"]["name"].strip())
     # déduplication
     people = sorted(set(filter(None, people)))
     def get_ts(key: str) -> Optional[int]:
@@ -1987,7 +1432,7 @@ exiftool -overwrite_original -api QuickTimeUTC=1 -XMP-dc:Description="Existing v
 ```
 ````
 
-## File: tests/CORRECT_test_hybrid_approach.py
+## File: tests/test_hybrid_approach.py
 ````python
 import shutil
 import tempfile
@@ -2113,8 +1558,7 @@ if __name__ == "__main__":
 import json
 import subprocess
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pytest
 from PIL import Image
 from google_takeout_metadata.cli import main
@@ -2379,11 +1823,6 @@ from google_takeout_metadata.exif_writer import write_metadata, build_exiftool_a
 import subprocess
 import pytest
 from pathlib import Path
-def test_build_args() -> None:
-    """Test désactivé car build_exiftool_args a été remplacé par l'approche hybride."""
-    # Cette fonction a été supprimée dans la nouvelle implémentation hybride
-    # Les tests d'intégration via write_metadata() couvrent maintenant cette fonctionnalité
-    pass
 def test_write_metadata_error(tmp_path, monkeypatch):
     meta = SidecarData(
         filename="a.jpg",
@@ -3664,9 +3103,8 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
 """Tests pour la fonctionnalité de traitement par lots."""
 import json
 import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 import pytest
 from PIL import Image
 from google_takeout_metadata.processor_batch import process_batch, process_directory_batch

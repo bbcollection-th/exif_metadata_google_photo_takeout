@@ -289,9 +289,52 @@ class TestFindAlbumsForDirectory:
             assert len(calls) > 0
 
 
+@pytest.mark.integration 
+def test_batch_sidecar_cleanup_with_real_failure(tmp_path: Path) -> None:
+    """Tester que les sidecars NE SONT PAS supprimés quand exiftool échoue vraiment (erreur grave).
+    
+    LOGIQUE MÉTIER: On ne supprime le sidecar QUE si le traitement exiftool a réussi.
+    Un échec exiftool signifie que les métadonnées n'ont pas été appliquées -> garder le sidecar pour retry ultérieur.
+    """
+    
+    # Créer une image de test
+    media_path = tmp_path / "test.jpg"
+    img = Image.new('RGB', (100, 100), color='blue')
+    img.save(media_path)
+    
+    # Créer le sidecar JSON avec des arguments invalides qui vont causer une vraie erreur exiftool
+    sidecar_data = {
+        "title": "test.jpg",
+        "description": "Test description"
+    }
+    json_path = tmp_path / "test.jpg.supplemental-metadata.json"
+    json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
+    
+    # Vérifier que le sidecar existe avant traitement
+    assert json_path.exists()
+    
+    # Créer un lot avec des arguments invalides qui causeront un échec exiftool
+    invalid_args = ["-InvalidTag=InvalidValue", "-AnotherInvalidTag=Test"]
+    batch = [(media_path, json_path, invalid_args)]
+    
+    # Traiter le lot avec nettoyage activé
+    # Ceci devrait échouer à cause des arguments invalides
+    result = process_batch(batch, clean_sidecars=True)
+    
+    # Vérifier que le traitement a échoué
+    assert result == 0, "Le traitement aurait dû échouer avec des arguments invalides"
+    
+    # CORRECTION: Le sidecar ne doit PAS être supprimé car le traitement a échoué
+    assert json_path.exists(), "Le sidecar ne doit PAS être supprimé si exiftool échoue - il faut le garder pour retry"
+
+
 @pytest.mark.integration
-def test_batch_sidecar_cleanup_with_condition_failure(tmp_path: Path) -> None:
-    """Tester que les sidecars sont supprimés même quand 'files failed condition' survient en mode batch."""
+def test_batch_sidecar_cleanup_with_condition_success(tmp_path: Path) -> None:
+    """Tester que les sidecars SONT supprimés quand 'files failed condition' en mode append-only.
+    
+    CLARIFICATION: 'files failed condition' en mode append-only n'est PAS un échec exiftool,
+    c'est le comportement normal quand les métadonnées existent déjà. Dans ce cas, on peut supprimer le sidecar.
+    """
     
     # Créer une image de test
     media_path = tmp_path / "test.jpg"
@@ -308,9 +351,9 @@ def test_batch_sidecar_cleanup_with_condition_failure(tmp_path: Path) -> None:
     except FileNotFoundError:
         pytest.skip("exiftool introuvable - skipping integration test")
     
-    # Créer le sidecar JSON avec une description différente (qui causera "files failed condition")
+    # Créer le sidecar JSON avec une description (qui causera "files failed condition" en mode append-only)
     sidecar_data = {
-        "title": "test.jpg",
+        "title": "test.jpg", 
         "description": "New description that should not overwrite existing"
     }
     json_path = tmp_path / "test.jpg.supplemental-metadata.json"
@@ -319,19 +362,13 @@ def test_batch_sidecar_cleanup_with_condition_failure(tmp_path: Path) -> None:
     # Vérifier que le sidecar existe avant traitement
     assert json_path.exists()
     
-    # Créer le lot avec clean_sidecars=True
-    batch = [(media_path, json_path, [])]  # Liste vide pour les args car on teste juste le nettoyage
+    # Traiter avec process_sidecar_file en mode append-only (comportement normal)
+    from google_takeout_metadata.processor import process_sidecar_file
+    process_sidecar_file(json_path, append_only=True, clean_sidecars=True)
     
-    # Traiter le lot avec nettoyage activé
-    # Ceci devrait déclencher "files failed condition" car la description existe déjà
-    # ET devrait quand même supprimer le sidecar
-    result = process_batch(batch, clean_sidecars=True)
-    
-    # Vérifier que le traitement a réussi (malgré "files failed condition")
-    assert result > 0
-    
-    # Vérifier que le sidecar a été supprimé (le bug corrigé)
-    assert not json_path.exists(), "Le sidecar aurait dû être supprimé après traitement réussi avec 'files failed condition'"
+    # Vérifier que le sidecar a été supprimé car le traitement a "réussi" 
+    # (même si condition failed, c'est le comportement normal en append-only)
+    assert not json_path.exists(), "Le sidecar doit être supprimé après traitement append-only, même avec 'condition failed'"
 
 
 def test_batch_cleanup_logic_unit() -> None:

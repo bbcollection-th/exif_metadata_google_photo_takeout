@@ -8,6 +8,7 @@ from datetime import datetime
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
 from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file 
+from . import sidecar_safety
 from . import statistics
 
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: bool) -> int:
+def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool) -> int:
     """Traiter un lot de fichiers avec exiftool via un fichier d'arguments."""
     if not batch:
         return 0
@@ -34,13 +35,23 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
 
         logger.info(f"📦 Traitement d'un lot de {len(batch)} fichier(s)...")
 
+        # ✅ IMPLÉMENTATION -efile pour journalisation et reprises intelligentes
         cmd = [
             "exiftool",
-            "-overwrite_original",
-            "-charset", "filename=UTF8",
-            "-charset", "iptc=UTF8",
-            "-charset", "exif=UTF8",
+            # Charset settings MUST come before -@ for proper ExifTool behavior.
+            "-charset", "filename=UTF8",    # For Unicode filenames (must be before -@)
+            "-charset", "iptc=UTF8",        # For IPTC writing
+            "-charset", "exif=UTF8",        # For EXIF writing
+            "-codedcharacterset=utf8",      # For IPTC encoding (must be before -@)
             "-@", argfile_path,
+            "-common_args",                 # After -@ : applied to each block
+            "-overwrite_original",
+            "-q", "-q",
+            "-api", "NoDups=1",            # For intra-batch deduplication
+            "-efile1", "error_files.txt",     # errors = 1
+            "-efile2", "unchanged_files.txt", # unchanged = 2  
+            "-efile4", "failed_condition_files.txt", # failed -if condition = 4
+            "-efile8", "updated_files.txt"    # updated = 8
         ]
         
         timeout_seconds = 60 + (len(batch) * 5)
@@ -73,7 +84,9 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             is_image = media_path.suffix.lower() in IMAGE_EXTS
             statistics.stats.add_processed_file(media_path, is_image)
 
-        if clean_sidecars:
+        # Gestion des sidecars après traitement réussi
+        if immediate_delete:
+            # Mode destructeur : suppression immédiate
             cleaned_count = 0
             for _, json_path, _ in batch:
                 try:
@@ -82,6 +95,16 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                 except OSError as e:
                     logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
             statistics.stats.sidecars_cleaned += cleaned_count
+        else:
+            # Mode sécurisé : marquage avec préfixe OK_
+            marked_count = 0
+            for _, json_path, _ in batch:
+                try:
+                    if sidecar_safety.mark_sidecar_as_processed(json_path):
+                        marked_count += 1
+                except OSError as e:
+                    logger.warning(f"Échec du marquage du sidecar {json_path.name}: {e}")
+            statistics.stats.sidecars_cleaned += marked_count  # Réutilise le compteur pour "traités"
         
         return len(batch)
 
@@ -101,7 +124,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                 statistics.stats.add_processed_file(media_path, is_image)
             
             # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
-            if clean_sidecars:
+            if immediate_delete:
                 cleaned_count = 0
                 for _, json_path, _ in batch:
                     try:
@@ -110,6 +133,16 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                     except OSError as e:
                         logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
                 statistics.stats.sidecars_cleaned += cleaned_count
+            else:
+                # Mode sécurisé : marquage avec préfixe OK_
+                marked_count = 0
+                for _, json_path, _ in batch:
+                    try:
+                        if sidecar_safety.mark_sidecar_as_processed(json_path):
+                            marked_count += 1
+                    except OSError as e:
+                        logger.warning(f"Échec du marquage du sidecar {json_path.name}: {e}")
+                statistics.stats.sidecars_cleaned += marked_count
             
             return len(batch)
         elif "doesn't exist or isn't writable" in stderr_msg:
@@ -121,7 +154,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                 statistics.stats.add_processed_file(media_path, is_image)
             
             # Nettoyer les sidecars si demandé (comme dans le cas de succès normal)
-            if clean_sidecars:
+            if immediate_delete:
                 cleaned_count = 0
                 for _, json_path, _ in batch:
                     try:
@@ -130,6 +163,16 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
                     except OSError as e:
                         logger.warning(f"Échec de la suppression du fichier de métadonnées {json_path.name}: {e}")
                 statistics.stats.sidecars_cleaned += cleaned_count
+            else:
+                # Mode sécurisé : marquage avec préfixe OK_
+                marked_count = 0
+                for _, json_path, _ in batch:
+                    try:
+                        if sidecar_safety.mark_sidecar_as_processed(json_path):
+                            marked_count += 1
+                    except OSError as e:
+                        logger.warning(f"Échec du marquage du sidecar {json_path.name}: {e}")
+                statistics.stats.sidecars_cleaned += marked_count
             
             return len(batch)
         elif "character(s) could not be encoded" in stderr_msg:
@@ -140,25 +183,44 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
             error_type = "exiftool_error"
             error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
             logger.exception(f"❌ Échec du traitement par lot de {len(batch)} fichier(s). {error_msg}")
+        
         # Marquer tous les fichiers du lot comme échoués
         for media_path, _, _ in batch:
             statistics.stats.add_failed_file(media_path, error_type, error_msg)
         
+        # NE PAS nettoyer les sidecars en cas d'échec exiftool - les garder pour retry
+        # LOGIQUE MÉTIER: On ne supprime le sidecar QUE si le traitement a réussi
         return 0
     finally:
         if argfile_path and Path(argfile_path).exists():
             Path(argfile_path).unlink()
 
 
-def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, clean_sidecars: bool = False) -> None:
-    """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots."""
+def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False) -> None:
+    """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots.
+    
+    Args:
+        root: Répertoire racine à parcourir
+        use_localtime: Convertir les dates en heure locale au lieu d'UTC
+        append_only: Ajouter uniquement les champs manquants
+        immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
+                         (par défaut: mode sécurisé avec préfixe OK_)
+    """
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
     
     # Initialiser les statistiques
     statistics.stats.start_processing()
     
-    sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
+    # Exclure les sidecars déjà traités (préfixe OK_)
+    all_sidecar_files = [path for path in root.rglob("*.json") if _is_sidecar_file(path)]
+    sidecar_files = [path for path in all_sidecar_files if not sidecar_safety.is_sidecar_processed(path)]
+    
+    # Afficher les statistiques de filtrage
+    processed_count = len(all_sidecar_files) - len(sidecar_files)
+    if processed_count > 0:
+        logger.info("📋 %d sidecars déjà traités ignorés (préfixe OK_)", processed_count)
+    
     statistics.stats.total_sidecars_found = len(sidecar_files)
     
     if statistics.stats.total_sidecars_found == 0:
@@ -199,7 +261,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                 statistics.stats.skipped_files.append(json_path.name)
 
             if len(batch) >= BATCH_SIZE:
-                process_batch(batch, clean_sidecars)
+                process_batch(batch, immediate_delete)
                 batch = []
 
         except (ValueError, RuntimeError) as exc:
@@ -208,12 +270,35 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
-        process_batch(batch, clean_sidecars)
+        process_batch(batch, immediate_delete)
 
     statistics.stats.end_processing()
     
     # Affichage du résumé
     statistics.stats.print_console_summary()
+    
+    # Générer les scripts de sécurité si des sidecars ont été traités (mode sécurisé uniquement)
+    if not immediate_delete and statistics.stats.sidecars_cleaned > 0:
+        logger.info("\n🔐 === SYSTÈME DE SÉCURITÉ ===")
+        
+        # Générer les scripts
+        cleanup_script = sidecar_safety.generate_cleanup_script(root)
+        rollback_script = sidecar_safety.generate_rollback_script(root)
+        
+        if cleanup_script and rollback_script:
+            logger.info("📜 Scripts de gestion générés :")
+            logger.info("   • Nettoyage : %s", cleanup_script)
+            logger.info("   • Rollback  : %s", rollback_script)
+            logger.info("")
+            logger.info("⚠️  Les sidecars traités ont été marqués avec le préfixe 'OK_'")
+            logger.info("   Vérifiez le traitement puis utilisez les scripts pour:")
+            logger.info("   1. Supprimer définitivement les sidecars traités (cleanup)")
+            logger.info("   2. Restaurer les noms originaux en cas d'erreur (rollback)")
+        
+        # Afficher le résumé de sécurité
+        nb_processed, nb_pending, messages = sidecar_safety.generate_scripts_summary(root)
+        for message in messages:
+            logger.info(message)
     
     # Créer un dossier logs s'il n'existe pas
     logs_dir = root / "logs"
