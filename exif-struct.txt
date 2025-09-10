@@ -1,3 +1,6 @@
+## Source et licence
+Ce document est dérivé de la documentation officielle ExifTool (Phil Harvey).
+Inclure l’en-tête de licence requis (Artistic License/GPL) ou référencer la source plutôt que copier-coller intégral.
 
 The Image::ExifTool Perl Library Module
 Description

@@ -90,7 +90,10 @@ def test_hybrid_approach_only_new_people():
     
     with tempfile.TemporaryDirectory() as temp_dir:
         # Copier l'image test
+        # Copier l'image test
         test_image_src = Path("test_assets/test_clean.jpg")
+        if not test_image_src.exists():
+            raise FileNotFoundError(f"Fichier test requis non trouvé : {test_image_src}")
         test_image = Path(temp_dir) / "test_image.jpg"
         shutil.copy2(test_image_src, test_image)
         

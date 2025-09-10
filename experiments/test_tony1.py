@@ -4,8 +4,9 @@ import shutil
 from pathlib import Path
 
 def run_exiftool_command(cmd_args, media_path):
-    cmd = ["exiftool", "-overwrite_original", "-charset", "filename=UTF8", str(media_path)]
+    cmd = ["exiftool", "-overwrite_original", "-charset", "filename=UTF8"]
     cmd.extend(cmd_args)
+    cmd.append(str(media_path))
     subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30, encoding='utf-8')
 
 def read_exif_tag(media_path, tag):
@@ -27,11 +28,14 @@ if __name__ == "__main__":
 
         # Test 1: Add duplicates in a single command
         print("--- Test 1: Add duplicates in a single command ---")
+        run_exiftool_command(
+            ["-XMP-dc:Subject=apple", "-XMP-dc:Subject+=banana", "-XMP-dc:Subject+=apple"],
+            test_image,
+        )
         subjects = read_exif_tag(test_image, "XMP-dc:Subject")
         print(f"Subjects after adding duplicates in one command: {subjects}")
         # Expected: ['apple', 'banana'] or ['apple', 'banana', 'apple'] depending on exiftool's internal deduplication
         # The test_hybrid_approach.py implies it should be deduplicated.
-
         # Test 2: Add duplicates in separate commands (simulating multiple runs)
         print("--- Test 2: Add duplicates in separate commands ---")
         # Clear previous subjects

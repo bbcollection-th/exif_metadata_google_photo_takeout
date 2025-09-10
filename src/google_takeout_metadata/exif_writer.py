@@ -17,7 +17,7 @@ VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}
 
 _SMALL_WORDS = {
     "de", "du", "des", "la", "le", "les", "van", "von", "da", "di", "of", "and",
-    "der", "den", "het", "el", "al"
+    "der", "den", "het", "el", "al", "bin", "ibn", "af", "zu", "ben", "ap", "abu", "binti", "bint", "della", "delle", "dalla", "delle", "del", "dos", "das", "do", "mac", "fitz"
 }
 
 def _is_video_file(path: Path) -> bool:
