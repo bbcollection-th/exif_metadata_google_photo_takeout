@@ -2,13 +2,10 @@
 
 import subprocess
 import logging
-import tempfile
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Union, List, Sequence, Iterable
-from dataclasses import dataclass
+from typing import List, Iterable
 
 from .sidecar import SidecarData
 

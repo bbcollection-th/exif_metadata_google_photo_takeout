@@ -159,6 +159,13 @@ def build_conditional_add_args_for_keywords(keywords: Iterable[str]) -> List[str
 def add_remove_then_add(args: List[str], tag: str, value: str) -> None:
     """Helper pour garantir l'ordre supprime puis ajoute et éviter les coquilles.
     
+    APPROCHE ROBUSTE (NETTOYAGE) :
+    Implémente la sémantique -TAG-=val puis -TAG+=val qui :
+    - Supprime toutes les occurrences de 'val' dans le tag
+    - Puis ajoute une seule occurrence de 'val'
+    - Résultat : zéro doublon garanti, idempotent
+    - Compatible avec -api NoDups=1 pour déduplication intra-lot
+    
     Args:
         args: Liste d'arguments à laquelle ajouter
         tag: Tag exiftool (ex: "XMP-iptcExt:PersonInImage")  
@@ -290,10 +297,21 @@ def build_rating_args(meta: SidecarData) -> List[str]:
 def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtime: bool = False, append_only: bool = True) -> list[str]:
     """Construit les arguments exiftool pour traiter un fichier média avec les métadonnées fournies.
     
-    APPROCHE ANTI-DUPLICATION :
-    - Pour PersonInImage et mots-clés : utilise -TAG-=val puis -TAG+=val pour garantir zéro doublon
-    - Normalisation obligatoire en amont pour éviter "Anthony Vincent" et "anthony vincent"
-    - Pas de -wm cg en mode déduplication (incompatible avec -TAG-=)
+    ARCHITECTURE EN DEUX AXES INDÉPENDANTS :
+    
+    Axe 1 — Sémantique d'écriture (3 modes) :
+    - Append-only : -wm cg + -if not $TAG pour scalaires (Description, GPS, dates)
+    - Robuste (nettoyage) : -TAG-=val puis -TAG+=val pour listes → zéro doublon, idempotent
+    - Conditionnel (perf) : -if 'not $TAG=~/val/i' -TAG+=val → optimisation relances
+    
+    Axe 2 — Stratégie d'exécution (orthogonal) :
+    - Unitaire : un appel exiftool par fichier (cette fonction)
+    - Batch : un seul process avec -@ args.txt (dans processor_batch.py)
+    
+    CHOIX PAR DÉFAUT :
+    - PersonInImage/Keywords : mode robuste (-=/+=) pour éviter doublons
+    - Description/GPS/Dates : mode append-only (-wm cg) pour préserver existant
+    - Normalisation obligatoire en amont (normalize_person_name, normalize_keyword)
     
     Args:
         meta: Métadonnées à écrire
