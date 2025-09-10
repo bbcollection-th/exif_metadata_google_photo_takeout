@@ -191,6 +191,40 @@ def _is_sidecar_file(path: Path) -> bool:
     return False
 
 
+def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_files: bool) -> tuple[Path, Path]:
+    """Helper pour organiser un fichier selon son statut si l'organisation est activée.
+    
+    Args:
+        media_path: Chemin actuel du fichier média
+        json_path: Chemin actuel du fichier sidecar
+        meta: Métadonnées du fichier
+        organize_files: Si l'organisation des fichiers est activée
+        
+    Returns:
+        Tuple (nouveau_media_path, nouveau_json_path) ou (media_path, json_path) si pas d'organisation
+    """
+    if not organize_files or not should_organize_file(meta):
+        return media_path, json_path
+    
+    try:
+        organizer = FileOrganizer(media_path.parent)
+        new_media_path, new_sidecar_path = organizer.move_file_with_sidecar(
+            media_path, json_path, meta
+        )
+        
+        # Mettre à jour les chemins si déplacement effectué
+        if new_media_path and new_sidecar_path:
+            logger.info(f"📁 Fichier organisé selon statut: {meta.filename}")
+            return new_media_path, new_sidecar_path
+        else:
+            return media_path, json_path
+            
+    except (OSError, shutil.Error) as exc:
+        logger.warning(f"Échec de l'organisation du fichier {media_path.name}: {exc}")
+        # Continuer le traitement même si l'organisation échoue
+        return media_path, json_path
+
+
 def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
@@ -237,22 +271,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         statistics.stats.add_processed_file(is_image)
         
         # Organisation des fichiers selon leur statut (si activée)
-        if organize_files and should_organize_file(meta):
-            try:
-                organizer = FileOrganizer(media_path.parent)
-                new_media_path, new_sidecar_path = organizer.move_file_with_sidecar(
-                    media_path, current_json_path, meta
-                )
-                
-                # Mettre à jour les chemins si déplacement effectué
-                if new_media_path and new_sidecar_path:
-                    media_path = new_media_path
-                    current_json_path = new_sidecar_path
-                    logger.info(f"📁 Fichier organisé selon statut: {meta.filename}")
-                    
-            except (OSError, shutil.Error) as exc:
-                logger.warning(f"Échec de l'organisation du fichier {media_path.name}: {exc}")
-                # Continuer le traitement même si l'organisation échoue
+        media_path, current_json_path = _organize_file_if_needed(media_path, current_json_path, meta, organize_files)
         
     except RuntimeError as exc:
         # Vérifier s'il s'agit d'une erreur d'incohérence d'extension
@@ -283,6 +302,9 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 # Enregistrer le succès après correction
                 statistics.stats.add_processed_file(is_image_after_fix)
                 logger.info("✅ Traitement réussi de %s après correction d'extension", fixed_media_path.name)
+                
+                # Organisation des fichiers selon leur statut (si activée) - après correction d'extension
+                fixed_media_path, current_json_path = _organize_file_if_needed(fixed_media_path, current_json_path, meta, organize_files)
             else:
                 # Échec de la correction d'extension, relancer l'erreur originale
                 statistics.stats.add_failed_file(media_path, "extension_mismatch", str(exc))

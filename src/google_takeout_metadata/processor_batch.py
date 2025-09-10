@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Tuple
 from datetime import datetime
+import shutil
 
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
@@ -270,7 +271,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                         fixed_media_path = moved_media
                         fixed_json_path = moved_json
                         logger.info(f"📁 Fichier organisé : {media_path.name} → {moved_media.parent.name}/")
-                except Exception as e:
+                except (OSError, shutil.Error) as e:
                     logger.warning(f"⚠️ Échec de l'organisation du fichier {media_path.name}: {e}")
             
             args = build_exiftool_args(
