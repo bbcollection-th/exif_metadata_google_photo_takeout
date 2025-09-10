@@ -14,7 +14,7 @@ Workflow:
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Optional
 import platform
 
 logger = logging.getLogger(__name__)
@@ -129,28 +129,22 @@ def find_sidecars_to_skip(directory: Path) -> Set[Path]:
     return to_skip
 
 
-++ b/src/google_takeout_metadata/sidecar_safety.py
-@@
-from typing import List, Tuple, Set, Optional
-@@
 def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None) -> Optional[Path]:
-     """
-     Génère un script pour supprimer définitivement les sidecars traités.
-     
-     Args:
-         directory: Répertoire contenant les sidecars traités
-         output_file: Chemin du script à générer (optionnel)
--        
--    Returns:
+    """
+    Génère un script pour supprimer définitivement les sidecars traités.
+    
+    Args:
+        directory: Répertoire contenant les sidecars traités
+        output_file: Chemin du script à générer (optionnel)
         
     Returns:
         Chemin vers le script généré, ou None s'il n'y a rien à faire ou en cas d'erreur
-     """
-     processed_sidecars = get_processed_sidecars(directory)
-     
-     if not processed_sidecars:
-         logger.info("No processed sidecars found for cleanup script")
-         return None
+    """
+    processed_sidecars = get_processed_sidecars(directory)
+    
+    if not processed_sidecars:
+        logger.info("No processed sidecars found for cleanup script")
+        return None
         
     # Déterminer le nom et type de script selon l'OS
     is_windows = platform.system() == "Windows"
