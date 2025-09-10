@@ -217,7 +217,7 @@ def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None)
         return None
 
 
-def generate_rollback_script(directory: Path, output_file: Path = None) -> Path:
+def generate_rollback_script(directory: Path, output_file: Optional[Path] = None) -> Optional[Path]:
     """
     Génère un script pour restaurer les noms originaux des sidecars traités.
     
@@ -226,7 +226,7 @@ def generate_rollback_script(directory: Path, output_file: Path = None) -> Path:
         output_file: Chemin du script à générer (optionnel)
         
     Returns:
-        Chemin vers le script généré
+        Chemin vers le script généré, ou None s'il n'y a rien à faire ou en cas d'erreur
     """
     processed_sidecars = get_processed_sidecars(directory)
     
