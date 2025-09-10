@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".3gp"}
 
+# Mots de liaison à garder en minuscules (sauf en début de nom)
+SMALL_WORDS = {"de", "du", "des", "la", "le", "les", "van", "von", "da", "di", "of", "and", "der", "den", "het", "el", "al"}
+
 def _is_video_file(path: Path) -> bool:
     return path.suffix.lower() in VIDEO_EXTS
 
@@ -19,6 +22,55 @@ def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
         return None
     dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")
+
+def normalize_person_name(name: str) -> str:
+    """Normaliser les noms de personnes (gestion intelligente de la casse).
+    
+    Évite .title() brute qui pose problème avec McDonald, O'Connor, etc.
+    Gère les mots de liaison (de, du, van, etc.) correctement.
+    
+    Args:
+        name: Nom de personne à normaliser
+        
+    Returns:
+        Nom normalisé avec casse appropriée
+    """
+    if not name: 
+        return ""
+    
+    parts = [p.strip() for p in name.strip().split()]
+    fixed = []
+    
+    for i, p in enumerate(parts):
+        low = p.lower()
+        # Mots de liaison en minuscules (sauf en début)
+        if i > 0 and low in SMALL_WORDS:
+            fixed.append(low)
+        # Cas spéciaux : O'Connor, McDonald, etc.
+        elif low.startswith("o'") and len(p) > 2:
+            fixed.append("O'" + p[2:].capitalize())
+        elif low.startswith("mc") and len(p) > 2:
+            fixed.append("Mc" + p[2:].capitalize())
+        else:
+            fixed.append(p[:1].upper() + p[1:].lower())
+    
+    return " ".join(fixed)
+
+def normalize_keyword(keyword: str) -> str:
+    """Normaliser les mots-clés en conservant la majuscule sur chaque mot.
+    
+    Args:
+        keyword: Mot-clé à normaliser
+        
+    Returns:
+        Mot-clé normalisé avec première lettre de chaque mot en majuscule
+    """
+    if not keyword:
+        return ""
+    
+    parts = [p.strip() for p in keyword.strip().split() if p.strip()]
+    # On met la première lettre de chaque partie en majuscule, le reste en minuscule
+    return " ".join(p[:1].upper() + p[1:].lower() for p in parts)
 
 def _build_keywords(meta: SidecarData) -> list[str]:
     """Centralise la logique de création des mots-clés à partir des personnes et albums."""
@@ -49,11 +101,16 @@ def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = Fa
 def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtime: bool = False, append_only: bool = True) -> list[str]:
     """Construit les arguments exiftool pour traiter un fichier média avec les métadonnées fournies.
     
+    APPROCHE ANTI-DUPLICATION :
+    - Pour PersonInImage et mots-clés : utilise -TAG-=val puis -TAG+=val pour garantir zéro doublon
+    - Normalisation obligatoire en amont pour éviter "Anthony Vincent" et "anthony vincent"
+    - Pas de -wm cg en mode déduplication (incompatible avec -TAG-=)
+    
     Args:
         meta: Métadonnées à écrire
         media_path: Chemin du fichier média (optionnel, pour la détection vidéo)
         use_localtime: Utiliser l'heure locale au lieu d'UTC
-        append_only: Mode append-only (-wm cg) ou mode écrasement
+        append_only: Mode append-only (True) ou mode écrasement complet (False)
     
     Returns:
         Liste des arguments exiftool
@@ -61,29 +118,52 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
     args = []
     
     if append_only:
-        # Mode append-only : inclusion de tous les tags avec -wm cg pour compatibilité batch
+        # Mode append-only : utilisation différenciée de -wm selon les opérations
         if media_path and _is_video_file(media_path):
             args.extend(["-api", "QuickTimeUTC=1"])
-        args.extend(["-wm", "cg"])
         
-        # Description
+        # Description (pas de déduplication nécessaire pour les champs scalaires)
         if meta.description:
             safe_desc = _sanitize_description(meta.description)
+            args.extend(["-wm", "cg"])  # Mode append-only pour description
             args.extend([f"-EXIF:ImageDescription={safe_desc}", f"-XMP-dc:Description={safe_desc}", f"-IPTC:Caption-Abstract={safe_desc}"])
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
         
-        # Tags de liste avec += 
+        # DÉDUPLICATION PersonInImage - Approche "supprimer puis ajouter"
+        # ⚠️ SANS -wm cg car incompatible avec suppression (-TAG-=)
         if meta.people:
-            for person in meta.people:
-                args.append(f"-XMP-iptcExt:PersonInImage+={person}")
+            # Normalisation obligatoire AVANT écriture pour éviter doublons de casse
+            normalized_people = [normalize_person_name(person) for person in meta.people]
+            for person in normalized_people:
+                args.extend([
+                    f"-XMP-iptcExt:PersonInImage-={person}",
+                    f"-XMP-iptcExt:PersonInImage+={person}"
+                ])
         
-        # Mots-clés (personnes + albums)
-        all_keywords = _build_keywords(meta)
+        # DÉDUPLICATION Mots-clés - Approche "supprimer puis ajouter"
+        # ⚠️ SANS -wm cg car incompatible avec suppression (-TAG-=)
+        all_keywords = []
+        # Ajouter les personnes normalisées comme mots-clés (même normalisation que PersonInImage)
+        if meta.people:
+            normalized_people = [normalize_person_name(person) for person in meta.people]
+            all_keywords.extend(normalized_people)
+        # Ajouter les albums normalisés comme mots-clés
+        if meta.albums:
+            album_keywords = [f"Album: {normalize_keyword(album)}" for album in meta.albums]
+            all_keywords.extend(album_keywords)
+            
         if all_keywords:
             for keyword in all_keywords:
-                args.append(f"-XMP-dc:Subject+={keyword}")
-                args.append(f"-IPTC:Keywords+={keyword}")
+                args.extend([
+                    f"-XMP-dc:Subject-={keyword}",
+                    f"-XMP-dc:Subject+={keyword}",
+                    f"-IPTC:Keywords-={keyword}",
+                    f"-IPTC:Keywords+={keyword}"
+                ])
+        
+        # Autres champs (dates, GPS, rating) - Mode append-only avec -wm cg
+        args.extend(["-wm", "cg"])  # Réactiver -wm cg pour les champs suivants
         
         # Dates
         if (s := _fmt_dt(meta.taken_at, use_localtime)):
@@ -125,7 +205,7 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             args.append("-XMP:Rating=5")
             
     else:
-        # Mode écrasement : logique complète
+        # Mode écrasement : logique complète SANS déduplication spéciale
         if media_path and _is_video_file(media_path):
             args.extend(["-api", "QuickTimeUTC=1"])
         
@@ -136,16 +216,26 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
             if media_path and _is_video_file(media_path):
                 args.append(f"-Keys:Description={safe_desc}")
         
-        # Vider d'abord les listes puis les remplir
+        # Vider d'abord les listes puis les remplir (approche originale)
         args.extend(["-XMP-iptcExt:PersonInImage=", "-XMP-dc:Subject=", "-IPTC:Keywords="])
         
-        # Ajouter les personnes
+        # Ajouter les personnes normalisées
         if meta.people:
-            for person in meta.people:
+            normalized_people = [normalize_person_name(person) for person in meta.people]
+            for person in normalized_people:
                 args.append(f"-XMP-iptcExt:PersonInImage+={person}")
         
-        # Ajouter mots-clés (personnes + albums)
-        all_keywords = _build_keywords(meta)
+        # Ajouter mots-clés normalisés (personnes + albums)
+        all_keywords = []
+        # Ajouter les personnes normalisées comme mots-clés (même normalisation que PersonInImage)
+        if meta.people:
+            normalized_people = [normalize_person_name(person) for person in meta.people]
+            all_keywords.extend(normalized_people)
+        # Ajouter les albums normalisés comme mots-clés
+        if meta.albums:
+            album_keywords = [f"Album: {normalize_keyword(album)}" for album in meta.albums]
+            all_keywords.extend(album_keywords)
+            
         if all_keywords:
             for keyword in all_keywords:
                 args.append(f"-XMP-dc:Subject+={keyword}")
@@ -193,17 +283,21 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
     return args
 
 def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool) -> None:
-    """Exécute une commande exiftool avec les arguments fournis."""
+    """Exécute une commande exiftool avec les arguments fournis.
+    
+    Note: L'option -api NoDups=1 n'est plus nécessaire car la déduplication
+    est gérée par l'approche "supprimer puis ajouter" (-TAG-=val -TAG+=val).
+    """
     if not args:
         return
 
     cmd = [
         "exiftool",
         "-overwrite_original",
-        "-charset", "filename=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8",
-        "-api","NoDups=1"
+        "-charset", "filename=UTF8",  # ✅ Support Unicode Windows
+        "-charset", "iptc=UTF8",      # ✅ Pour écriture IPTC
+        "-charset", "exif=UTF8",      # ✅ Pour écriture EXIF
+        "-codedcharacterset=utf8",    # ✅ Définit l'encoding UTF-8 pour IPTC (syntaxe correcte)
     ]
 
     # Ajouter les arguments métadonnées

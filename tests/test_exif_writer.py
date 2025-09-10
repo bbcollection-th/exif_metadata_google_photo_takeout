@@ -81,11 +81,10 @@ def test_build_args_localtime():
 
 
 def test_build_args_append_only() -> None:
-    """Tester que le mode append-only utilise la syntaxe exiftool correcte.
+    """Tester que le mode append-only utilise l'approche anti-duplication.
     
-    Note: En production, la logique append-only est maintenant dans write_metadata()
-    avec l'approche hybride (ajout + nettoyage NoDups). Ce test vérifie seulement 
-    la fonction d'adaptation pour maintenir la compatibilité.
+    La nouvelle approche utilise -TAG-=val puis -TAG+=val pour garantir
+    zéro doublon avec normalisation des noms.
     """
     meta = SidecarData(
         filename="a.jpg",
@@ -99,20 +98,23 @@ def test_build_args_append_only() -> None:
         favorite=False,
     )
 
-    # Normal mode
+    # Normal mode (écrasement)
     args_normal = build_exiftool_args(meta, append_only=False)
     assert "-EXIF:ImageDescription=desc" in args_normal
-    # En mode overwrite, on vide d'abord puis on ajoute
+    # En mode overwrite, on vide d'abord puis on ajoute (normalisé)
     assert "-XMP-iptcExt:PersonInImage=" in args_normal
-    assert "-XMP-iptcExt:PersonInImage+=alice" in args_normal
+    assert "-XMP-iptcExt:PersonInImage+=Alice" in args_normal  # Normalisé
+    assert "-XMP-iptcExt:PersonInImage+=Bob" in args_normal    # Normalisé
 
-    # Append-only mode (fonction d'adaptation simplifiée)
+    # Append-only mode avec déduplication
     args_append = build_exiftool_args(meta, append_only=True)
-    # Notre nouvelle approche hybride utilise += puis NoDups cleanup
-    # La fonction d'adaptation reflète cette logique simplifiée
+    # Nouvelle approche : supprimer puis ajouter pour déduplication
     assert "-EXIF:ImageDescription=desc" in args_append
-    assert "-XMP-iptcExt:PersonInImage+=alice" in args_append
-    assert "-XMP-iptcExt:PersonInImage+=bob" in args_append
+    # Vérifier la séquence -=/+= pour PersonInImage
+    assert "-XMP-iptcExt:PersonInImage-=Alice" in args_append  # Normalisé
+    assert "-XMP-iptcExt:PersonInImage+=Alice" in args_append  # Normalisé
+    assert "-XMP-iptcExt:PersonInImage-=Bob" in args_append    # Normalisé
+    assert "-XMP-iptcExt:PersonInImage+=Bob" in args_append    # Normalisé
 
 
 def test_build_args_favorite() -> None:
@@ -159,7 +161,7 @@ def test_build_args_no_favorite() -> None:
 
 
 def test_build_args_albums() -> None:
-    """Tester que les albums sont écrits comme mots-clés avec le préfixe Album:."""
+    """Tester que les albums sont écrits comme mots-clés avec le préfixe Album: et normalisation."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -174,9 +176,10 @@ def test_build_args_albums() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=False)
-    # En mode overwrite, on vide d'abord puis on ajoute
+    # En mode overwrite, on vide d'abord puis on ajoute (avec normalisation)
     assert "-XMP-dc:Subject=" in args
     assert "-IPTC:Keywords=" in args
+    # Les mots-clés sont normalisés (chaque mot avec première lettre en majuscule)
     assert "-XMP-dc:Subject+=Album: Vacances 2024" in args
     assert "-IPTC:Keywords+=Album: Vacances 2024" in args
     assert "-XMP-dc:Subject+=Album: Famille" in args
@@ -222,7 +225,7 @@ def test_build_args_video_append_only() -> None:
 
 
 def test_build_args_albums_append_only() -> None:
-    """Tester les albums en mode append-only."""
+    """Tester les albums en mode append-only avec déduplication."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -237,8 +240,11 @@ def test_build_args_albums_append_only() -> None:
     )
 
     args = build_exiftool_args(meta, append_only=True)
-    # Les albums utilisent += qui ajoute et accumule pour les balises de type liste en mode append-only
+    # Nouvelle approche : supprimer puis ajouter pour déduplication
+    # Les albums sont normalisés (chaque mot avec première lettre en majuscule)
+    assert "-XMP-dc:Subject-=Album: Test Album" in args
     assert "-XMP-dc:Subject+=Album: Test Album" in args
+    assert "-IPTC:Keywords-=Album: Test Album" in args
     assert "-IPTC:Keywords+=Album: Test Album" in args
 
 
@@ -321,7 +327,7 @@ def test_build_args_overwrite_mode() -> None:
 
 
 def test_build_args_people_default() -> None:
-    """Tester que les personnes sont gérées de manière sécurisée par défaut."""
+    """Tester que les personnes sont gérées avec déduplication par défaut."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -334,23 +340,29 @@ def test_build_args_people_default() -> None:
         favorite=False,
     )
 
-    # Comportement par défaut (append-only)
+    # Comportement par défaut (append-only avec déduplication)
     args = build_exiftool_args(meta)
     
-    # Chaque personne devrait utiliser += (accumulation en mode append-only)
+    # Nouvelle approche : supprimer puis ajouter pour déduplication
+    # Les personnes sont dans PersonInImage, mais aussi dans les mots-clés
     for person in ["Alice Dupont", "Bob Martin", "Charlie Bernard"]:
+        # PersonInImage : déduplication directe
+        assert f"-XMP-iptcExt:PersonInImage-={person}" in args
         assert f"-XMP-iptcExt:PersonInImage+={person}" in args
+        # Mots-clés : déduplication des personnes aussi
+        assert f"-XMP-dc:Subject-={person}" in args
         assert f"-XMP-dc:Subject+={person}" in args
+        assert f"-IPTC:Keywords-={person}" in args
         assert f"-IPTC:Keywords+={person}" in args
     
-    # Ne devrait PAS avoir de conditions -if pour les personnes (elles sont des listes, utiliser +=)
+    # Ne devrait PAS avoir de conditions -if (remplacé par approche -=/+=)
     assert "not $XMP-iptcExt:PersonInImage" not in args
     assert "not $XMP-dc:Subject" not in args
     assert "not $IPTC:Keywords" not in args
 
 
 def test_build_args_albums_default() -> None:
-    """Tester que les albums sont gérés de manière sécurisée par défaut."""
+    """Tester que les albums sont gérés avec déduplication par défaut."""
     meta = SidecarData(
         filename="a.jpg",
         description=None,
@@ -364,13 +376,16 @@ def test_build_args_albums_default() -> None:
         albums=["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]
     )
 
-    # Comportement par défaut (append-only)
+    # Comportement par défaut (append-only avec déduplication)
     args = build_exiftool_args(meta)
     
-    # Chaque album devrait utiliser += (accumulation en mode append-only)
-    for album in ["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]:
-        album_keyword = f"Album: {album}"
+    # Nouvelle approche : supprimer puis ajouter pour déduplication
+    # Les albums sont normalisés avec chaque mot commençant par une majuscule
+    expected_albums = ["Album: Vacances Été 2024", "Album: Photos De Famille", "Album: Événements Spéciaux"]
+    for album_keyword in expected_albums:
+        assert f"-XMP-dc:Subject-={album_keyword}" in args
         assert f"-XMP-dc:Subject+={album_keyword}" in args
+        assert f"-IPTC:Keywords-={album_keyword}" in args
         assert f"-IPTC:Keywords+={album_keyword}" in args
     
     # Ne devrait PAS avoir de conditions -if pour les albums (ils sont des listes, utiliser +=)

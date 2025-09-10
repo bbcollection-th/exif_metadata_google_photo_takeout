@@ -34,14 +34,22 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], clean_sidecars: boo
 
         logger.info(f"📦 Traitement d'un lot de {len(batch)} fichier(s)...")
 
+        # ✅ IMPLÉMENTATION -efile pour journalisation et reprises intelligentes
         cmd = [
             "exiftool",
-            "-overwrite_original",
-            "-charset", "filename=UTF8",
-            "-charset", "iptc=UTF8",
-            "-charset", "exif=UTF8",
-            "-api","NoDups=1",
+            "-charset", "filename=UTF8",    # ✅ AVANT -@ (Windows/Unicode, noms de fichiers)
             "-@", argfile_path,
+            "-common_args",                 # ✅ APRÈS -@ : appliqué à chaque bloc
+            "-overwrite_original",
+            "-charset", "iptc=UTF8",        # ✅ Pour écriture IPTC  
+            "-charset", "exif=UTF8",        # ✅ Pour écriture EXIF
+            "-codedcharacterset=utf8",      # ✅ Définit l'encoding UTF-8 pour IPTC (syntaxe correcte)
+            "-q", "-q",
+            "-api", "NoDups=1",            # ✅ GARDER pour déduplication intra-lot (complémentaire avec -=/+=)
+            "-efile1", "error_files.txt",     # ✅ errors = 1
+            "-efile2", "unchanged_files.txt", # ✅ unchanged = 2  
+            "-efile4", "failed_condition_files.txt", # ✅ failed -if condition = 4
+            "-efile8", "updated_files.txt"    # ✅ updated = 8
         ]
         
         timeout_seconds = 60 + (len(batch) * 5)

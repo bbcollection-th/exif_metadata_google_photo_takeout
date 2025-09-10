@@ -231,3 +231,67 @@ Pour un Takeout massif, la **grosse différence** vient de :
 2. **Limiter les écritures** (conditions `-if` ou lot bien ciblé).
 3. **Choisir `-overwrite_original`** pour la vitesse.&#x20;
 4. **Journaliser** avec `-efile` pour relancer efficacement.&#x20;
+
+---
+
+## 8) Implémentation dans le projet
+
+**Notre choix final** : Nous avons implémenté l'**Option A "supprimer puis ajouter"** pour garantir zéro doublon.
+
+### Approche adoptée
+
+```python
+# Mode append-only avec déduplication (nouveau comportement)
+if meta.people:
+    normalized_people = [normalize_person_name(person) for person in meta.people]
+    for person in normalized_people:
+        args.extend([
+            f"-XMP-iptcExt:PersonInImage-={person}",
+            f"-XMP-iptcExt:PersonInImage+={person}"
+        ])
+```
+
+### Avantages de cette implémentation
+
+✅ **Déduplication robuste** : Élimine les doublons pré-existants dans les fichiers
+✅ **Normalisation intelligente** : "anthony vincent" → "Anthony Vincent", gestion des "McDonald", "O'Connor", etc.
+✅ **Performance optimisée** : Journalisation `-efile` pour reprises intelligentes
+✅ **Stratégie `-wm` différenciée** : Pas de `-wm cg` avec `-TAG-=` (incompatible), réactivé pour les autres champs
+✅ **Support Unicode complet** : `-codedcharacterset=utf8` pour accents et emoji
+
+### Commande générée type
+
+```bash
+exiftool \
+  -overwrite_original \
+  -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -codedcharacterset=utf8 \
+  -XMP-iptcExt:PersonInImage-="Anthony Vincent" -XMP-iptcExt:PersonInImage+="Anthony Vincent" \
+  -XMP-iptcExt:PersonInImage-=Bernard        -XMP-iptcExt:PersonInImage+=Bernard        \
+  -XMP-dc:Subject-="Anthony Vincent"         -XMP-dc:Subject+="Anthony Vincent"         \
+  -XMP-dc:Subject-=Bernard                   -XMP-dc:Subject+=Bernard                   \
+  -wm cg \
+  -CreateDate="2024:01:15 10:30:00" \
+  -GPSLatitude=48.8566 \
+  img.jpg
+```
+
+### Journalisation pour reprises
+
+```bash
+# En mode batch : ajout des options -efile pour journalisation
+exiftool \
+  -charset filename=UTF8 \
+  -@ args.txt \
+  -common_args \
+  -overwrite_original \
+  -charset iptc=UTF8 -charset exif=UTF8 \
+  -codedcharacterset=utf8 \
+  -q -q \
+  -efile1 error_files.txt \
+  -efile2 unchanged_files.txt \
+  -efile4 failed_condition_files.txt \
+  -efile8 updated_files.txt
+```
+
+Cette approche garantit **zéro doublon final** tout en conservant d'excellentes performances grâce aux reprises intelligentes via les logs `-efile`.

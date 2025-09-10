@@ -1,0 +1,11 @@
+utf8
+utf8
+utf8
+utf8
+utf8
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-170/test_process_directory_batch_f0/test.jpeg
+utf8
+utf8
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-175/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-176/test_process_directory_batch_f0/test.jpeg
+C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-181/test_process_directory_batch_f0/test.jpeg
