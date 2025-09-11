@@ -7,6 +7,7 @@ import logging
 import json
 import subprocess
 import shutil
+import os
 from datetime import datetime
 
 from .sidecar import parse_sidecar, find_albums_for_directory
@@ -226,10 +227,16 @@ def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_f
         return media_path, json_path
 
 
-def _enrich_with_reverse_geocode(meta, json_path: Path) -> None:
+def _enrich_with_reverse_geocode(meta, json_path: Path, geocode: bool) -> None:
     """Compléter les champs de localisation en utilisant le géocodage inverse."""
 
+    if not geocode:
+        return
+
     if meta.latitude is not None and meta.longitude is not None:
+        if not os.environ.get("GOOGLE_MAPS_API_KEY"):
+            logger.debug("Clé API Google Maps absente, géocodage ignoré pour %s", json_path.name)
+            return
         meta.city = meta.state = meta.country = meta.place_name = None
         try:
             results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
@@ -250,7 +257,7 @@ def _enrich_with_reverse_geocode(meta, json_path: Path) -> None:
                 meta.place_name = first.get("formatted_address")
 
 
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
+def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
     Args:
@@ -274,7 +281,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         statistics.stats.add_failed_file(json_path, "parse_error", f"Erreur de lecture JSON : {exc}")
         raise
 
-    _enrich_with_reverse_geocode(meta, json_path)
+    _enrich_with_reverse_geocode(meta, json_path, geocode)
 
     # Trouver les albums du répertoire
     directory_albums = find_albums_for_directory(json_path.parent)
@@ -320,7 +327,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
 
                 meta = parse_sidecar(actual_json_path)
-                _enrich_with_reverse_geocode(meta, actual_json_path)
+                _enrich_with_reverse_geocode(meta, actual_json_path, geocode)
                 directory_albums = find_albums_for_directory(actual_json_path.parent)
                 meta.albums.extend(directory_albums)
                 
@@ -361,7 +368,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             logger.warning("Échec du marquage du sidecar %s : %s", current_json_path, exc)
 
 
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
+def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter récursivement tous les fichiers annexes sous ``root``.
     
     Args:
@@ -371,6 +378,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
+        geocode: Activer le géocodage inverse si l'API est disponible
     """
     
     # Initialiser les statistiques
@@ -401,7 +409,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     for json_file in sidecar_files:
             
         try:
-            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=organize_files)
+            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=organize_files, geocode=geocode)
         except (FileNotFoundError, ValueError, RuntimeError) as exc:
             logger.warning("❌ Échec du traitement de %s : %s", json_file.name, exc)
             # Les statistiques sont déjà mises à jour dans process_sidecar_file
