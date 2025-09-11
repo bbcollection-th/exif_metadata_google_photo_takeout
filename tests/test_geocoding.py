@@ -10,7 +10,7 @@ from google_takeout_metadata import geocoding, processor
 
 
 def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
-    """Flux complet : parse sidecar → géocodage → construction des arguments."""
+    """Complete flow: parse sidecar → geocoding → build arguments."""
 
     # Créer un sidecar minimal avec coordonnées
     data = {
