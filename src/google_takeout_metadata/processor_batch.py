@@ -8,9 +8,10 @@ import shutil
 
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
-from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file 
+from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file
 from . import sidecar_safety
 from . import statistics
+from . import geocoding
 from .file_organizer import FileOrganizer
 
 
@@ -246,7 +247,26 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     for json_path in sidecar_files:
         try:
             meta = parse_sidecar(json_path)
-            
+            if meta.latitude is not None and meta.longitude is not None:
+                meta.city = meta.state = meta.country = meta.place_name = None
+                try:
+                    results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
+                except RuntimeError as exc:
+                    logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
+                else:
+                    if results:
+                        first = results[0]
+                        components = first.get("address_components", [])
+                        for comp in components:
+                            types = comp.get("types", [])
+                            if "locality" in types and not meta.city:
+                                meta.city = comp.get("long_name")
+                            elif "administrative_area_level_1" in types and not meta.state:
+                                meta.state = comp.get("long_name")
+                            elif "country" in types and not meta.country:
+                                meta.country = comp.get("long_name")
+                        meta.place_name = first.get("formatted_address")
+
             directory_albums = find_albums_for_directory(json_path.parent)
             meta.albums.extend(directory_albums)
             
@@ -260,6 +280,25 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
             if fixed_json_path != json_path:
                 meta = parse_sidecar(fixed_json_path)
+                if meta.latitude is not None and meta.longitude is not None:
+                    meta.city = meta.state = meta.country = meta.place_name = None
+                    try:
+                        results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
+                    except RuntimeError as exc:
+                        logger.warning("Échec du géocodage inverse pour %s: %s", fixed_json_path.name, exc)
+                    else:
+                        if results:
+                            first = results[0]
+                            components = first.get("address_components", [])
+                            for comp in components:
+                                types = comp.get("types", [])
+                                if "locality" in types and not meta.city:
+                                    meta.city = comp.get("long_name")
+                                elif "administrative_area_level_1" in types and not meta.state:
+                                    meta.state = comp.get("long_name")
+                                elif "country" in types and not meta.country:
+                                    meta.country = comp.get("long_name")
+                            meta.place_name = first.get("formatted_address")
                 meta.albums.extend(find_albums_for_directory(fixed_json_path.parent))
             
             # Organisation des fichiers si demandée
