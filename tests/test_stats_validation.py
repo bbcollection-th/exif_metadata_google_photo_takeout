@@ -6,8 +6,8 @@ from pathlib import Path
 import json
 from PIL import Image
 
-from src.google_takeout_metadata.processor import process_directory
-from src.google_takeout_metadata import statistics
+from google_takeout_metadata.processor import process_directory
+from google_takeout_metadata import statistics
 
 
 def test_stats_connected():

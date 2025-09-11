@@ -3,12 +3,14 @@
 
 import tempfile
 import json
+import pytest
+import shutil
 from pathlib import Path
 from PIL import Image
 
-from src.google_takeout_metadata.sidecar import parse_sidecar
-from src.google_takeout_metadata.file_organizer import FileOrganizer, should_organize_file, get_organization_status
-from src.google_takeout_metadata.processor import process_sidecar_file
+from google_takeout_metadata.sidecar import parse_sidecar
+from google_takeout_metadata.file_organizer import FileOrganizer, should_organize_file, get_organization_status
+from google_takeout_metadata.processor import process_sidecar_file
 
 
 def test_sidecar_parsing_with_status():
@@ -118,7 +120,7 @@ def test_file_organization_logic():
         organizer = FileOrganizer(tmp_path)
         
         # Test fichier normal - pas de déplacement
-        from src.google_takeout_metadata.sidecar import SidecarData
+        from google_takeout_metadata.sidecar import SidecarData
         normal_meta = SidecarData(
             filename="normal.jpg",
             description=None,
@@ -233,8 +235,13 @@ def test_file_organization_logic():
         print("✅ Test logique d'organisation réussi !")
 
 
+@pytest.mark.integration
 def test_file_organization_end_to_end():
     """Test end-to-end de l'organisation des fichiers."""
+    # Vérifier que exiftool est installé
+    if not shutil.which("exiftool"):
+        pytest.skip("exiftool not installed")
+    
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         
@@ -275,7 +282,11 @@ def test_file_organization_end_to_end():
 
 
 if __name__ == "__main__":
-    test_sidecar_parsing_with_status()
-    test_file_organization_logic() 
-    test_file_organization_end_to_end()
-    print("\n🎉 Tous les tests d'organisation réussis !")
+    # Vérifier que exiftool est installé pour les tests d'intégration
+    if not shutil.which("exiftool"):
+        print("⚠️ exiftool not installed, skipping integration tests")
+    else:
+        test_sidecar_parsing_with_status()
+        test_file_organization_logic() 
+        test_file_organization_end_to_end()
+        print("\n🎉 Tous les tests d'organisation réussis !")
