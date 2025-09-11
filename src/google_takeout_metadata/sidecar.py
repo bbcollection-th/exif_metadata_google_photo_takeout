@@ -23,6 +23,10 @@ class SidecarData:
     latitude: Optional[float]
     longitude: Optional[float]
     altitude: Optional[float]
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    place_name: Optional[str] = None
     favorite: bool = False
     lat_span: Optional[float] = None
     lon_span: Optional[float] = None

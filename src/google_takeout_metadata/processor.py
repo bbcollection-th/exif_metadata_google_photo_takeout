@@ -241,11 +241,11 @@ def _enrich_with_reverse_geocode(meta, json_path: Path) -> None:
                 components = first.get("address_components", [])
                 for comp in components:
                     types = comp.get("types", [])
-                    if "locality" in types and not meta.city:
+                    if "locality" in types and meta.city is None:
                         meta.city = comp.get("long_name")
-                    elif "administrative_area_level_1" in types and not meta.state:
+                    elif "administrative_area_level_1" in types and meta.state is None:
                         meta.state = comp.get("long_name")
-                    elif "country" in types and not meta.country:
+                    elif "country" in types and meta.country is None:
                         meta.country = comp.get("long_name")
                 meta.place_name = first.get("formatted_address")
 
