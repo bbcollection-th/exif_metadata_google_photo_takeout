@@ -38,13 +38,13 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 Prérequis:
 
 - `exiftool` doit être installé et accessible dans le PATH
-- Une clé API **Google Geocoding** est nécessaire pour la résolution d'adresses
+- Une clé API **Google Maps Geocoding** est nécessaire pour la résolution d'adresses (optionnelle, utilisée avec `--geocode`)
 
 ```bash
 pip install -e .
 
 # Définir la clé API pour l'application
-export GOOGLE_GEOCODING_API_KEY="votre_clé_api"
+export GOOGLE_MAPS_API_KEY="votre_clé_api"
 ```
 
 ### Créer une clé API Google Geocoding
@@ -54,7 +54,7 @@ export GOOGLE_GEOCODING_API_KEY="votre_clé_api"
 3. Activer l'API **Geocoding** depuis la bibliothèque d'API
 4. Aller dans **APIs & Services > Identifiants** et créer une clé API
 5. (Optionnel) Restreindre la clé pour l'API Geocoding
-6. Copier la clé générée puis la définir dans la variable d'environnement `GOOGLE_GEOCODING_API_KEY`
+6. Copier la clé générée puis la définir dans la variable d'environnement `GOOGLE_MAPS_API_KEY`
 
 ## Utilisation
 
@@ -265,7 +265,37 @@ exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
 **Champs supportés pour l'organisation des fichiers:**
 - `archived`: Déplace le fichier vers le dossier `archive/` si `true`
 - `trashed`: Déplace le fichier vers le dossier `corbeille/` si `true` (priorité sur `archived`)
+ 
+
+## Géocodage des coordonnées GPS
+
+L'option `--geocode` permet d'enrichir les photos en transformant les coordonnées GPS en informations lisibles.
+Elle repose sur l'API **Google Maps Geocoding** via la bibliothèque `requests`.
+
+### Fournir la clé API
+
+1. Obtenir une clé pour l'API **Geocoding** dans la Google Cloud Console.
+2. Définir la variable d'environnement `GOOGLE_MAPS_API_KEY` :
+
+```bash
+export GOOGLE_MAPS_API_KEY="votre_clé_api"
 ```
+
+Un cache local (`~/.cache/google_takeout_metadata/geocode_cache.json`) est utilisé et peut être redéfini via `GOOGLE_TAKEOUT_METADATA_CACHE`.
+
+### Activer depuis la CLI
+
+```bash
+google-takeout-metadata --geocode /chemin/vers/le/dossier
+```
+
+### Tags Exif ajoutés
+
+Lorsque le géocodage est actif, les tags suivants sont ajoutés si absents :
+
+- `XMP:City` / `IPTC:City`
+- `XMP:Country` / `IPTC:Country-PrimaryLocationName`
+- `XMP:Location` (adresse formatée)
 
 ## Tests
 
