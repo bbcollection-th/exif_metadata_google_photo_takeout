@@ -230,31 +230,41 @@ def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_f
 def _enrich_with_reverse_geocode(meta, json_path: Path, geocode: bool) -> None:
     """Compléter les champs de localisation en utilisant le géocodage inverse."""
 
-    if not geocode:
+    if (not geocode) or (meta.latitude is None) or (meta.longitude is None):
         return
 
-    if meta.latitude is not None and meta.longitude is not None:
-        if not os.environ.get("GOOGLE_MAPS_API_KEY"):
-            logger.debug("Clé API Google Maps absente, géocodage ignoré pour %s", json_path.name)
-            return
-        meta.city = meta.state = meta.country = meta.place_name = None
-        try:
-            results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
-        except RuntimeError as exc:
-            logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
-        else:
-            if results:
-                first = results[0]
-                components = first.get("address_components", [])
-                for comp in components:
-                    types = comp.get("types", [])
-                    if "locality" in types and meta.city is None:
-                        meta.city = comp.get("long_name")
-                    elif "administrative_area_level_1" in types and meta.state is None:
-                        meta.state = comp.get("long_name")
-                    elif "country" in types and meta.country is None:
-                        meta.country = comp.get("long_name")
-                meta.place_name = first.get("formatted_address")
+    if not os.getenv("GOOGLE_MAPS_API_KEY"):
+        logger.debug(
+            "Clé API Google Maps absente, géocodage ignoré pour %s", json_path.name
+        )
+        return
+
+    try:
+        results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
+    except RuntimeError as exc:
+        logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
+        return
+
+    if not results:
+        return
+
+    first = results[0]
+    components = first.get("address_components", [])
+    city = state = country = None
+    for comp in components:
+        types = comp.get("types", [])
+        if "locality" in types and city is None:
+            city = comp.get("long_name")
+        elif "administrative_area_level_1" in types and state is None:
+            state = comp.get("long_name")
+        elif "country" in types and country is None:
+            country = comp.get("long_name")
+
+    # Mutations après succès uniquement, en conservant l'existant si partiel
+    meta.city = city or meta.city
+    meta.state = state or meta.state
+    meta.country = country or meta.country
+    meta.place_name = first.get("formatted_address") or meta.place_name
 
 
 def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
@@ -267,6 +277,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         immediate_delete: Mode destructeur - supprimer immédiatement le JSON après succès 
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
+        geocode: Activer le géocodage inverse (False par défaut; nécessite GOOGLE_MAPS_API_KEY)
     """
     
     # Vérifier si ce sidecar a déjà été traité (préfixe OK_)

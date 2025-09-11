@@ -7,6 +7,7 @@ import logging
 import shutil
 import sys
 from pathlib import Path
+import os
 
 from .processor import process_directory
 from .processor_batch import process_directory_batch
@@ -47,11 +48,17 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
+    if args.geocode and not os.getenv("GOOGLE_MAPS_API_KEY"):
+        logging.warning(
+            "⚠️ --geocode activé mais GOOGLE_MAPS_API_KEY est absent de l'environnement : aucun appel API ne sera effectué."
+        )
+
     # Configuration du logging avec le niveau approprié
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format="%(asctime)s - %(levelname)s - %(message)s"
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        force=True,
     )
 
     # Gestion de la compatibilité du système de sécurité

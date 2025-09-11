@@ -30,7 +30,7 @@ def test_main_help(capsys):
     assert "Fusionner les métadonnées Google Takeout dans les images" in captured.out
 
 
-def test_main_invalid_directory(capsys, tmp_path):
+def test_main_invalid_directory(tmp_path):
     """Tester la CLI avec un répertoire inexistant."""
     non_existent = tmp_path / "does_not_exist"
 
@@ -42,7 +42,7 @@ def test_main_invalid_directory(capsys, tmp_path):
     # Donc nous ne vérifions pas la sortie capturée, juste qu'elle se termine
 
 
-def test_main_file_instead_of_directory(capsys, tmp_path):
+def test_main_file_instead_of_directory(tmp_path):
     """Tester la CLI avec un chemin de fichier au lieu d'un répertoire."""
     test_file = tmp_path / "test.txt"
     test_file.write_text("test")
@@ -133,7 +133,7 @@ def test_main_geocode_option(mock_process_directory, tmp_path):
 
 
 @patch('google_takeout_metadata.cli.process_directory')
-def test_main_verbose_logging(mock_process_directory, tmp_path, caplog):
+def test_main_verbose_logging(mock_process_directory, tmp_path):
     """Tester que la CLI avec l'option verbose active le logging de debug."""
     with patch("shutil.which", return_value="/usr/bin/exiftool"):
         main(["--verbose", str(tmp_path)])
