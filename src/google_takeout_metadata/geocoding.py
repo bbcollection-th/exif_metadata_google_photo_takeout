@@ -76,7 +76,7 @@ def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
 
     try:
         data = response.json()
-    except ValueError as exc:
+    except json.JSONDecodeError as exc:
         raise RuntimeError("Réponse JSON invalide") from exc
 
     status = data.get("status")
