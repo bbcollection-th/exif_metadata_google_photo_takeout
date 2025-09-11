@@ -103,7 +103,7 @@ def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
         data = response.json(
     except json.JSONDecodeError as exc:
 
-        raise RuntimeError("Réponse JSON invalide") from exc
+        raise RuntimeError("Réponse JSON invalide reçue de l'API de géocodage") from exc
 
     status = data.get("status")
     if status == "OVER_QUERY_LIMIT":
