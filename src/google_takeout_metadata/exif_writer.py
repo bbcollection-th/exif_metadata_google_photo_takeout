@@ -297,6 +297,27 @@ def build_gps_args(meta: SidecarData, is_video: bool = False) -> List[str]:
     
     return args
 
+
+def build_location_args(meta: SidecarData) -> List[str]:
+    """Construit les arguments pour la localisation (ville/pays/lieu)."""
+    args: List[str] = []
+
+    city = getattr(meta, "city", None)
+    country = getattr(meta, "country", None)
+    place_name = getattr(meta, "place_name", None)
+
+    if city:
+        args.extend([f"-XMP:City={city}", f"-IPTC:City={city}"])
+    if country:
+        args.extend([
+            f"-XMP:Country={country}",
+            f"-IPTC:Country-PrimaryLocationName={country}",
+        ])
+    if place_name:
+        args.append(f"-XMP:Location={place_name}")
+
+    return args
+
 def build_rating_args(meta: SidecarData) -> List[str]:
     """Construit les arguments pour le rating."""
     args: List[str] = []
@@ -394,6 +415,11 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         gps_args = build_gps_args(meta, is_video)
         if gps_args:
             append_only_args.extend(gps_args)
+
+        # Localisation (ville/pays/lieu)
+        location_args = build_location_args(meta)
+        if location_args:
+            append_only_args.extend(location_args)
         
         # Rating
         rating_args = build_rating_args(meta)
@@ -439,6 +465,9 @@ def build_exiftool_args(meta: SidecarData, media_path: Path = None, use_localtim
         
         # GPS
         args.extend(build_gps_args(meta, is_video))
+
+        # Localisation (ville/pays/lieu)
+        args.extend(build_location_args(meta))
         
         # Rating
         args.extend(build_rating_args(meta))

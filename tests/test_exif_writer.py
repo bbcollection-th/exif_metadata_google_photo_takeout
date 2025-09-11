@@ -293,8 +293,36 @@ def test_build_args_default_behavior() -> None:
     assert "-XMP-iptcExt:PersonInImage+=Safe Person" in args
     # Le rating devrait être présent
     assert "-XMP:Rating=5" in args
-    # GPS devrait être présent  
+    # GPS devrait être présent
     assert "-GPS:GPSLatitude=48.8566" in args
+
+
+def test_build_args_location() -> None:
+    """Tester que les informations de localisation sont ajoutées lorsque disponibles."""
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=None,
+        longitude=None,
+        altitude=None,
+        favorite=False,
+    )
+
+    # Ajouter dynamiquement les informations de localisation
+    meta.city = "Paris"
+    meta.country = "France"
+    meta.place_name = "Tour Eiffel"
+
+    args = build_exiftool_args(meta)
+
+    assert "-XMP:City=Paris" in args
+    assert "-IPTC:City=Paris" in args
+    assert "-XMP:Country=France" in args
+    assert "-IPTC:Country-PrimaryLocationName=France" in args
+    assert "-XMP:Location=Tour Eiffel" in args
 
 
 def test_build_args_overwrite_mode() -> None:
