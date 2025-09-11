@@ -226,6 +226,30 @@ def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_f
         return media_path, json_path
 
 
+def _enrich_with_reverse_geocode(meta, json_path: Path) -> None:
+    """Compléter les champs de localisation en utilisant le géocodage inverse."""
+
+    if meta.latitude is not None and meta.longitude is not None:
+        meta.city = meta.state = meta.country = meta.place_name = None
+        try:
+            results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
+        except RuntimeError as exc:
+            logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
+        else:
+            if results:
+                first = results[0]
+                components = first.get("address_components", [])
+                for comp in components:
+                    types = comp.get("types", [])
+                    if "locality" in types and not meta.city:
+                        meta.city = comp.get("long_name")
+                    elif "administrative_area_level_1" in types and not meta.state:
+                        meta.state = comp.get("long_name")
+                    elif "country" in types and not meta.country:
+                        meta.country = comp.get("long_name")
+                meta.place_name = first.get("formatted_address")
+
+
 def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
@@ -250,25 +274,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
         statistics.stats.add_failed_file(json_path, "parse_error", f"Erreur de lecture JSON : {exc}")
         raise
 
-    if meta.latitude is not None and meta.longitude is not None:
-        meta.city = meta.state = meta.country = meta.place_name = None
-        try:
-            results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
-        except RuntimeError as exc:
-            logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
-        else:
-            if results:
-                first = results[0]
-                components = first.get("address_components", [])
-                for comp in components:
-                    types = comp.get("types", [])
-                    if "locality" in types and not meta.city:
-                        meta.city = comp.get("long_name")
-                    elif "administrative_area_level_1" in types and not meta.state:
-                        meta.state = comp.get("long_name")
-                    elif "country" in types and not meta.country:
-                        meta.country = comp.get("long_name")
-                meta.place_name = first.get("formatted_address")
+    _enrich_with_reverse_geocode(meta, json_path)
 
     # Trouver les albums du répertoire
     directory_albums = find_albums_for_directory(json_path.parent)
@@ -314,25 +320,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 actual_json_path = fixed_json_path if fixed_json_path.exists() else json_path
 
                 meta = parse_sidecar(actual_json_path)
-                if meta.latitude is not None and meta.longitude is not None:
-                    meta.city = meta.state = meta.country = meta.place_name = None
-                    try:
-                        results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
-                    except RuntimeError as exc:
-                        logger.warning("Échec du géocodage inverse pour %s: %s", actual_json_path.name, exc)
-                    else:
-                        if results:
-                            first = results[0]
-                            components = first.get("address_components", [])
-                            for comp in components:
-                                types = comp.get("types", [])
-                                if "locality" in types and not meta.city:
-                                    meta.city = comp.get("long_name")
-                                elif "administrative_area_level_1" in types and not meta.state:
-                                    meta.state = comp.get("long_name")
-                                elif "country" in types and not meta.country:
-                                    meta.country = comp.get("long_name")
-                            meta.place_name = first.get("formatted_address")
+                _enrich_with_reverse_geocode(meta, actual_json_path)
                 directory_albums = find_albums_for_directory(actual_json_path.parent)
                 meta.albums.extend(directory_albums)
                 
