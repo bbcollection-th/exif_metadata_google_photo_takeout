@@ -12,7 +12,7 @@ from google_takeout_metadata import geocoding, processor
 def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
     """Complete flow: parse sidecar → geocoding → build arguments."""
 
-    # Créer un sidecar minimal avec coordonnées
+    # Create minimal sidecar with coordinates
     data = {
         "title": "a.jpg",
         "geoData": {"latitude": 48.8566, "longitude": 2.3522},
