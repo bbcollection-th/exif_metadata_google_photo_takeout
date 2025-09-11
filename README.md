@@ -25,8 +25,7 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 - `--overwrite`: Force l'écrasement des métadonnées existantes (mode destructif)
 - `--immediate-delete`: Mode destructeur - supprime immédiatement les sidecars JSON après succès
 - `--batch`: Mode batch pour traitement optimisé de gros volumes de fichiers
-- `--organize-files`: Organisation automatique des fichiers selon leur statut archived/trashed
-
+- `--organize-files`: Organisation automatique des fichiers selon leur statut trashed/locked/archived (→ `_Corbeille` / `_Verrouillé` / `_Archive`)
 ✅ **Qualité:**
 - Tests unitaires complets
 - Tests d'intégration E2E avec exiftool
@@ -240,8 +239,11 @@ exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
     {"name": "Jane Smith"}
   ],
   "favorited": true,
+  "favorited": true,
   "archived": false,
-  "trashed": false
+  "trashed": false,
+  "inLockedFolder": false,
+  "localFolderName": "Instagram"
 }
 ```
 
