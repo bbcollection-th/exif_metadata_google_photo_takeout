@@ -239,8 +239,11 @@ exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
     {"name": "Jane Smith"}
   ],
   "favorited": true,
+  "favorited": true,
   "archived": false,
-  "trashed": false
+  "trashed": false,
+  "inLockedFolder": false,
+  "localFolderName": "Instagram"
 }
 ```
 
