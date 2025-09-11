@@ -433,10 +433,38 @@ def test_process_directory_batch_file_extension_fix(mock_parse_sidecar, mock_fix
     
     # Simuler parse_sidecar pour retourner des données différentes pour chaque appel
     mock_parse_sidecar.side_effect = [
-        SidecarData(filename="test.jpg", description="Original", people=[], taken_at=None, created_at=None, 
-                   latitude=None, longitude=None, altitude=None, favorite=False, albums=[]),
-        SidecarData(filename="test.jpeg", description="Fixed", people=[], taken_at=None, created_at=None,
-                   latitude=None, longitude=None, altitude=None, favorite=False, albums=[])
+        SidecarData(
+            filename="test.jpg",
+            description="Original",
+            people=[],
+            taken_at=None,
+            created_at=None,
+            latitude=None,
+            longitude=None,
+            altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
+            favorite=False,
+            albums=[],
+        ),
+        SidecarData(
+            filename="test.jpeg",
+            description="Fixed",
+            people=[],
+            taken_at=None,
+            created_at=None,
+            latitude=None,
+            longitude=None,
+            altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
+            favorite=False,
+            albums=[],
+        ),
     ]
     
     # Exécuter

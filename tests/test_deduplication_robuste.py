@@ -60,6 +60,10 @@ def test_remove_then_add_deduplication():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["Vacances 2024", "test album"]
     )
@@ -104,6 +108,10 @@ def test_deduplication_consistency_between_modes():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["vacances 2024"]
     )
@@ -143,6 +151,10 @@ def test_case_normalization_prevents_duplicates():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     
@@ -170,6 +182,10 @@ def test_special_characters_in_names():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     
@@ -193,6 +209,10 @@ def test_empty_values_handling():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=None      # None
     )

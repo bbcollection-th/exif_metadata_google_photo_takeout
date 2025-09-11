@@ -330,6 +330,10 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["Original Album"]
     )
@@ -394,6 +398,10 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=[]
     )
@@ -447,6 +455,10 @@ def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
         latitude=48.8566,
         longitude=2.3522,
         altitude=35.0,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=True,
         albums=["Test Album"]
     )

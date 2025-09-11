@@ -34,6 +34,10 @@ def test_append_only_timestamps_without_description():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     
@@ -76,6 +80,10 @@ def test_fragile_wm_logic_eliminated():
         latitude=48.8566,
         longitude=2.3522,
         altitude=35.0,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=True,  # Rating=5
     )
     
@@ -113,6 +121,10 @@ def test_no_wm_in_overwrite_mode():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     

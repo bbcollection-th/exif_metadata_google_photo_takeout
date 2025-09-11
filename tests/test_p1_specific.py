@@ -28,6 +28,10 @@ def test_p1_write_metadata_conditional_args():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     

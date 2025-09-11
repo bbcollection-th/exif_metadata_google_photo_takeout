@@ -40,6 +40,10 @@ def test_robust_approach_no_duplicates():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             favorite=False,
             albums=["Vacances"]
         )
@@ -62,6 +66,10 @@ def test_robust_approach_no_duplicates():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             favorite=False,
             albums=["Vacances", "Famille"]
         )
@@ -107,6 +115,10 @@ def test_robust_approach_only_new_people():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             favorite=False
         )
         write_metadata(test_image, meta1, append_only=True)
@@ -121,6 +133,10 @@ def test_robust_approach_only_new_people():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             favorite=False
         )
         write_metadata(test_image, meta2, append_only=True)

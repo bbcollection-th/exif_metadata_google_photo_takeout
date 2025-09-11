@@ -144,6 +144,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             archived=True
         )
         assert organizer.get_target_directory(archived_meta) == organizer.archive_dir
@@ -159,6 +163,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             trashed=True
         )
         assert organizer.get_target_directory(trashed_meta) == organizer.trash_dir
@@ -174,6 +182,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             locked=True
         )
         assert organizer.get_target_directory(locked_meta) == organizer.locked_dir
@@ -189,6 +201,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             archived=True,
             locked=True,
             trashed=True
@@ -206,6 +222,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             archived=True,
             trashed=True,
             locked=True
@@ -223,6 +243,10 @@ def test_file_organization_logic():
             latitude=None,
             longitude=None,
             altitude=None,
+            city=None,
+            state=None,
+            country=None,
+            place_name=None,
             archived=True,
             locked=True
         )
