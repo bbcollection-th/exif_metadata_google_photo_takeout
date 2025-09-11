@@ -35,11 +35,26 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 
 ## Installation
 
-Prérequis: `exiftool` doit être installé et accessible dans le PATH.
+Prérequis:
+
+- `exiftool` doit être installé et accessible dans le PATH
+- Une clé API **Google Geocoding** est nécessaire pour la résolution d'adresses
 
 ```bash
 pip install -e .
+
+# Définir la clé API pour l'application
+export GOOGLE_GEOCODING_API_KEY="votre_clé_api"
 ```
+
+### Créer une clé API Google Geocoding
+
+1. Se connecter à la [Google Cloud Console](https://console.cloud.google.com/)
+2. Créer ou sélectionner un projet existant
+3. Activer l'API **Geocoding** depuis la bibliothèque d'API
+4. Aller dans **APIs & Services > Identifiants** et créer une clé API
+5. (Optionnel) Restreindre la clé pour l'API Geocoding
+6. Copier la clé générée puis la définir dans la variable d'environnement `GOOGLE_GEOCODING_API_KEY`
 
 ## Utilisation
 

@@ -1,10 +1,11 @@
+
 """Utilitaires de géocodage inverse avec cache disque simple.
 
 Le cache est stocké dans un emplacement spécifique à l'utilisateur :
 ``$XDG_CACHE_HOME/google_takeout_metadata`` (ou ``~/.cache/...``). Il peut
 être surchargé via la variable d'environnement
 ``GOOGLE_TAKEOUT_METADATA_CACHE``.
-"""
+
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+
 def _cache_file() -> Path:
     """Retourne le chemin du fichier de cache dans un dossier accessible."""
     custom = os.environ.get("GOOGLE_TAKEOUT_METADATA_CACHE")
@@ -30,12 +32,15 @@ def _cache_file() -> Path:
     return path
 
 
+
 def _load_cache() -> Dict[str, Any]:
     """Charger le contenu du cache depuis le disque."""
+
     cache_file = _cache_file()
     if cache_file.exists():
         try:
             with cache_file.open("r", encoding="utf-8") as f:
+
                 return json.load(f)
         except (OSError, json.JSONDecodeError) as exc:
             logger.warning("Impossible de lire le cache de géocodage: %s", exc)
@@ -45,11 +50,12 @@ def _load_cache() -> Dict[str, Any]:
 
 def _save_cache(cache: Dict[str, Any]) -> None:
     """Sauvegarder le cache sur le disque."""
+
     cache_file = _cache_file()
     try:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         with cache_file.open("w", encoding="utf-8") as f:
-            json.dump(cache, f, ensure_ascii=False, indent=2)
+
     except OSError as exc:
         logger.warning("Impossible d'écrire le cache de géocodage: %s", exc)
 
@@ -86,14 +92,17 @@ def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
 
     try:
         response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+
     except requests.Timeout as exc:
         raise RuntimeError("Requête de géocodage expirée") from exc
     except requests.RequestException as exc:
         raise RuntimeError("Erreur de requête de géocodage") from exc
 
     try:
-        data = response.json()
-    except ValueError as exc:
+        data = response.json(
+    except json.JSONDecodeError as exc:
+
         raise RuntimeError("Réponse JSON invalide") from exc
 
     status = data.get("status")
