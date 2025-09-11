@@ -20,7 +20,7 @@ def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
     json_path = tmp_path / "a.jpg.json"
     json_path.write_text(json.dumps(data), encoding="utf-8")
 
-    # Parse du sidecar
+    # Parse sidecar
     meta = parse_sidecar(json_path)
 
     # Simuler les résultats du géocodage inverse
