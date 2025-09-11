@@ -203,7 +203,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             Path(argfile_path).unlink()
 
 
-def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False) -> None:
+def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots.
     
     Args:
@@ -213,6 +213,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé/vérouillé)
+        geocode: Activer le géocodage inverse si l'API est disponible
     """
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
@@ -251,7 +252,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     for json_path in sidecar_files:
         try:
             meta = parse_sidecar(json_path)
-            _enrich_with_reverse_geocode(meta, json_path)
+            _enrich_with_reverse_geocode(meta, json_path, geocode)
 
             directory_albums = find_albums_for_directory(json_path.parent)
             meta.albums.extend(directory_albums)
@@ -266,7 +267,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
             if fixed_json_path != json_path:
                 meta = parse_sidecar(fixed_json_path)
-                _enrich_with_reverse_geocode(meta, fixed_json_path)
+                _enrich_with_reverse_geocode(meta, fixed_json_path, geocode)
                 meta.albums.extend(find_albums_for_directory(fixed_json_path.parent))
             
             # Organisation des fichiers si demandée

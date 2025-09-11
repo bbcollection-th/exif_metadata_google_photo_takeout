@@ -272,3 +272,5 @@ C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-251/test_process_di
 C:/Users/anthony/AppData/Local/Temp/tmp2dkh7u2x/_Corbeille/test_image.jpg
 C:/Users/anthony/AppData/Local/Temp/tmp85mz24gy/_Corbeille/test_image.jpg
 C:/Users/anthony/AppData/Local/Temp/tmp625umz_o/_Corbeille/test_image.jpg
+/tmp/pytest-of-root/pytest-7/test_main_integration_batch_mo0/batch1.jpg
+/tmp/pytest-of-root/pytest-7/test_main_integration_batch_mo0/batch2.jpg
