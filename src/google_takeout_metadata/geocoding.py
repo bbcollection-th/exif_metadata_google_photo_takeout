@@ -69,6 +69,7 @@ def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
 
     try:
         response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
     except requests.Timeout as exc:
         raise RuntimeError("Requête de géocodage expirée") from exc
     except requests.RequestException as exc:
