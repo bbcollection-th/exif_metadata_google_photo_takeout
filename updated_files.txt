@@ -271,3 +271,4 @@ C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-251/test_process_di
 C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-251/test_process_directory_batch_i0/cleanup_test.jpg
 C:/Users/anthony/AppData/Local/Temp/tmp2dkh7u2x/_Corbeille/test_image.jpg
 C:/Users/anthony/AppData/Local/Temp/tmp85mz24gy/_Corbeille/test_image.jpg
+C:/Users/anthony/AppData/Local/Temp/tmp625umz_o/_Corbeille/test_image.jpg

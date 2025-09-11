@@ -130,16 +130,20 @@ google-takeout-metadata --batch --organize-files --localtime /chemin/vers/le/dos
 ### 📁 Fonctionnement:
 
 **Statuts détectés** dans les sidecars JSON Google Takeout:
-- `"archived": true` → Fichier déplacé vers `archive/`
-- `"trashed": true` → Fichier déplacé vers `corbeille/`
-- **Priorité** : Si un fichier a `archived: true` ET `trashed: true`, le statut `trashed` l'emporte
+- `"trashed": true` → Fichier déplacé vers `_Corbeille/`
+- `"locked": true` → Fichier déplacé vers `_Verrouillé/` (dossiers verrouillés)
+- `"archived": true` → Fichier déplacé vers `_Archive/`
+- **Priorité** : `trashed > locked > archived`
+  - Si `trashed` et `locked`/`archived` coexistent → `trashed` gagne
+  - Si `locked` et `archived` coexistent → `locked` gagne
 
 **Structure créée automatiquement:**
 ```
 dossier_source/
-├── archive/          # Fichiers avec "archived": true
-├── corbeille/        # Fichiers avec "trashed": true  
-└── autres_fichiers   # Fichiers sans statut spécial
+├── _Archive/         # Fichiers avec "archived": true
+├── _Corbeille/       # Fichiers avec "trashed": true  
+├── _Verrouillé/      # Fichiers avec "locked": true
+└── autres_fichiers/  # Fichiers sans statut spécial
 ```
 
 ### 🔒 Sécurité:
@@ -151,9 +155,10 @@ dossier_source/
 
 ### ⚙️ Avantages:
 
-- **Nettoyage automatique** : Sépare automatiquement les fichiers archivés et supprimés
-- **Préservation de l'historique** : Les fichiers "trashés" restent accessibles dans `corbeille/`
-- **Workflow Google Takeout** : Respecte parfaitement la logique de statut de Google Photos
+- **Nettoyage automatique** : Sépare automatiquement les fichiers selon leur statut Google Photos
+- **Préservation de l'historique** : Les fichiers "trashés" restent accessibles dans `_Corbeille/`
+- **Respect des dossiers verrouillés** : Les fichiers de dossiers verrouillés sont isolés dans `_Verrouillé/`
+- **Workflow Google Takeout** : Respecte parfaitement la hiérarchie de statut de Google Photos
 - **Combinable** : Fonctionne avec toutes les autres options (batch, localtime, etc.)
 
 **Exemple concret:**

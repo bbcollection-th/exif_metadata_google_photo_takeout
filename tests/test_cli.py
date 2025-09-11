@@ -34,7 +34,8 @@ def test_main_invalid_directory(capsys, tmp_path):
     non_existent = tmp_path / "does_not_exist"
     
     with pytest.raises(SystemExit):
-        main([str(non_existent)])
+        with patch("shutil.which", return_value="/usr/bin/exiftool"):
+            main([str(non_existent)])
     
     # L'erreur est enregistrée mais pas affichée sur stderr avec la configuration actuelle
     # Donc nous ne vérifions pas la sortie capturée, juste qu'elle se termine
@@ -46,7 +47,8 @@ def test_main_file_instead_of_directory(capsys, tmp_path):
     test_file.write_text("test")
     
     with pytest.raises(SystemExit):
-        main([str(test_file)])
+        with patch("shutil.which", return_value="/usr/bin/exiftool"):
+            main([str(test_file)])
     
     # L'erreur est enregistrée mais pas affichée sur stderr avec la configuration actuelle
     # Donc nous ne vérifions pas la sortie capturée, juste qu'elle se termine
@@ -55,7 +57,8 @@ def test_main_file_instead_of_directory(capsys, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory')
 def test_main_normal_mode(mock_process_directory, tmp_path):
     """Tester le mode de traitement normal de la CLI."""
-    main([str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main([str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
         tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False
@@ -65,7 +68,8 @@ def test_main_normal_mode(mock_process_directory, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory_batch')
 def test_main_batch_mode(mock_process_directory_batch, tmp_path):
     """Tester le mode de traitement par lot de la CLI."""
-    main(["--batch", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--batch", str(tmp_path)])
     
     mock_process_directory_batch.assert_called_once_with(
         tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False
@@ -75,7 +79,8 @@ def test_main_batch_mode(mock_process_directory_batch, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory')
 def test_main_localtime_option(mock_process_directory, tmp_path):
     """Tester la CLI avec l'option localtime."""
-    main(["--localtime", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--localtime", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
         tmp_path, use_localtime=True, append_only=True, immediate_delete=False, organize_files=False
@@ -85,7 +90,8 @@ def test_main_localtime_option(mock_process_directory, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory')
 def test_main_overwrite_option(mock_process_directory, tmp_path):
     """Tester la CLI avec l'option overwrite."""
-    main(["--overwrite", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--overwrite", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
         tmp_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False
@@ -95,7 +101,8 @@ def test_main_overwrite_option(mock_process_directory, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory')
 def test_main_immediate_delete_option(mock_process_directory, tmp_path):
     """Tester la CLI avec l'option immediate-delete."""
-    main(["--immediate-delete", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--immediate-delete", str(tmp_path)])
     
     mock_process_directory.assert_called_once_with(
         tmp_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False
@@ -105,7 +112,8 @@ def test_main_immediate_delete_option(mock_process_directory, tmp_path):
 @patch('google_takeout_metadata.cli.process_directory_batch')
 def test_main_batch_with_all_options(mock_process_directory_batch, tmp_path):
     """Tester le mode batch de la CLI avec toutes les options."""
-    main(["--batch", "--localtime", "--overwrite", "--immediate-delete", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--batch", "--localtime", "--overwrite", "--immediate-delete", str(tmp_path)])
     
     mock_process_directory_batch.assert_called_once_with(
         tmp_path, use_localtime=True, append_only=False, immediate_delete=True, organize_files=False
@@ -117,7 +125,8 @@ def test_main_verbose_logging(mock_process_directory, tmp_path, caplog):
     """Tester que la CLI avec l'option verbose active le logging de debug."""
     # Nous devons tester que basicConfig a été appelé avec le niveau DEBUG
     # mais le niveau du logger root pourrait ne pas changer pendant le test
-    main(["--verbose", str(tmp_path)])
+    with patch("shutil.which", return_value="/usr/bin/exiftool"):
+        main(["--verbose", str(tmp_path)])
     
     # S'assurer simplement que la fonction a été appelée - le test de logging est plus complexe
     # en raison de la façon dont pytest gère le logging

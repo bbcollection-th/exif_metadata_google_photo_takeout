@@ -227,6 +227,9 @@ def test_file_organization_logic():
         assert organizer.get_target_directory(locked_archived_meta) == organizer.locked_dir
         assert should_organize_file(locked_archived_meta)
         
+        # Test get_organization_status pour le cas locked + archived
+        assert get_organization_status(locked_archived_meta) == "locked"
+        
         print("✅ Test logique d'organisation réussi !")
 
 

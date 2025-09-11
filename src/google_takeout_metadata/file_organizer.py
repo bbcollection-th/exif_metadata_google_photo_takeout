@@ -176,9 +176,9 @@ def get_organization_status(meta: SidecarData) -> str:
     """
     if meta.trashed:
         return "trashed"
-    elif meta.archived:
-        return "archived"
     elif meta.locked:
         return "locked"
+    elif meta.archived:
+        return "archived"
     else:
         return "normal"
