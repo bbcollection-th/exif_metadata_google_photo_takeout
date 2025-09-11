@@ -14,7 +14,7 @@ Workflow:
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Optional
 import platform
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,9 @@ def mark_sidecar_as_processed(json_path: Path) -> bool:
     new_path = json_path.parent / new_name
     
     try:
+        if new_path.exists():
+            logger.warning(f"Target already exists, skip to avoid clobbering: {new_path}")
+            return True  # idempotent: considéré comme déjà traité
         json_path.rename(new_path)
         logger.info(f"Marked sidecar as processed: {json_path} → {new_path}")
         return True
@@ -82,10 +85,8 @@ def get_processed_sidecars(directory: Path) -> List[Path]:
     if not directory.is_dir():
         return []
         
-    processed = []
-    for file_path in directory.rglob(f"{PROCESSED_PREFIX}*.json"):
-        processed.append(file_path)
-        
+    processed = list(directory.rglob(f"{PROCESSED_PREFIX}*.json"))
+    processed.sort()
     return processed
 
 
@@ -129,28 +130,22 @@ def find_sidecars_to_skip(directory: Path) -> Set[Path]:
     return to_skip
 
 
-++ b/src/google_takeout_metadata/sidecar_safety.py
-@@
-from typing import List, Tuple, Set, Optional
-@@
 def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None) -> Optional[Path]:
-     """
-     Génère un script pour supprimer définitivement les sidecars traités.
-     
-     Args:
-         directory: Répertoire contenant les sidecars traités
-         output_file: Chemin du script à générer (optionnel)
--        
--    Returns:
+    """
+    Génère un script pour supprimer définitivement les sidecars traités.
+    
+    Args:
+        directory: Répertoire contenant les sidecars traités
+        output_file: Chemin du script à générer (optionnel)
         
     Returns:
         Chemin vers le script généré, ou None s'il n'y a rien à faire ou en cas d'erreur
-     """
-     processed_sidecars = get_processed_sidecars(directory)
-     
-     if not processed_sidecars:
-         logger.info("No processed sidecars found for cleanup script")
-         return None
+    """
+    processed_sidecars = get_processed_sidecars(directory)
+    
+    if not processed_sidecars:
+        logger.info("No processed sidecars found for cleanup script")
+        return None
         
     # Déterminer le nom et type de script selon l'OS
     is_windows = platform.system() == "Windows"
@@ -164,6 +159,7 @@ def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None)
     if is_windows:
         script_lines.extend([
             "@echo off",
+            "chcp 65001 > nul",
             "REM Script pour supprimer les sidecars traités avec succès",
             "REM Généré automatiquement - Vérifiez avant exécution !",
             "echo Suppression des sidecars traités...",
@@ -173,7 +169,7 @@ def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None)
         for sidecar_path in processed_sidecars:
             # Échapper les chemins pour Windows
             escaped_path = str(sidecar_path).replace('"', '""')
-            script_lines.append(f'del /f "{escaped_path}"')
+            script_lines.append(f'del /f /q "{escaped_path}"')
             
         script_lines.extend([
             "",
@@ -200,8 +196,9 @@ def generate_cleanup_script(directory: Path, output_file: Optional[Path] = None)
         ])
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(script_lines))
+        encoding = 'utf-8-sig' if is_windows else 'utf-8'
+        with open(output_file, 'w', encoding=encoding) as f:
+            f.write('\n'.join(script_lines) + ("\r\n" if is_windows else "\n"))
             
         # Rendre exécutable sur Unix
         if not is_windows:
@@ -246,6 +243,7 @@ def generate_rollback_script(directory: Path, output_file: Optional[Path] = None
     if is_windows:
         script_lines.extend([
             "@echo off",
+            "chcp 65001 > nul",
             "REM Script pour restaurer les noms originaux des sidecars",
             "REM Généré automatiquement - Vérifiez avant exécution !",
             "echo Restauration des noms originaux...",
@@ -254,11 +252,9 @@ def generate_rollback_script(directory: Path, output_file: Optional[Path] = None
         
         for processed_path in processed_sidecars:
             original_name = get_original_sidecar_name(processed_path)
-            original_path = processed_path.parent / original_name
             
             # Échapper les chemins pour Windows
             escaped_from = str(processed_path).replace('"', '""')
-            escaped_to = str(original_path).replace('"', '""')
             script_lines.append(f'ren "{escaped_from}" "{original_name}"')
             
         script_lines.extend([
@@ -290,8 +286,9 @@ def generate_rollback_script(directory: Path, output_file: Optional[Path] = None
         ])
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(script_lines))
+        encoding = 'utf-8-sig' if is_windows else 'utf-8'
+        with open(output_file, 'w', encoding=encoding) as f:
+            f.write('\n'.join(script_lines) + ("\r\n" if is_windows else "\n"))
             
         # Rendre exécutable sur Unix
         if not is_windows:
@@ -321,7 +318,7 @@ def generate_scripts_summary(directory: Path) -> Tuple[int, int, List[str]]:
     
     # Compter les sidecars en attente (non traités)
     all_sidecars = list(directory.rglob("*.json"))
-    pending_sidecars = [s for s in all_sidecars if not is_sidecar_processed(s)]
+    pending_sidecars = [s for s in all_sidecars if not s.name.startswith(PROCESSED_PREFIX)]
     
     messages = []
     messages.append("=== Résumé des sidecars ===")

@@ -37,16 +37,15 @@ class TestProcessingStats:
     def test_add_processed_file(self):
         """Test de l'ajout de fichiers traités."""
         stats = ProcessingStats()
-        test_path = Path("test_image.jpg")
         
         # Test image
-        stats.add_processed_file(test_path, is_image=True)
+        stats.add_processed_file(is_image=True)
         assert stats.total_processed == 1
         assert stats.images_processed == 1
         assert stats.videos_processed == 0
         
         # Test vidéo
-        stats.add_processed_file(Path("test_video.mp4"), is_image=False)
+        stats.add_processed_file(is_image=False)
         assert stats.total_processed == 2
         assert stats.images_processed == 1
         assert stats.videos_processed == 1
@@ -314,12 +313,14 @@ def test_batch_sidecar_cleanup_with_real_failure(tmp_path: Path) -> None:
     assert json_path.exists()
     
     # Créer un lot avec des arguments invalides qui causeront un échec exiftool
-    invalid_args = ["-InvalidTag=InvalidValue", "-AnotherInvalidTag=Test"]
-    batch = [(media_path, json_path, invalid_args)]
+    # Utilisons un fichier inexistant pour garantir un échec
+    non_existent_file = tmp_path / "non_existent.jpg"
+    invalid_args = ["-Comment=Test"]  # Arguments valides mais fichier inexistant
+    batch = [(non_existent_file, json_path, invalid_args)]
     
-    # Traiter le lot avec nettoyage activé
+    # Traiter le lot avec suppression immédiate activée (immediate_delete=True)
     # Ceci devrait échouer à cause des arguments invalides
-    result = process_batch(batch, clean_sidecars=True)
+    result = process_batch(batch, immediate_delete=True)
     
     # Vérifier que le traitement a échoué
     assert result == 0, "Le traitement aurait dû échouer avec des arguments invalides"
@@ -364,7 +365,7 @@ def test_batch_sidecar_cleanup_with_condition_success(tmp_path: Path) -> None:
     
     # Traiter avec process_sidecar_file en mode append-only (comportement normal)
     from google_takeout_metadata.processor import process_sidecar_file
-    process_sidecar_file(json_path, append_only=True, clean_sidecars=True)
+    process_sidecar_file(json_path, append_only=True, immediate_delete=True)
     
     # Vérifier que le sidecar a été supprimé car le traitement a "réussi" 
     # (même si condition failed, c'est le comportement normal en append-only)
@@ -404,8 +405,8 @@ def test_batch_cleanup_logic_unit() -> None:
             # Vérifier que le fichier existe avant
             assert json_path.exists()
             
-            # Appeler process_batch avec clean_sidecars=True
-            result = process_batch(batch, clean_sidecars=True)
+            # Appeler process_batch avec immediate_delete=True
+            result = process_batch(batch, immediate_delete=True)
             
             # Vérifier le succès et la suppression
             assert result == 1, "Le batch devrait être considéré comme réussi"

@@ -28,6 +28,9 @@ class SidecarData:
     lon_span: Optional[float] = None
     albums: List[str] = field(default_factory=list)
     archived: bool = False
+    trashed: bool = False
+    locked: bool = False
+    local_folder_name: Optional[str] = None  # Nom du dossier source (appareil)
 
 
 def parse_sidecar(path: Path) -> SidecarData:
@@ -77,7 +80,6 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Extraire les noms de personnes, supprimer les espaces et dédupliquer
     # Gère plusieurs formats :
     # - [{ "name": "X" }]
-    # - [{ "person": { "name": "X" } }]
     raw_people = data.get("people", []) or []
     people = []
     for p in raw_people:
@@ -85,9 +87,6 @@ def parse_sidecar(path: Path) -> SidecarData:
             # Format standard : {"name": "X"}
             if isinstance(p.get("name"), str):
                 people.append(p["name"].strip())
-            # Format imbriqué : {"person": {"name": "X"}}
-            elif isinstance(p.get("person"), dict) and isinstance(p["person"].get("name"), str):
-                people.append(p["person"]["name"].strip())
     # déduplication
     people = sorted(set(filter(None, people)))
 
@@ -129,6 +128,24 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Extraire le statut archivé
     archived = bool(data.get("archived", False))
 
+    # Extraire le statut corbeille
+    trashed = bool(data.get("trashed", False))
+
+    # Extraire le statut d'album vérouillé
+    locked = bool(data.get("inLockedFolder", False))
+
+    # Extraire le nom du dossier local de l'appareil
+    local_folder_name = None
+    google_photos_origin = data.get("googlePhotosOrigin", {})
+    if isinstance(google_photos_origin, dict):
+        mobile_upload = google_photos_origin.get("mobileUpload", {})
+        if isinstance(mobile_upload, dict):
+            device_folder = mobile_upload.get("deviceFolder", {})
+            if isinstance(device_folder, dict):
+                folder_name = device_folder.get("localFolderName")
+                if isinstance(folder_name, str) and folder_name.strip():
+                    local_folder_name = folder_name.strip()
+
     return SidecarData(
         filename=title,
         description=description,
@@ -142,6 +159,10 @@ def parse_sidecar(path: Path) -> SidecarData:
         lat_span=lat_span,
         lon_span=lon_span,
         archived=archived,
+        trashed=trashed,
+        locked=locked,
+        albums=[],  # Les albums sont gérés séparément
+        local_folder_name=local_folder_name,
     )
 
 
@@ -150,12 +171,17 @@ def parse_album_metadata(path: Path) -> List[str]:
     
     Les fichiers metadata.json d'albums (Google Takeout) contiennent généralement :
     {
-        "title": "Nom de l'album",
-        "description": "...",
-        ...
+        "title": "halloween",
+        "description": "",
+        "access": "protected",
+        "date": {
+            "timestamp": "1730287676",
+            "formatted": "30 oct. 2024, 11:27:56 UTC"
+        }
     }
     
-    Retourne une liste des noms d'albums trouvés dans le fichier.
+    Un seul album par fichier metadata.json.
+    Retourne une liste avec le nom de l'album (ou liste vide si erreur).
     """
     try:
         with path.open("r", encoding="utf-8") as fh:
@@ -163,29 +189,14 @@ def parse_album_metadata(path: Path) -> List[str]:
     except (FileNotFoundError, json.JSONDecodeError):
         return []
     
-    albums = []
-    
-    # Nom d'album principal depuis le champ title
+    # Nom d'album depuis le champ title
     title = data.get("title")
     if title and isinstance(title, str):
-        albums.append(title.strip())
+        title = title.strip()
+        if title:  # Vérifier que le titre n'est pas vide après nettoyage
+            return [title]
     
-    # Certains fichiers metadata.json peuvent avoir plusieurs références d'albums
-    # Vérifier s'il y a des références d'albums dans d'autres champs
-    album_refs = data.get("albums", [])
-    if isinstance(album_refs, list):
-        for album_ref in album_refs:
-            if isinstance(album_ref, dict) and "title" in album_ref:
-                album_name = album_ref["title"]
-                if isinstance(album_name, str):
-                    albums.append(album_name.strip())
-            elif isinstance(album_ref, str):
-                albums.append(album_ref.strip())
-    
-    # Supprimer les doublons et les chaînes vides
-    albums = sorted(set(filter(None, albums)))
-    
-    return albums
+    return []
 
 
 def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:

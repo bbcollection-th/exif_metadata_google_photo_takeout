@@ -171,22 +171,6 @@ def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
     assert meta.altitude == 35.0
 
 
-def test_parse_people_nested_format(tmp_path: Path) -> None:
-    """Tester l'analyse des personnes au format imbriqué : [{"person": {"name": "X"}}]."""
-    sample = {
-        "title": "nested_people.jpg",
-        "people": [
-            {"person": {"name": "alice"}},
-            {"person": {"name": "bob"}},
-            {"name": "charlie"}  # format mixte
-        ]
-    }
-    json_path = tmp_path / "nested_people.jpg.json"
-    json_path.write_text(json.dumps(sample), encoding="utf-8")
-    meta = parse_sidecar(json_path)
-    assert meta.people == ["alice", "bob", "charlie"]
-
-
 def test_parse_missing_timestamps(tmp_path: Path) -> None:
     """Tester l'analyse quand les horodatages sont manquants."""
     sample = {
@@ -200,39 +184,72 @@ def test_parse_missing_timestamps(tmp_path: Path) -> None:
     assert meta.created_at is None
 
 
+def test_parse_local_folder_name(tmp_path: Path) -> None:
+    """Tester l'extraction du nom du dossier local de l'appareil."""
+    sample = {
+        "title": "messenger_photo.jpg",
+        "description": "Photo from Messenger",
+        "googlePhotosOrigin": {
+            "mobileUpload": {
+                "deviceFolder": {
+                    "localFolderName": "Messenger"
+                },
+                "deviceType": "ANDROID_PHONE"
+            }
+        }
+    }
+    json_path = tmp_path / "messenger_photo.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.local_folder_name == "Messenger"
+
+
+def test_parse_no_local_folder_name(tmp_path: Path) -> None:
+    """Tester quand il n'y a pas de dossier local."""
+    sample = {
+        "title": "normal_photo.jpg",
+        "description": "Photo normale"
+    }
+    json_path = tmp_path / "normal_photo.jpg.json"
+    json_path.write_text(json.dumps(sample), encoding="utf-8")
+    meta = parse_sidecar(json_path)
+    assert meta.local_folder_name is None
+
+
 def test_parse_album_metadata(tmp_path: Path) -> None:
     """Tester l'analyse des métadonnées d'album depuis les fichiers metadata.json."""
     from google_takeout_metadata.sidecar import parse_album_metadata
     
-    # Tester les métadonnées d'album de base
+    # Tester le format réel Google Takeout
     album_data = {
-        "title": "Vacances 2024",
-        "description": "Photos des vacances d'été"
+        "title": "halloween",
+        "description": "",
+        "access": "protected",
+        "date": {
+            "timestamp": "1730287676",
+            "formatted": "30 oct. 2024, 11:27:56 UTC"
+        }
     }
     metadata_path = tmp_path / "metadata.json"
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
     
     albums = parse_album_metadata(metadata_path)
-    assert albums == ["Vacances 2024"]
+    assert albums == ["halloween"]
 
 
-def test_parse_album_metadata_multiple_albums(tmp_path: Path) -> None:
-    """Tester l'analyse de plusieurs références d'albums."""
+def test_parse_album_metadata_no_title(tmp_path: Path) -> None:
+    """Tester l'analyse quand le titre est manquant."""
     from google_takeout_metadata.sidecar import parse_album_metadata
     
     album_data = {
-        "title": "Album Principal",
-        "albums": [
-            {"title": "Sous-album 1"},
-            {"title": "Sous-album 2"},
-            "Album Simple"
-        ]
+        "description": "Album sans titre",
+        "access": "protected"
     }
     metadata_path = tmp_path / "metadata.json"
     metadata_path.write_text(json.dumps(album_data), encoding="utf-8")
     
     albums = parse_album_metadata(metadata_path)
-    assert set(albums) == {"Album Principal", "Album Simple", "Sous-album 1", "Sous-album 2"}
+    assert albums == []
 
 
 def test_find_albums_for_directory(tmp_path: Path) -> None:
@@ -308,7 +325,6 @@ def test_find_albums_mixed_formats(tmp_path: Path) -> None:
 
 def test_sidecar_with_albums_from_directory(tmp_path: Path) -> None:
     """Tester que les albums sont ajoutés depuis les métadonnées de répertoire lors du traitement des sidecars."""
-    from google_takeout_metadata.processor import process_sidecar_file
     from google_takeout_metadata.sidecar import parse_sidecar
     
     # Créer les métadonnées d'album

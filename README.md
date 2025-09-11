@@ -16,13 +16,16 @@ Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par G
 - **Append-only par défaut**: Les métadonnées existantes sont préservées
 - Les descriptions ne sont écrites que si elles n'existent pas déjà
 - Les personnes et albums sont ajoutés aux listes existantes sans suppression
+- **Mode sécurisé des sidecars**: Par défaut, les sidecars JSON sont marqués avec le préfixe "OK_" après traitement réussi
 - Utiliser `--overwrite` pour forcer l'écrasement des métadonnées existantes
+- Utiliser `--immediate-delete` pour supprimer immédiatement les sidecars (mode destructeur)
 
 ✅ **Options avancées:**
 - `--localtime`: Conversion des timestamps en heure locale au lieu d'UTC
 - `--overwrite`: Force l'écrasement des métadonnées existantes (mode destructif)
+- `--immediate-delete`: Mode destructeur - supprime immédiatement les sidecars JSON après succès
 - `--batch`: Mode batch pour traitement optimisé de gros volumes de fichiers
-
+- `--organize-files`: Organisation automatique des fichiers selon leur statut trashed/locked/archived (→ `_Corbeille` / `_Verrouillé` / `_Archive`)
 ✅ **Qualité:**
 - Tests unitaires complets
 - Tests d'intégration E2E avec exiftool
@@ -54,11 +57,17 @@ google-takeout-metadata --localtime /chemin/vers/le/dossier
 # Mode destructif: écraser les métadonnées existantes (à utiliser avec précaution)
 google-takeout-metadata --overwrite /chemin/vers/le/dossier
 
-# Nettoyer les fichiers sidecars après traitement
-google-takeout-metadata --clean-sidecars /chemin/vers/le/dossier
+# Mode destructeur: supprimer les sidecars immédiatement après traitement
+google-takeout-metadata --immediate-delete /chemin/vers/le/dossier
+
+# Organisation automatique des fichiers selon leur statut
+google-takeout-metadata --organize-files /chemin/vers/le/dossier
 
 # Combiner les options (mode sûr avec heure locale)
 google-takeout-metadata --localtime /chemin/vers/le/dossier
+
+# Exemple complet avec toutes les options utiles
+google-takeout-metadata --batch --localtime --organize-files /chemin/vers/le/dossier
 ```
 
 ### Mode batch (optimisé pour gros volumes)
@@ -71,23 +80,23 @@ google-takeout-metadata --batch --localtime /chemin/vers/le/dossier
 google-takeout-metadata --batch --overwrite /chemin/vers/le/dossier
 
 # Exemple concret avec toutes les options (pointer vers le dossier Takeout)
-google-takeout-metadata --batch --localtime --clean-sidecars "C:\Users\anthony\Downloads\google photos\Takeout"
+google-takeout-metadata --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
 ```
 
 **Si la commande `google-takeout-metadata` n'est pas trouvée:**
 ```bash
 # Option 1: Utiliser le module Python directement (attention aux underscores)
-python -m google_takeout_metadata --batch --localtime --clean-sidecars "/chemin/vers/dossier"
+python -m google_takeout_metadata --batch --localtime --immediate-delete "/chemin/vers/dossier"
 
 # Option 2: Utiliser l'environnement virtuel complet avec le module
-C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/python.exe -m google_takeout_metadata --batch --localtime --clean-sidecars "C:\Users\anthony\Downloads\google photos\Takeout"
+C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/python.exe -m google_takeout_metadata --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
 
 # Option 3: Utiliser l'exécutable directement depuis l'environnement virtuel
-C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/google-takeout-metadata.exe --batch --localtime --clean-sidecars "C:\Users\anthony\Downloads\google photos\Takeout"
+C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/google-takeout-metadata.exe --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
 
 # Option 4: Activer l'environnement virtuel d'abord
 .venv/Scripts/activate  # Sur Windows
-google-takeout-metadata --batch --localtime --clean-sidecars "/chemin/vers/dossier"
+google-takeout-metadata --batch --localtime --immediate-delete "/chemin/vers/dossier"
 ```
 
 **Avantages du mode batch:**
@@ -104,6 +113,58 @@ google-takeout-metadata --batch --localtime --clean-sidecars "/chemin/vers/dossi
 **Note de performance:**
 Le mode batch réduit significativement le temps de traitement en groupant les appels à exiftool. 
 Pour 1000 fichiers, le gain peut être de 50-80% selon la configuration système.
+
+## Organisation automatique des fichiers
+
+**Nouvelle fonctionnalité** : Organisation automatique des fichiers selon leur statut dans Google Takeout.
+
+```bash
+# Activer l'organisation automatique
+google-takeout-metadata --organize-files /chemin/vers/le/dossier
+
+# Combiner avec d'autres options
+google-takeout-metadata --batch --organize-files --localtime /chemin/vers/le/dossier
+```
+
+### 📁 Fonctionnement:
+
+**Statuts détectés** dans les sidecars JSON Google Takeout:
+- `"trashed": true` → Fichier déplacé vers `_Corbeille/`
+- `"locked": true` → Fichier déplacé vers `_Verrouillé/` (dossiers verrouillés)
+- `"archived": true` → Fichier déplacé vers `_Archive/`
+- **Priorité** : `trashed > locked > archived`
+  - Si `trashed` et `locked`/`archived` coexistent → `trashed` gagne
+  - Si `locked` et `archived` coexistent → `locked` gagne
+
+**Structure créée automatiquement:**
+```
+dossier_source/
+├── _Archive/         # Fichiers avec "archived": true
+├── _Corbeille/       # Fichiers avec "trashed": true  
+├── _Verrouillé/      # Fichiers avec "locked": true
+└── autres_fichiers/  # Fichiers sans statut spécial
+```
+
+### 🔒 Sécurité:
+
+- **Gestion des conflits** : Si un fichier existe déjà dans le dossier de destination, un suffixe numérique est ajouté
+- **Déplacement avec sidecar** : Le fichier JSON correspondant est déplacé avec le fichier média
+- **Préservation** : Tous les fichiers sont déplacés, jamais supprimés
+- **Logs détaillés** : Information sur chaque déplacement effectué
+
+### ⚙️ Avantages:
+
+- **Nettoyage automatique** : Sépare automatiquement les fichiers selon leur statut Google Photos
+- **Préservation de l'historique** : Les fichiers "trashés" restent accessibles dans `_Corbeille/`
+- **Respect des dossiers verrouillés** : Les fichiers de dossiers verrouillés sont isolés dans `_Verrouillé/`
+- **Workflow Google Takeout** : Respecte parfaitement la hiérarchie de statut de Google Photos
+- **Combinable** : Fonctionne avec toutes les autres options (batch, localtime, etc.)
+
+**Exemple concret:**
+```bash
+# Traitement complet d'un export Google Takeout avec organisation
+google-takeout-metadata --batch --localtime --organize-files "C:\Downloads\Takeout\Google Photos"
+```
 
 Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` et écrit les informations pertinentes dans les fichiers image correspondants à l'aide d'`exiftool`.
 
@@ -126,11 +187,20 @@ Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` e
 
 - **Normalisation des noms** : "anthony vincent" et "Anthony Vincent" sont reconnus comme identiques
 - **Gestion des cas spéciaux** : Support intelligent pour "McDonald", "O'Connor", "van der Berg", etc.
-- **Déduplication robuste** : Utilise l'approche "supprimer puis ajouter" (-TAG-=val -TAG+=val) pour garantir zéro doublon final
+- **Approche robuste** : Utilise la stratégie "supprimer puis ajouter" (-TAG-=val -TAG+=val) pour garantir zéro doublon final
 - **Performance optimisée** : Logs -efile pour reprises intelligentes en cas d'interruption
+- **Gestion des `-wm cg`** : Logic groupée pour optimiser les arguments ExifTool en mode append-only
 
 ### ⚠️ Mode destructif:
 Utilisez `--overwrite` seulement si vous voulez explicitement écraser les métadonnées existantes.
+
+### 🔐 Gestion des sidecars JSON:
+**Mode sécurisé par défaut** : Les sidecars sont préservés avec un préfixe après traitement réussi.
+
+- **Mode sécurisé** (défaut) : Les sidecars sont renommés avec le préfixe "OK_" après succès
+- **Mode destructeur** (`--immediate-delete`) : Les sidecars sont supprimés immédiatement après traitement réussi
+- **Sécurité** : En cas d'erreur, les sidecars restent intacts pour permettre de retenter
+- **Traçabilité** : Les fichiers "OK_" permettent de voir quels sidecars ont été traités avec succès
 
 ## Détails techniques
 
@@ -150,6 +220,7 @@ exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
 - **Accumulation sûre** : Ajoute aux listes existantes sans duplication
 - **Sécurité** : Arguments séparés préviennent l'injection shell avec espaces
 - **Mode overwrite** : Vide explicitement puis reremplit avec `+=`
+- **Logic `-wm cg` optimisée** : Arguments groupés pour éviter la fragmentation des paramètres
 
 ### Format Google Takeout supporté
 ```json
@@ -168,8 +239,17 @@ exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
     {"name": "Jane Smith"}
   ],
   "favorited": true,
-  "archived": false
+  "favorited": true,
+  "archived": false,
+  "trashed": false,
+  "inLockedFolder": false,
+  "localFolderName": "Instagram"
 }
+```
+
+**Champs supportés pour l'organisation des fichiers:**
+- `archived`: Déplace le fichier vers le dossier `archive/` si `true`
+- `trashed`: Déplace le fichier vers le dossier `corbeille/` si `true` (priorité sur `archived`)
 ```
 
 ## Tests
@@ -190,3 +270,6 @@ Les tests comprennent:
 - **Tests d'intégration**: Écriture et relecture effective des métadonnées avec exiftool
 - **Tests du mode batch**: Vérification des performances et de la compatibilité du traitement par lots
 - **Tests CLI**: Validation de l'interface en ligne de commande et de toutes les options
+- **Tests de l'approche robuste**: Validation de la déduplication et de la logique "supprimer puis ajouter"
+- **Tests P1**: Vérification du fix pour l'écrasement des timestamps en mode append-only
+- **Tests d'organisation**: Validation du déplacement automatique des fichiers archived/trashed

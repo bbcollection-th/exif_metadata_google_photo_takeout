@@ -14,7 +14,7 @@ from google_takeout_metadata.sidecar import SidecarData
 
 def test_process_batch_empty_batch():
     """Tester que process_batch retourne 0 pour un lot vide."""
-    result = process_batch([], clean_sidecars=False)
+    result = process_batch([], immediate_delete=False)
     assert result == 0
 
 
@@ -31,7 +31,7 @@ def test_process_batch_success(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Exécution
-    result = process_batch(batch, clean_sidecars=False)
+    result = process_batch(batch, immediate_delete=False)
     
     # Vérification
     assert result == 1
@@ -66,7 +66,7 @@ def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
     ]
     
     # Execute
-    result = process_batch(batch, clean_sidecars=False)
+    result = process_batch(batch, immediate_delete=False)
     
     # Assert
     assert result == 2
@@ -82,8 +82,8 @@ def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
-def test_process_batch_clean_sidecars(mock_subprocess_run, tmp_path):
-    """Vérifier que les fichiers de sidecar sont nettoyés lorsqu'on le demande."""
+def test_process_batch_immediate_delete_sidecars(mock_subprocess_run, tmp_path):
+    """Vérifier que les fichiers de sidecar sont supprimés immédiatement lorsqu'on le demande."""
     # Setup
     mock_subprocess_run.return_value = Mock(returncode=0, stdout="    1 image files updated")
     
@@ -95,7 +95,7 @@ def test_process_batch_clean_sidecars(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, clean_sidecars=True)
+    result = process_batch(batch, immediate_delete=True)
     
     # Assert
     assert result == 1
@@ -116,7 +116,7 @@ def test_process_batch_exiftool_not_found(mock_subprocess_run):
     
     # Execute & Assert
     with pytest.raises(RuntimeError, match="exiftool introuvable"):
-        process_batch(batch, clean_sidecars=False)
+        process_batch(batch, immediate_delete=False)
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
@@ -134,7 +134,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, clean_sidecars=False)
+    result = process_batch(batch, immediate_delete=False)
     
     # Assert
     assert result == 0
@@ -144,7 +144,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
 def test_process_directory_batch_no_sidecars(tmp_path, caplog):
     """Vérifier le traitement par lot lorsque aucun fichier de sidecar n'est trouvé."""
     # Execute
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
     
     # Assert
     assert "Aucun fichier de métadonnées (.json) trouvé" in caplog.text
@@ -169,7 +169,7 @@ def test_process_directory_batch_single_file(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
         
         # Vérifier que les métadonnées ont été écrites en les relisant
         cmd = [
@@ -220,7 +220,7 @@ def test_process_directory_batch_multiple_files(tmp_path):
             json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
         
         # Vérifier que tous les fichiers ont été traités correctement
         for filename, expected_description, expected_person in files_data:
@@ -277,7 +277,7 @@ def test_process_directory_batch_with_albums(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
         
         # Vérifier que l'album a été ajouté aux mots-clés
         cmd = [
@@ -302,11 +302,11 @@ def test_process_directory_batch_with_albums(tmp_path):
 
 
 @pytest.mark.integration
-def test_process_directory_batch_clean_sidecars(tmp_path):
-    """Test d'intégration pour le traitement par lot avec nettoyage des sidecars.
+def test_process_directory_batch_immediate_delete(tmp_path):
+    """Test d'intégration pour le traitement par lot avec suppression immédiate des sidecars.
     
-    LOGIQUE MÉTIER CORRIGÉE: Le sidecar n'est supprimé QUE si le traitement exiftool réussit.
-    Si exiftool échoue, on garde le sidecar pour permettre un retry ultérieur.
+    LOGIQUE MÉTIER: Le sidecar est supprimé immédiatement après traitement réussi
+    quand immediate_delete=True (mode destructeur).
     """
     try:
         # Créer une image de test
@@ -325,21 +325,18 @@ def test_process_directory_batch_clean_sidecars(tmp_path):
         # Vérifier que le fichier annexe existe avant le traitement
         assert json_path.exists()
         
-        # Traiter avec le nettoyage activé
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=True)
+        # Traiter avec la suppression immédiate activée
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=True)
         
-        # CORRECTION: Si exiftool échoue (comme visible dans les logs ci-dessus),
-        # le sidecar ne doit PAS être supprimé pour permettre un retry
-        # C'est le comportement correct selon notre logique métier
-        
-        # Pour tester le nettoyage réussi, on doit s'assurer que le traitement réussit d'abord
-        # ou accepter que en cas d'échec, le sidecar reste
+        # Comportement attendu avec immediate_delete=True :
+        # - Si exiftool réussit → sidecar supprimé immédiatement
+        # - Si exiftool échoue → sidecar conservé pour retry (mode sécurisé)
         if json_path.exists():
             # Le sidecar existe encore car le traitement a échoué - c'est correct
             print("INFO: Sidecar conservé après échec exiftool - comportement correct")
         else:
             # Le sidecar a été supprimé car le traitement a réussi - aussi correct
-            print("INFO: Sidecar supprimé après traitement réussi - comportement correct")
+            print("INFO: Sidecar supprimé après traitement réussi avec immediate_delete=True")
         
         # Vérifier que les métadonnées ont quand même été écrites
         cmd = [
@@ -371,7 +368,7 @@ def test_process_directory_batch_invalid_sidecar(mock_parse_sidecar, tmp_path, c
     json_path.write_text("invalid json")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
     
     # Vérifier
     assert "Échec de la préparation de" in caplog.text
@@ -394,7 +391,7 @@ def test_process_directory_batch_no_args_generated(mock_build_args, tmp_path):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter (ne devrait pas planter même sans arguments)
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
     
     # Aucune assertion spécifique nécessaire - juste s'assurer que ça ne plante pas
 
@@ -410,7 +407,7 @@ def test_process_directory_batch_missing_media_file(tmp_path, caplog):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
     
     # Vérifier
     assert "Fichier image introuvable" in caplog.text
@@ -443,7 +440,7 @@ def test_process_directory_batch_file_extension_fix(mock_parse_sidecar, mock_fix
     ]
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, clean_sidecars=False)
+    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
     
     # Vérifier que fix_file_extension_mismatch a été appelé
     mock_fix_extension.assert_called()

@@ -21,23 +21,12 @@ def read_exif_people(image_path: Path) -> list[str]:
     return []
 
 
-def test_hybrid_approach_no_duplicates():
-    """Test de l'approche hybride : pas de doublons quand on ajoute des personnes existantes."""
+def test_robust_approach_no_duplicates():
+    """Test de l'approche robuste (remove-then-add) : pas de doublons quand on ajoute des personnes existantes."""
     
     with tempfile.TemporaryDirectory() as temp_dir:
         # Copier l'image test dans le répertoire temporaire
-# At the top of tests/test_hybrid_approach.py, add:
-import os
-
-def test_hybrid_approach_no_duplicates():
-    """Test de l'approche hybride : pas de doublons quand on ajoute des personnes existantes."""
-    
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Copier l'image test dans le répertoire temporaire
-        test_dir = Path(os.path.dirname(__file__))
-        test_image_src = test_dir / "test_assets" / "test_clean.jpg"
-        test_image = Path(temp_dir) / "test_image.jpg"
-        shutil.copy2(test_image_src, test_image)
+        test_image_src = Path("test_assets/test_clean.jpg")
         test_image = Path(temp_dir) / "test_image.jpg"
         shutil.copy2(test_image_src, test_image)
         
@@ -96,12 +85,15 @@ def test_hybrid_approach_no_duplicates():
         assert expected_people.issubset(actual_people), f"Personnes manquantes. Attendu: {expected_people}, Réel: {actual_people}"
 
 
-def test_hybrid_approach_only_new_people():
-    """Test de l'approche hybride : ajouter seulement les nouvelles personnes."""
+def test_robust_approach_only_new_people():
+    """Test de l'approche robuste (remove-then-add) : ajouter seulement les nouvelles personnes."""
     
     with tempfile.TemporaryDirectory() as temp_dir:
         # Copier l'image test
+        # Copier l'image test
         test_image_src = Path("test_assets/test_clean.jpg")
+        if not test_image_src.exists():
+            raise FileNotFoundError(f"Fichier test requis non trouvé : {test_image_src}")
         test_image = Path(temp_dir) / "test_image.jpg"
         shutil.copy2(test_image_src, test_image)
         
@@ -143,6 +135,6 @@ def test_hybrid_approach_only_new_people():
 
 
 if __name__ == "__main__":
-    test_hybrid_approach_no_duplicates()
-    test_hybrid_approach_only_new_people()
-    print("✅ Tests de l'approche hybride : SUCCÈS")
+    test_robust_approach_no_duplicates()
+    test_robust_approach_only_new_people()
+    print("✅ Tests de l'approche robuste (remove-then-add) : SUCCÈS")
