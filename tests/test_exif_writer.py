@@ -15,6 +15,10 @@ def test_write_metadata_error(tmp_path, monkeypatch):
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     img = tmp_path / "a.jpg"
@@ -39,6 +43,10 @@ def test_build_args_video():
         latitude=48.8566,
         longitude=2.3522,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     
@@ -66,6 +74,10 @@ def test_build_args_localtime():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
 
@@ -95,6 +107,10 @@ def test_build_args_append_only() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
 
@@ -128,6 +144,10 @@ def test_build_args_favorite() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=True,
     )
 
@@ -153,6 +173,10 @@ def test_build_args_no_favorite() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
 
@@ -171,6 +195,10 @@ def test_build_args_albums() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["Vacances 2024", "Famille"]
     )
@@ -197,6 +225,10 @@ def test_build_args_video_append_only() -> None:
         latitude=48.8566,
         longitude=2.3522,
         altitude=35.0,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
     
@@ -235,6 +267,10 @@ def test_build_args_albums_append_only() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["Test Album"]
     )
@@ -259,6 +295,10 @@ def test_build_args_no_albums() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=[]
     )
@@ -278,6 +318,10 @@ def test_build_args_default_behavior() -> None:
         latitude=48.8566,
         longitude=2.3522,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=True,
     )
 
@@ -308,6 +352,10 @@ def test_build_args_overwrite_mode() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=True,
     )
 
@@ -338,6 +386,10 @@ def test_build_args_people_default() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
     )
 
@@ -373,6 +425,10 @@ def test_build_args_albums_default() -> None:
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         favorite=False,
         albums=["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]
     )

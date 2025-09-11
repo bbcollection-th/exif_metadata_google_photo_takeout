@@ -17,6 +17,10 @@ def test_get_all_keywords_basic():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         albums=["vacances été", "photos famille"]
     )
     
@@ -78,6 +82,10 @@ def test_get_all_keywords_albums_only():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         albums=["ÉVÉNEMENTS SPÉCIAUX", "voyage 2024"]
     )
     
@@ -98,6 +106,10 @@ def test_get_all_keywords_excludes_local_folder_name():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         albums=["Vacances"],
         local_folder_name="Instagram"  # Ne doit PAS apparaître dans les keywords
     )
@@ -123,6 +135,10 @@ def test_build_people_keywords_args_uses_get_all_keywords():
         latitude=None,
         longitude=None,
         altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
         albums=["vacances"],
         local_folder_name="WhatsApp"  # Ne doit pas affecter les keywords
     )
