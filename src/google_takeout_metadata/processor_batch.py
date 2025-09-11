@@ -8,7 +8,12 @@ import shutil
 
 from .exif_writer import build_exiftool_args
 from .sidecar import find_albums_for_directory, parse_sidecar
-from .processor import IMAGE_EXTS, fix_file_extension_mismatch, _is_sidecar_file 
+from .processor import (
+    IMAGE_EXTS,
+    fix_file_extension_mismatch,
+    _is_sidecar_file,
+    _enrich_with_reverse_geocode,
+)
 from . import sidecar_safety
 from . import statistics
 from .file_organizer import FileOrganizer
@@ -246,7 +251,8 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     for json_path in sidecar_files:
         try:
             meta = parse_sidecar(json_path)
-            
+            _enrich_with_reverse_geocode(meta, json_path)
+
             directory_albums = find_albums_for_directory(json_path.parent)
             meta.albums.extend(directory_albums)
             
@@ -260,6 +266,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             fixed_media_path, fixed_json_path = fix_file_extension_mismatch(media_path, json_path)
             if fixed_json_path != json_path:
                 meta = parse_sidecar(fixed_json_path)
+                _enrich_with_reverse_geocode(meta, fixed_json_path)
                 meta.albums.extend(find_albums_for_directory(fixed_json_path.parent))
             
             # Organisation des fichiers si demandée
