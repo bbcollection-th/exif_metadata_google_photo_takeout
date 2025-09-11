@@ -99,6 +99,10 @@ def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
     except requests.RequestException as exc:
         raise RuntimeError("Erreur de requête de géocodage") from exc
 
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Erreur HTTP lors de la requête de géocodage: {response.status_code} - {response.text}"
+        )
     try:
         data = response.json(
     except json.JSONDecodeError as exc:
