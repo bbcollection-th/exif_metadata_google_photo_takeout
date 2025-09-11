@@ -1,5 +1,6 @@
 from google_takeout_metadata.sidecar import SidecarData
 from google_takeout_metadata.exif_writer import write_metadata, build_exiftool_args
+from google_takeout_metadata import geocoding, processor
 import subprocess
 import pytest
 from pathlib import Path
@@ -476,3 +477,50 @@ def test_build_args_albums_default() -> None:
     # Ne devrait PAS avoir de conditions -if pour les albums (ils sont des listes, utiliser +=)
     assert "not $XMP-dc:Subject" not in args
     assert "not $IPTC:Keywords" not in args
+
+
+def test_build_args_with_reverse_geocode(monkeypatch) -> None:
+    """Vérifie que le géocodage inverse alimente les balises de localisation."""
+
+    # Métadonnées avec coordonnées mais sans informations de localisation
+    meta = SidecarData(
+        filename="a.jpg",
+        description=None,
+        people=[],
+        taken_at=None,
+        created_at=None,
+        latitude=48.8566,
+        longitude=2.3522,
+        altitude=None,
+        city=None,
+        state=None,
+        country=None,
+        place_name=None,
+        favorite=False,
+    )
+
+    fake_results = [
+        {
+            "address_components": [
+                {"long_name": "Paris", "types": ["locality"]},
+                {"long_name": "France", "types": ["country"]},
+            ],
+            "formatted_address": "Paris, France",
+        }
+    ]
+
+    # Simuler l'appel réseau
+    monkeypatch.setattr(geocoding, "reverse_geocode", lambda lat, lon: fake_results)
+
+    # Enrichir les métadonnées avec le géocodage inverse
+    processor._enrich_with_reverse_geocode(meta, Path("a.jpg.json"))
+
+    # Construire les arguments exiftool
+    args = build_exiftool_args(meta)
+
+    # Vérifier les balises de localisation générées
+    assert "-XMP:City=Paris" in args
+    assert "-IPTC:City=Paris" in args
+    assert "-XMP:Country=France" in args
+    assert "-IPTC:Country-PrimaryLocationName=France" in args
+    assert "-XMP:Location=Paris, France" in args
