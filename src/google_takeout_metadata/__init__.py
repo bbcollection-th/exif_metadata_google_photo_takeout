@@ -4,4 +4,5 @@ __all__ = [
     "sidecar",
     "exif_writer",
     "processor",
+    "geocoding",
 ]
