@@ -4,9 +4,18 @@
 Test script pour vérifier les corrections de la logique -wm cg.
 """
 
-import sys
-sys.path.append('src')
+# Remove direct manipulation of sys.path and wrap imports in a try/except
+try:
+    from google_takeout_metadata.sidecar import SidecarData
+    from google_takeout_metadata.exif_writer import build_exiftool_args
+except ImportError:
+    import sys
+    from pathlib import Path
 
+    # Compute the src directory relative to this test file and insert it at the front
+    sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+    from google_takeout_metadata.sidecar import SidecarData
+    from google_takeout_metadata.exif_writer import build_exiftool_args
 from google_takeout_metadata.sidecar import SidecarData
 from google_takeout_metadata.exif_writer import build_exiftool_args
 

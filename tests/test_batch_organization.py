@@ -4,10 +4,16 @@ import tempfile
 import json
 from pathlib import Path
 from PIL import Image
+import shutil
+import pytest
 
 from google_takeout_metadata.processor_batch import process_directory_batch
 
 
+@pytest.mark.skipif(
+    shutil.which("exiftool") is None,
+    reason="exiftool non installé ; test d'intégration ignoré"
+)
 def test_batch_organization():
     """Test d'organisation de fichiers en mode batch."""
     with tempfile.TemporaryDirectory() as temp_dir:
