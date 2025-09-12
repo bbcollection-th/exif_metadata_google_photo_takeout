@@ -14,7 +14,7 @@ Implémenter l'approche "supprimer puis ajouter" (`-TAG-=val -TAG+=val`) pour ga
 exiftool \
   -overwrite_original \
   -q -q \
-  -codedcharacterset utf8 -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -codedcharacterset utf8 -charset title=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
   -XMP-iptcExt:PersonInImage-="Anthony Vincent" -XMP-iptcExt:PersonInImage+="Anthony Vincent" \
   -XMP-iptcExt:PersonInImage-=Bernard        -XMP-iptcExt:PersonInImage+=Bernard        \
   -XMP-iptcExt:PersonInImage-=Jean           -XMP-iptcExt:PersonInImage+=Jean           \
@@ -26,7 +26,7 @@ exiftool \
 ```bash
 # Ligne de commande avec -common_args correct
 exiftool \
-  -codedcharacterset utf8 -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -codedcharacterset utf8 -charset title=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
   -@ args_conditional.txt \
   -common_args \
   -overwrite_original \
@@ -160,7 +160,7 @@ created = 16
 # Ajouter aux commandes exiftool + charset UTF-8 correct
 cmd = [
     "exiftool",
-    "-charset", "filename=UTF8",    # ✅ AVANT -@ (Windows/Unicode, noms de fichiers)
+    "-charset", "title=UTF8",    # ✅ AVANT -@ (Windows/Unicode, noms de fichiers)
     "-@", argfile_path,
     "-common_args",                 # ✅ APRÈS toutes les options, appliqué à chaque bloc
     "-q", "-q",
@@ -200,7 +200,7 @@ image2.jpg
 - **Guillemets obligatoires :** `-TAG-="Anthony Vincent"` (valeurs avec espaces)
 - **Pas de -wm cg :** Incompatible avec `-TAG-=` (suppression = édition)
 - **-common_args :** JAMAIS dans l'argfile, toujours sur la ligne de commande APRÈS -@
-- **-charset filename=UTF8 :** AVANT -@ (spécificité Windows/Unicode)
+- **-charset title=UTF8 :** AVANT -@ (spécificité Windows/Unicode)
 
 **Fonctionnement :**
 - `-execute` exécute le bloc précédent + applique les options `-common_args`
@@ -419,7 +419,7 @@ assert people == expected
 ```bash
 exiftool \
   -overwrite_original \
-  -codedcharacterset utf8 -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -codedcharacterset utf8 -charset title=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
   -XMP-iptcExt:PersonInImage-="Anthony Vincent" -XMP-iptcExt:PersonInImage+="Anthony Vincent" \
   -XMP-iptcExt:PersonInImage-=Bernard        -XMP-iptcExt:PersonInImage+=Bernard        \
   -XMP-iptcExt:PersonInImage-=Jean           -XMP-iptcExt:PersonInImage+=Jean           \

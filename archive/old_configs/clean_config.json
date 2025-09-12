@@ -1,0 +1,265 @@
+{
+  "metadata_mappings": {
+    "description": {
+      "source_fields": [
+        "description"
+      ],
+      "target_tags": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 3,
+        "data_types": [
+          "str"
+        ]
+      },
+      "sanitize": true
+    },
+    "creationTime": {
+      "source_fields": [
+        "creationTime"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "dict"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "creationTime_timestamp": {
+      "source_fields": [
+        "creationTime.timestamp"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "str"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "creationTime_formatted": {
+      "source_fields": [
+        "creationTime.formatted"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "str"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "photoTakenTime": {
+      "source_fields": [
+        "photoTakenTime"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "dict"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "photoTakenTime_timestamp": {
+      "source_fields": [
+        "photoTakenTime.timestamp"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "str"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "photoTakenTime_formatted": {
+      "source_fields": [
+        "photoTakenTime.formatted"
+      ],
+      "target_tags": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "str"
+        ]
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "geoData_latitude": {
+      "source_fields": [
+        "geoData.latitude"
+      ],
+      "target_tags": [
+        "GPS:GPSLatitude",
+        "GPS:GPSLongitude",
+        "GPS:GPSAltitude"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "float"
+        ]
+      }
+    },
+    "geodata_longitude": {
+      "source_fields": [
+        "geoData.longitude"
+      ],
+      "target_tags": [
+        "GPS:GPSLatitude",
+        "GPS:GPSLongitude",
+        "GPS:GPSAltitude"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "float"
+        ]
+      }
+    },
+    "geoData_altitude": {
+      "source_fields": [
+        "geoData.altitude"
+      ],
+      "target_tags": [
+        "GPS:GPSLatitude",
+        "GPS:GPSLongitude",
+        "GPS:GPSAltitude"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "float"
+        ]
+      }
+    },
+    "geoData_latitudeSpan": {
+      "source_fields": [
+        "geoData.latitudeSpan"
+      ],
+      "target_tags": [
+        "GPS:GPSLatitude",
+        "GPS:GPSLongitude",
+        "GPS:GPSAltitude"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "float"
+        ]
+      }
+    },
+    "geodata_longitudeSpan": {
+      "source_fields": [
+        "geoData.longitudeSpan"
+      ],
+      "target_tags": [
+        "GPS:GPSLatitude",
+        "GPS:GPSLongitude",
+        "GPS:GPSAltitude"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 2,
+        "data_types": [
+          "float"
+        ]
+      }
+    }
+  },
+  "strategies": {
+    "preserve_existing": {
+      "description": "Utilise -wm cg pour préserver l'existant",
+      "exiftool_args": [
+        "-wm",
+        "cg"
+      ],
+      "icon": "⚠️"
+    },
+    "replace_all": {
+      "description": "Remplace complètement les valeurs",
+      "for_lists": "clear_then_add",
+      "icon": "🔄"
+    },
+    "write_if_missing": {
+      "description": "Utilise -if pour n'écrire que si absent",
+      "condition_template": "-if \"not ${tag}\"",
+      "for_lists": "conditional_add",
+      "icon": "➕"
+    },
+    "clean_duplicates": {
+      "description": "Supprime puis ajoute pour éviter doublons",
+      "pattern": [
+        "${tag}-=${value}",
+        "${tag}+=${value}"
+      ],
+      "icon": "✨"
+    }
+  },
+  "global_settings": {
+    "default_strategy": "preserve_existing",
+    "video_extensions": [
+      ".mp4",
+      ".mov",
+      ".m4v",
+      ".3gp"
+    ],
+    "common_args": [
+      "-overwrite_original"
+    ],
+    "charset_args": [
+      "-charset",
+      "title=UTF8",
+      "-charset",
+      "iptc=UTF8",
+      "-charset",
+      "exif=UTF8",
+      "-codedcharacterset=utf8"
+    ]
+  },
+  "_discovery_metadata": {
+    "generated_at": "auto-generated",
+    "files_analyzed": 3,
+    "fields_discovered": 30,
+    "errors": 0
+  }
+}

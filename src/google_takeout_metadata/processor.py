@@ -216,7 +216,7 @@ def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_f
         
         # Mettre à jour les chemins si déplacement effectué
         if new_media_path and new_sidecar_path:
-            logger.info(f"📁 Fichier organisé selon statut: {meta.filename}")
+            logger.info(f"📁 Fichier organisé selon statut: {meta.title}")
             return new_media_path, new_sidecar_path
         else:
             return media_path, json_path
@@ -230,7 +230,7 @@ def _organize_file_if_needed(media_path: Path, json_path: Path, meta, organize_f
 def _enrich_with_reverse_geocode(meta, json_path: Path, geocode: bool) -> None:
     """Compléter les champs de localisation en utilisant le géocodage inverse."""
 
-    if (not geocode) or (meta.latitude is None) or (meta.longitude is None):
+    if (not geocode) or (meta.geoData_latitude is None) or (meta.geoData_longitude is None):
         return
 
     if not os.getenv("GOOGLE_MAPS_API_KEY"):
@@ -240,7 +240,7 @@ def _enrich_with_reverse_geocode(meta, json_path: Path, geocode: bool) -> None:
         return
 
     try:
-        results = geocoding.reverse_geocode(meta.latitude, meta.longitude)
+        results = geocoding.reverse_geocode(meta.geoData_latitude, meta.geoData_longitude)
     except RuntimeError as exc:
         logger.warning("Échec du géocodage inverse pour %s: %s", json_path.name, exc)
         return
@@ -298,9 +298,9 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     directory_albums = find_albums_for_directory(json_path.parent)
     meta.albums.extend(directory_albums)
     
-    media_path = json_path.with_name(meta.filename)
+    media_path = json_path.with_name(meta.title)
     if not media_path.exists():
-        error_msg = f"Fichier image introuvable : {meta.filename}"
+        error_msg = f"Fichier image introuvable : {meta.title}"
         statistics.stats.add_failed_file(json_path, "file_not_found", error_msg)
         raise FileNotFoundError(error_msg)
     

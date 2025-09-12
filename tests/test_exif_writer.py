@@ -8,19 +8,19 @@ from pathlib import Path
 
 def test_write_metadata_error(tmp_path, monkeypatch):
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description="test",  # Add description to ensure args are generated
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     img = tmp_path / "a.jpg"
     img.write_bytes(b"data")
@@ -36,19 +36,19 @@ def test_write_metadata_error(tmp_path, monkeypatch):
 def test_build_args_video():
     """Tester que les balises spécifiques aux vidéos sont ajoutées pour les fichiers MP4/MOV."""
     meta = SidecarData(
-        filename="video.mp4",
+        title="video.mp4",
         description="Video description",
-        people=["alice"],
-        taken_at=1736719606,
-        created_at=None,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=None,
+        people_name=["alice"],
+        photoTakenTime_timestamp=1736719606,
+        creationTime_timestamp=None,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     video_path = Path("video.mp4")
@@ -67,19 +67,19 @@ def test_build_args_video():
 def test_build_args_localtime():
     """Tester que le formatage de l'heure locale fonctionne."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=1736719606,  # 2025-01-12 22:06:46 UTC
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=1736719606,  # 2025-01-12 22:06:46 UTC
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
 
     # Test UTC (default)
@@ -100,19 +100,19 @@ def test_build_args_append_only() -> None:
     zéro doublon avec normalisation des noms.
     """
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description="desc",
-        people=["alice", "bob"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["alice", "bob"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
 
     # Normal mode (écrasement)
@@ -126,7 +126,8 @@ def test_build_args_append_only() -> None:
     # Append-only mode avec déduplication
     args_append = build_exiftool_args(meta, append_only=True)
     # Nouvelle approche : supprimer puis ajouter pour déduplication
-    assert "-EXIF:ImageDescription=desc" in args_append
+    assert "-wm" in args_append
+    assert "cg" in args_append
     # Vérifier la séquence -=/+= pour PersonInImage
     assert "-XMP-iptcExt:PersonInImage-=Alice" in args_append  # Normalisé
     assert "-XMP-iptcExt:PersonInImage+=Alice" in args_append  # Normalisé
@@ -134,22 +135,22 @@ def test_build_args_append_only() -> None:
     assert "-XMP-iptcExt:PersonInImage+=Bob" in args_append    # Normalisé
 
 
-def test_build_args_favorite() -> None:
+def test_build_args_favorited() -> None:
     """Tester que les photos favorites obtiennent rating=5."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=True,
+        favorited=True,
     )
 
     args = build_exiftool_args(meta, append_only=False)
@@ -163,22 +164,22 @@ def test_build_args_favorite() -> None:
     assert "-XMP:Rating=5" in args_append
 
 
-def test_build_args_no_favorite() -> None:
+def test_build_args_no_favorited() -> None:
     """Tester que les photos non favorites n'obtiennent pas de rating."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
 
     args = build_exiftool_args(meta)
@@ -188,19 +189,19 @@ def test_build_args_no_favorite() -> None:
 def test_build_args_albums() -> None:
     """Tester que les albums sont écrits comme mots-clés avec le préfixe Album: et normalisation."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["Vacances 2024", "Famille"]
     )
 
@@ -218,19 +219,19 @@ def test_build_args_albums() -> None:
 def test_build_args_video_append_only() -> None:
     """Tester que les balises spécifiques aux vidéos sont incluses en mode append-only."""
     meta = SidecarData(
-        filename="video.mp4",
+        title="video.mp4",
         description="Video description",
-        people=["alice"],
-        taken_at=1736719606,
-        created_at=None,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=35.0,
+        people_name=["alice"],
+        photoTakenTime_timestamp=1736719606,
+        creationTime_timestamp=None,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=35.0,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     video_path = Path("video.mp4")
@@ -249,7 +250,7 @@ def test_build_args_video_append_only() -> None:
     assert "-QuickTime:GPSCoordinates=48.8566,2.3522" in args
     assert "-Keys:Location=48.8566,2.3522" in args
     
-    # Vérifier que l'altitude est présente
+    # Vérifier que l'geoData_altitude est présente
     assert "-GPSAltitude=35.0" in args
     
     # Vérifier la configuration vidéo
@@ -260,19 +261,19 @@ def test_build_args_video_append_only() -> None:
 def test_build_args_albums_append_only() -> None:
     """Tester les albums en mode append-only avec déduplication."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["Test Album"]
     )
 
@@ -288,19 +289,19 @@ def test_build_args_albums_append_only() -> None:
 def test_build_args_no_albums() -> None:
     """Tester que la liste d'albums vide n'ajoute aucune balise d'album."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=[]
     )
 
@@ -311,19 +312,19 @@ def test_build_args_no_albums() -> None:
 def test_build_args_default_behavior() -> None:
     """Tester que le comportement par défaut est append-only (mode sécurisé)."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description="Safe description",
-        people=["Safe Person"],
-        taken_at=1736719606,
-        created_at=None,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=None,
+        people_name=["Safe Person"],
+        photoTakenTime_timestamp=1736719606,
+        creationTime_timestamp=None,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=True,
+        favorited=True,
     )
 
     # Le comportement par défaut devrait être append-only avec déduplication robuste
@@ -345,15 +346,15 @@ def test_build_args_default_behavior() -> None:
 def test_build_args_location() -> None:
     """Tester que les informations de localisation sont ajoutées lorsque disponibles."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
-        favorite=False,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
+        favorited=False,
     )
 
     # Ajouter dynamiquement les informations de localisation
@@ -373,19 +374,19 @@ def test_build_args_location() -> None:
 def test_build_args_overwrite_mode() -> None:
     """Mode de réécriture explicite (destructif)."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description="Overwrite description",
-        people=["Overwrite Person"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Overwrite Person"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=True,
+        favorited=True,
     )
 
     # Mode de réécriture explicite
@@ -404,22 +405,22 @@ def test_build_args_overwrite_mode() -> None:
     assert "not $XMP:Rating" not in args
 
 
-def test_build_args_people_default() -> None:
+def test_build_args_people_name_default() -> None:
     """Tester que les personnes sont gérées avec déduplication par défaut."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=["Alice Dupont", "Bob Martin", "Charlie Bernard"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Alice Dupont", "Bob Martin", "Charlie Bernard"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
 
     # Comportement par défaut (append-only avec déduplication)
@@ -446,19 +447,19 @@ def test_build_args_people_default() -> None:
 def test_build_args_albums_default() -> None:
     """Tester que les albums sont gérés avec déduplication par défaut."""
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["Vacances Été 2024", "Photos de Famille", "Événements Spéciaux"]
     )
 
@@ -484,19 +485,19 @@ def test_build_args_with_reverse_geocode(monkeypatch) -> None:
 
     # Métadonnées avec coordonnées mais sans informations de localisation
     meta = SidecarData(
-        filename="a.jpg",
+        title="a.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
 
     fake_results = [
@@ -509,11 +510,17 @@ def test_build_args_with_reverse_geocode(monkeypatch) -> None:
         }
     ]
 
-    # Simuler l'appel réseau
+    # Simuler l'appel réseau et la clé API
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "fake_key")
     monkeypatch.setattr(geocoding, "reverse_geocode", lambda lat, lon: fake_results)
 
     # Enrichir les métadonnées avec le géocodage inverse
-    processor._enrich_with_reverse_geocode(meta, Path("a.jpg.json"))
+    processor._enrich_with_reverse_geocode(meta, Path("a.jpg.json"), geocode=True)
+
+    # Vérifier que meta a été enrichi
+    assert meta.city == "Paris"
+    assert meta.country == "France"
+    assert meta.place_name == "Paris, France"
 
     # Construire les arguments exiftool
     args = build_exiftool_args(meta)

@@ -31,7 +31,7 @@ def _run_exiftool_read(media_path: Path) -> dict:
     cmd = [
         "exiftool", 
         "-json",
-        "-charset", "filename=UTF8",
+        "-charset", "title=UTF8",
         "-charset", "iptc=UTF8", 
         "-charset", "exif=UTF8",
         "-charset", "XMP=UTF8",
@@ -63,7 +63,7 @@ def test_write_and_read_description(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
@@ -74,7 +74,7 @@ def test_write_and_read_description(tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
-def test_write_and_read_people(tmp_path: Path) -> None:
+def test_write_and_read_people_name(tmp_path: Path) -> None:
     """Tester que les noms de personnes sont écrits et peuvent être relus."""
     # Utiliser un asset de test propre
     media_path = tmp_path / "test.jpg"
@@ -92,8 +92,8 @@ def test_write_and_read_people(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
-    
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
+
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
     
@@ -126,7 +126,7 @@ def test_write_and_read_gps(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
@@ -139,18 +139,18 @@ def test_write_and_read_gps(tmp_path: Path) -> None:
     # Vérifier que les champs GPS existent et contiennent les valeurs de degrés attendues
     assert gps_lat is not None, "GPSLatitude devrait être définie"
     assert gps_lon is not None, "GPSLongitude devrait être définie"
-    assert "48 deg" in str(gps_lat), f"Expected 48 degrees in latitude, got: {gps_lat}"
-    assert "2 deg" in str(gps_lon), f"Expected 2 degrees in longitude, got: {gps_lon}"
+    assert "48 deg" in str(gps_lat), f"Expected 48 degrees in geoData_latitude, got: {gps_lat}"
+    assert "2 deg" in str(gps_lon), f"Expected 2 degrees in geoData_longitude, got: {gps_lon}"
     
     # Les références GPS peuvent être "N"/"North" et "E"/"East" selon la version d'exiftool
     lat_ref = metadata.get("GPSLatitudeRef")
     lon_ref = metadata.get("GPSLongitudeRef")
-    assert lat_ref in ["N", "North"], f"Expected N or North for latitude ref, got: {lat_ref}"
-    assert lon_ref in ["E", "East"], f"Expected E or East for longitude ref, got: {lon_ref}"
+    assert lat_ref in ["N", "North"], f"Expected N or North for geoData_latitude ref, got: {lat_ref}"
+    assert lon_ref in ["E", "East"], f"Expected E or East for geoData_longitude ref, got: {lon_ref}"
 
 
 @pytest.mark.integration
-def test_write_and_read_favorite(tmp_path: Path) -> None:
+def test_write_and_read_favorited(tmp_path: Path) -> None:
     """Tester que le statut favori est écrit comme notation."""
     # Créer une image de test simple
     media_path = tmp_path / "test.jpg"
@@ -166,8 +166,8 @@ def test_write_and_read_favorite(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
-    
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
+
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
     
@@ -191,8 +191,8 @@ def test_append_only_mode(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar en mode append-only
-    process_sidecar_file(json_path, append_only=True)
-    
+    process_sidecar_file(json_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
     
@@ -212,14 +212,14 @@ def test_datetime_formats(tmp_path: Path) -> None:
     # Créer le fichier JSON annexe avec horodatage
     sidecar_data = {
         "title": "test.jpg",
-        "photoTakenTime": {"timestamp": "1736719606"}  # Horodatage Unix
+        "photoTakenTime_timestamp": {"timestamp": "1736719606"}  # Horodatage Unix
     }
     json_path = tmp_path / "test.jpg.json"
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
-    
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
+
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
     
@@ -254,8 +254,8 @@ def test_write_and_read_albums(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
-    
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
+
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
     
@@ -275,7 +275,7 @@ def test_write_and_read_albums(tmp_path: Path) -> None:
 
 
 @pytest.mark.integration  
-def test_albums_and_people_combined(tmp_path: Path) -> None:
+def test_albums_and_people_name_combined(tmp_path: Path) -> None:
     """Tester que les albums et les personnes peuvent coexister dans les mots-clés."""
     # Créer une image de test simple
     media_path = tmp_path / "test.jpg"
@@ -296,7 +296,7 @@ def test_albums_and_people_combined(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar
-    process_sidecar_file(json_path)
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Relire les métadonnées
     metadata = _run_exiftool_read(media_path)
@@ -322,19 +322,19 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
 
     # Tout d'abord, ajouter manuellement des métadonnées en utilisant le mode écrasement
     first_meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description="Original description",
-        people=["Original Person"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Original Person"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["Original Album"]
     )
     
@@ -360,7 +360,7 @@ def test_default_safe_behavior(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar en mode par défaut (append-only)
-    process_sidecar_file(json_path)
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
 
     # Relire les métadonnées
     final_metadata = _run_exiftool_read(media_path)
@@ -390,19 +390,19 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
 
     # Tout d'abord, ajouter des métadonnées initiales en utilisant le mode écrasement
     first_meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description="Original description",
-        people=["Original Person"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Original Person"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=[]
     )
     
@@ -418,7 +418,7 @@ def test_explicit_overwrite_behavior(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Traiter le sidecar en mode écrasement explicite
-    process_sidecar_file(json_path, append_only=False)
+    process_sidecar_file(json_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False)
 
     # Relire les métadonnées
     final_metadata = _run_exiftool_read(media_path)
@@ -447,19 +447,19 @@ def test_append_only_vs_overwrite_video_equivalence(tmp_path: Path) -> None:
     
     # Créer les métadonnées à écrire
     meta = SidecarData(
-        filename="test.mp4",
+        title="test.mp4",
         description="Test video description",
-        people=["Video Person"],
-        taken_at=1736719606,
-        created_at=None,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=35.0,
+        people_name=["Video Person"],
+        photoTakenTime_timestamp=1736719606,
+        creationTime_timestamp=None,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=35.0,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=True,
+        favorited=True,
         albums=["Test Album"]
     )
     
@@ -528,21 +528,21 @@ def test_batch_vs_normal_mode_equivalence(tmp_path: Path) -> None:
     normal_dir.mkdir()
     batch_dir.mkdir()
     
-    for filename, description, person in test_files:
+    for title, description, person in test_files:
         # Créer les deux fichiers dans les deux répertoires
         for test_dir in [normal_dir, batch_dir]:
             # Créer l'image
-            media_path = test_dir / filename
+            media_path = test_dir / title
             img = Image.new('RGB', (100, 100), color='blue')
             img.save(media_path)
 
             # Créer le sidecar
             sidecar_data = {
-                "title": filename,
+                "title": title,
                 "description": description,
                 "people": [{"name": person}]
             }
-            json_path = test_dir / f"{filename}.json"
+            json_path = test_dir / f"{title}.json"
             json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     try:
@@ -550,27 +550,28 @@ def test_batch_vs_normal_mode_equivalence(tmp_path: Path) -> None:
         process_directory(normal_dir, use_localtime=False, append_only=True, immediate_delete=False)
 
         # Traiter avec le mode par lot
-        process_directory_batch(batch_dir, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(batch_dir, use_localtime=False, append_only=True, immediate_delete=False, organize_files=True,
+            geocode=False)
         
         # Comparer les métadonnées des fichiers dans les deux répertoires
-        for filename, expected_description, expected_person in test_files:
-            normal_metadata = _run_exiftool_read(normal_dir / filename)
-            batch_metadata = _run_exiftool_read(batch_dir / filename)
+        for title, expected_description, expected_person in test_files:
+            normal_metadata = _run_exiftool_read(normal_dir / title)
+            batch_metadata = _run_exiftool_read(batch_dir / title)
 
             # Vérifier que les descriptions correspondent
             assert normal_metadata.get("ImageDescription") == batch_metadata.get("ImageDescription")
             assert normal_metadata.get("ImageDescription") == expected_description
 
             # Vérifier que les personnes correspondent
-            normal_people = normal_metadata.get("PersonInImage", [])
-            batch_people = batch_metadata.get("PersonInImage", [])
-            if isinstance(normal_people, str):
-                normal_people = [normal_people]
-            if isinstance(batch_people, str):
-                batch_people = [batch_people]
+            normal_people_name = normal_metadata.get("PersonInImage", [])
+            batch_people_name = batch_metadata.get("PersonInImage", [])
+            if isinstance(normal_people_name, str):
+                normal_people_name = [normal_people_name]
+            if isinstance(batch_people_name, str):
+                batch_people_name = [batch_people_name]
             
-            assert set(normal_people) == set(batch_people)
-            assert expected_person in normal_people
+            assert set(normal_people_name) == set(batch_people_name)
+            assert expected_person in normal_people_name
             
     except FileNotFoundError:
         pytest.skip("exiftool introuvable - skipping batch vs normal mode test")
@@ -586,33 +587,34 @@ def test_batch_mode_performance_benefit(tmp_path: Path) -> None:
     num_files = 20  # Réduit pour CI, mais démontre toujours la capacité par lot
 
     for i in range(num_files):
-        filename = f"perf_test_{i:03d}.jpg"
+        title = f"perf_test_{i:03d}.jpg"
 
         # Créer l'image
-        media_path = tmp_path / filename
+        media_path = tmp_path / title
         img = Image.new('RGB', (50, 50), color='red')
         img.save(media_path)
 
         # Créer le sidecar
         sidecar_data = {
-            "title": filename,
+            "title": title,
             "description": f"Performance test image {i}"
         }
-        json_path = tmp_path / f"{filename}.json"
+        json_path = tmp_path / f"{title}.json"
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     try:
         # Mesurer le temps de traitement par lot
         start_time = time.time()
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=True,
+            geocode=False)
         end_time = time.time()
         
         batch_time = end_time - start_time
         
         # Vérifier que tous les fichiers ont été traités
         for i in range(num_files):
-            filename = f"perf_test_{i:03d}.jpg"
-            media_path = tmp_path / filename
+            title = f"perf_test_{i:03d}.jpg"
+            media_path = tmp_path / title
             
             metadata = _run_exiftool_read(media_path)
             expected_description = f"Performance test image {i}"
@@ -636,19 +638,19 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
         ("mixed2.png", "PNG test")  # PNG if supported by PIL
     ]
     
-    for filename, description in test_files:
+    for title, description in test_files:
         # Créer l'image
-        media_path = tmp_path / filename
-        if filename.endswith('.jpg'):
+        media_path = tmp_path / title
+        if title.endswith('.jpg'):
             img = Image.new('RGB', (100, 100), color='green')
             img.save(media_path, format='JPEG')
-        elif filename.endswith('.png'):
+        elif title.endswith('.png'):
             img = Image.new('RGBA', (100, 100), color=(0, 255, 0, 128))
             img.save(media_path, format='PNG')
 
         # Créer le sidecar complexe
         sidecar_data = {
-            "title": filename,
+            "title": title,
             "description": description,
             "people": [{"name": "Mixed Test Person"}],
             "favorited": True,
@@ -658,16 +660,17 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
                 "altitude": 20.0
             }
         }
-        json_path = tmp_path / f"{filename}.json"
+        json_path = tmp_path / f"{title}.json"
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     try:
         # Traiter avec le mode par lot
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=True,
+            geocode=False)
 
         # Vérifier que tous les fichiers ont été traités
-        for filename, expected_description in test_files:
-            media_path = tmp_path / filename
+        for title, expected_description in test_files:
+            media_path = tmp_path / title
             
             metadata = _run_exiftool_read(media_path)
             
@@ -675,10 +678,10 @@ def test_batch_mode_with_mixed_file_types(tmp_path: Path) -> None:
             assert metadata.get("ImageDescription") == expected_description
 
             # Vérifier les personnes
-            people = metadata.get("PersonInImage", [])
-            if isinstance(people, str):
-                people = [people]
-            assert "Mixed Test Person" in people
+            people_name = metadata.get("PersonInImage", [])
+            if isinstance(people_name, str):
+                people_name = [people_name]
+            assert "Mixed Test Person" in people_name
 
             # Vérifier la note (favori)
             rating = metadata.get("Rating")

@@ -173,18 +173,18 @@ def test_main_integration_batch_mode(tmp_path):
         ("batch1.jpg", "CLI batch test 1"),
         ("batch2.jpg", "CLI batch test 2"),
     ]
-    for filename, description in files_data:
-        media_path = tmp_path / filename
+    for title, description in files_data:
+        media_path = tmp_path / title
         img = Image.new('RGB', (100, 100), color='orange')
         img.save(media_path)
-        sidecar_data = {"title": filename, "description": description}
-        json_path = tmp_path / f"{filename}.json"
+        sidecar_data = {"title": title, "description": description}
+        json_path = tmp_path / f"{title}.json"
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
 
     main(["--batch", str(tmp_path)])
 
-    for filename, description in files_data:
-        cmd = ["exiftool", "-j", "-EXIF:ImageDescription", str(tmp_path / filename)]
+    for title, description in files_data:
+        cmd = ["exiftool", "-j", "-EXIF:ImageDescription", str(tmp_path / title)]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         metadata = json.loads(result.stdout)[0]
         assert metadata.get("ImageDescription") == description

@@ -39,10 +39,10 @@ def test_sidecar_to_exiftool_integration():
         
         # Parser le sidecar
         meta = parse_sidecar(json_path)
-        print(f"Noms depuis parse_sidecar: {meta.people}")
+        print(f"Noms depuis parse_sidecar: {meta.people_name}")
         
         # Les noms depuis parse_sidecar ne sont PAS encore normalisés (comportement attendu)
-        assert meta.people == ["ALICE DUPONT", "anthony vincent", "jean de la fontaine", "john mcdonald", "patrick o'connor"]
+        assert meta.people_name == ["ALICE DUPONT", "anthony vincent", "jean de la fontaine", "john mcdonald", "patrick o'connor"]
         
         # Construire les arguments exiftool (qui DOIT normaliser)
         args = build_exiftool_args(meta, append_only=True)

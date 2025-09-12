@@ -11,7 +11,7 @@ from google_takeout_metadata.processor import (
 
 def test_ignore_non_sidecar(tmp_path: Path) -> None:
     (tmp_path / "data.json").write_text("{}", encoding="utf-8")
-    process_directory(tmp_path)
+    process_directory(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
 
 
 def test_is_sidecar_file_standard_pattern() -> None:

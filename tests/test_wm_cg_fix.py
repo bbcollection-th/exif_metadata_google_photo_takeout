@@ -26,19 +26,19 @@ def test_append_only_timestamps_without_description():
     """
     # Métadonnées avec seulement des dates (pas de description)
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,  # Pas de description -> build_description_args retourne []
-        people=None,
-        taken_at=1640995200,  # 2022-01-01 00:00:00 UTC
-        created_at=1640995200,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=None,
+        photoTakenTime_timestamp=1640995200,  # 2022-01-01 00:00:00 UTC
+        creationTime_timestamp=1640995200,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     # Mode append-only
@@ -72,19 +72,19 @@ def test_fragile_wm_logic_eliminated():
     """
     # Métadonnées avec dates et GPS
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=None,
-        taken_at=1640995200,
-        created_at=1640995200,
-        latitude=48.8566,
-        longitude=2.3522,
-        altitude=35.0,
+        people_name=None,
+        photoTakenTime_timestamp=1640995200,
+        creationTime_timestamp=1640995200,
+        geoData_latitude=48.8566,
+        geoData_longitude=2.3522,
+        geoData_altitude=35.0,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=True,  # Rating=5
+        favorited=True,  # Rating=5
     )
     
     args = build_exiftool_args(meta, append_only=True)
@@ -113,19 +113,19 @@ def test_no_wm_in_overwrite_mode():
     Teste qu'en mode overwrite, pas de -wm cg inutile.
     """
     meta = SidecarData(
-        filename="test.jpg", 
+        title="test.jpg", 
         description="Test description",
-        people=None,
-        taken_at=1640995200,
-        created_at=1640995200,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=None,
+        photoTakenTime_timestamp=1640995200,
+        creationTime_timestamp=1640995200,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     args = build_exiftool_args(meta, append_only=False)

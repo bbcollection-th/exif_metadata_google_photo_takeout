@@ -1,22 +1,22 @@
 """
-Tests pour la fonction get_all_keywords et la cohérence du traitement de local_folder_name.
+Tests pour la fonction get_all_keywords et la cohérence du traitement de localFolderName.
 """
 
 from google_takeout_metadata.sidecar import SidecarData
-from google_takeout_metadata.exif_writer import get_all_keywords, build_people_keywords_args
+from google_takeout_metadata.exif_writer import get_all_keywords, build_people_name_keywords_args
 
 
 def test_get_all_keywords_basic():
     """Test de base pour get_all_keywords avec personnes et albums."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["alice dupont", "jean de la fontaine"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["alice dupont", "jean de la fontaine"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
@@ -39,30 +39,30 @@ def test_get_all_keywords_basic():
 def test_get_all_keywords_empty():
     """Test avec métadonnées vides."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
     keywords = get_all_keywords(meta)
     assert keywords == []
 
 
-def test_get_all_keywords_people_only():
+def test_get_all_keywords_people_name_only():
     """Test avec seulement des personnes."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["patrick o'connor", "john mcdonald"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        people_name=["patrick o'connor", "john mcdonald"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
     
     keywords = get_all_keywords(meta)
@@ -74,14 +74,14 @@ def test_get_all_keywords_people_only():
 def test_get_all_keywords_albums_only():
     """Test avec seulement des albums."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=[],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
@@ -95,23 +95,23 @@ def test_get_all_keywords_albums_only():
     assert keywords == expected
 
 
-def test_get_all_keywords_excludes_local_folder_name():
-    """Test que local_folder_name n'est PAS inclus dans les mots-clés."""
+def test_get_all_keywords_excludes_localFolderName():
+    """Test que localFolderName n'est PAS inclus dans les mots-clés."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["Alice"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Alice"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
         albums=["Vacances"],
-        local_folder_name="Instagram"  # Ne doit PAS apparaître dans les keywords
+        googlePhotosOrigin_localFolderName="Instagram"  # Ne doit PAS apparaître dans les keywords
     )
     
     keywords = get_all_keywords(meta)
@@ -124,33 +124,33 @@ def test_get_all_keywords_excludes_local_folder_name():
     assert "Instagram" not in keywords
 
 
-def test_build_people_keywords_args_uses_get_all_keywords():
-    """Test que build_people_keywords_args utilise get_all_keywords correctement."""
+def test_build_people_name_keywords_args_uses_get_all_keywords():
+    """Test que build_people_name_keywords_args utilise get_all_keywords correctement."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["alice dupont"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["alice dupont"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
         albums=["vacances"],
-        local_folder_name="WhatsApp"  # Ne doit pas affecter les keywords
+        googlePhotosOrigin_localFolderName="WhatsApp"  # Ne doit pas affecter les keywords
     )
     
-    args = build_people_keywords_args(meta)
+    args = build_people_name_keywords_args(meta)
     
     # Vérifier que les arguments contiennent les mots-clés attendus
     args_str = " ".join(args)
     assert "Alice Dupont" in args_str
     assert "Album: Vacances" in args_str
     
-    # Vérifier que local_folder_name n'est PAS traité comme album
+    # Vérifier que localFolderName n'est PAS traité comme album
     assert "Album: WhatsApp" not in args_str
     assert "WhatsApp" not in args_str
 
@@ -158,8 +158,8 @@ def test_build_people_keywords_args_uses_get_all_keywords():
 if __name__ == "__main__":
     test_get_all_keywords_basic()
     test_get_all_keywords_empty()
-    test_get_all_keywords_people_only()
+    test_get_all_keywords_people_name_only()
     test_get_all_keywords_albums_only()
-    test_get_all_keywords_excludes_local_folder_name()
-    test_build_people_keywords_args_uses_get_all_keywords()
+    test_get_all_keywords_excludes_localFolderName()
+    test_build_people_name_keywords_args_uses_get_all_keywords()
     print("✅ Tous les tests get_all_keywords passent !")

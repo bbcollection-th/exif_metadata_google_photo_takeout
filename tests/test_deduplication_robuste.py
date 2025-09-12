@@ -52,19 +52,19 @@ def test_remove_then_add_deduplication():
     selon l'approche "supprimer puis ajouter".
     """
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description="Test description",
-        people=["Anthony Vincent", "alice dupont", "BOB MARTIN"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["Anthony Vincent", "alice dupont", "BOB MARTIN"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["Vacances 2024", "test album"]
     )
     
@@ -72,13 +72,13 @@ def test_remove_then_add_deduplication():
     args = build_exiftool_args(meta, append_only=True)
     
     # Vérifier la normalisation et la déduplication pour PersonInImage
-    expected_people = ["Anthony Vincent", "Alice Dupont", "Bob Martin"]
-    for person in expected_people:
+    expected_people_name = ["Anthony Vincent", "Alice Dupont", "Bob Martin"]
+    for person in expected_people_name:
         assert f"-XMP-iptcExt:PersonInImage-={person}" in args
         assert f"-XMP-iptcExt:PersonInImage+={person}" in args
     
     # Vérifier la normalisation et la déduplication pour les mots-clés (personnes)
-    for person in expected_people:
+    for person in expected_people_name:
         assert f"-XMP-dc:Subject-={person}" in args
         assert f"-XMP-dc:Subject+={person}" in args
         assert f"-IPTC:Keywords-={person}" in args
@@ -100,19 +100,19 @@ def test_remove_then_add_deduplication():
 def test_deduplication_consistency_between_modes():
     """Tester que la normalisation est cohérente entre mode append-only et écrasement."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["anthony VINCENT", "alice dupont"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["anthony VINCENT", "alice dupont"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=["vacances 2024"]
     )
     
@@ -123,10 +123,10 @@ def test_deduplication_consistency_between_modes():
     args_overwrite = build_exiftool_args(meta, append_only=False)
     
     # Vérifier que les noms normalisés sont identiques dans les deux modes
-    expected_people = ["Anthony Vincent", "Alice Dupont"]
+    expected_people_name = ["Anthony Vincent", "Alice Dupont"]
     expected_album = "Album: Vacances 2024"
     
-    for person in expected_people:
+    for person in expected_people_name:
         # En mode append-only : -=/+=
         assert f"-XMP-iptcExt:PersonInImage-={person}" in args_append
         assert f"-XMP-iptcExt:PersonInImage+={person}" in args_append
@@ -143,19 +143,19 @@ def test_case_normalization_prevents_duplicates():
     """Tester que la normalisation de casse en amont évite les doublons."""
     # Simuler différentes variations de casse du même nom
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["anthony vincent", "ANTHONY VINCENT", "Anthony Vincent"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["anthony vincent", "ANTHONY VINCENT", "Anthony Vincent"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     args = build_exiftool_args(meta, append_only=True)
@@ -174,19 +174,19 @@ def test_case_normalization_prevents_duplicates():
 def test_special_characters_in_names():
     """Tester la gestion des caractères spéciaux dans les noms."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,
-        people=["José García", "François Müller", "北京 Beijing"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=["José García", "François Müller", "北京 Beijing"],
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     args = build_exiftool_args(meta, append_only=True)
@@ -201,19 +201,19 @@ def test_special_characters_in_names():
 def test_empty_values_handling():
     """Tester la gestion des valeurs vides et None."""
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description="",  # Vide
-        people=[],       # Liste vide
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],       # Liste vide
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
         albums=None      # None
     )
     

@@ -1,0 +1,79 @@
+{
+  "exif_mapping": {
+    "description": {
+      "source_fields": ["description"],
+      "target_tags": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description", 
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing"
+    },
+    "people": {
+      "source_fields": ["people"],
+      "target_tags": ["XMP-iptcExt:PersonInImage"],
+      "default_strategy": "clean_duplicates",
+      "normalize": "person_name"
+    },
+    "photoTakenTime_timestamp": {
+      "source_fields": ["photoTakenTime.timestamp"],
+      "target_tags": ["EXIF:DateTimeOriginal"],
+      "default_strategy": "replace_all"
+    },
+    "createdTime_timestamp": {
+      "source_fields": ["creationTime.timestamp"],
+      "target_tags": ["EXIF:CreateDate"],
+      "default_strategy": "replace_all"
+    },
+    "geoData_latitude": {
+      "source_fields": ["geoData.latitude"],
+      "target_tags": ["GPS:GPSLatitude"],
+      "default_strategy": "replace_all"
+    },
+    "geodata_longitude": {
+      "source_fields": ["geoData.longitude"], 
+      "target_tags": ["GPS:GPSLongitude"],
+      "default_strategy": "replace_all"
+    },
+    "geoData_altitude": {
+      "source_fields": ["geoData.altitude"],
+      "target_tags": ["GPS:GPSAltitude"],
+      "default_strategy": "replace_all"
+    },
+    "albums": {
+      "source_fields": ["albums"],
+      "target_tags": ["XMP-lr:HierarchicalSubject"],
+      "default_strategy": "clean_duplicates"
+    },
+    "favorited": {
+      "source_fields": ["favorited"],
+      "target_tags": ["XMP:Rating"],
+      "default_strategy": "write_if_missing",
+      "transform": "boolean_to_rating"
+    }
+  },
+  "strategies": {
+    "preserve_existing": {
+      "description": "Écrire seulement si le tag n'existe pas",
+      "pattern": ["-${tag}<=${value}"]
+    },
+    "write_if_missing": {
+      "description": "Écrire si le tag est vide ou n'existe pas", 
+      "pattern": ["-wm", "cg", "-${tag}=${value}"]
+    },
+    "replace_all": {
+      "description": "Remplacer complètement la valeur",
+      "pattern": ["-overwrite_original", "-${tag}=${value}"]
+    },
+    "clean_duplicates": {
+      "description": "Nettoyer les doublons avant écriture",
+      "pattern": ["${tag}-=${value}", "${tag}+=${value}"]
+    }
+  },
+  "global_settings": {
+    "default_strategy": "write_if_missing",
+    "video_extensions": [".mp4", ".mov", ".m4v", ".3gp"],
+    "common_args": ["-charset", "title=UTF8"],
+    "backup_original": true
+  }
+}

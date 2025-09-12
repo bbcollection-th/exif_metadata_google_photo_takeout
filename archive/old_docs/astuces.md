@@ -264,7 +264,7 @@ if meta.people:
 ```bash
 exiftool \
   -overwrite_original \
-  -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -charset title=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
   -codedcharacterset=utf8 \
   -XMP-iptcExt:PersonInImage-="Anthony Vincent" -XMP-iptcExt:PersonInImage+="Anthony Vincent" \
   -XMP-iptcExt:PersonInImage-=Bernard        -XMP-iptcExt:PersonInImage+=Bernard        \
@@ -281,7 +281,7 @@ exiftool \
 ```bash
 # En mode batch : ajout des options -efile pour journalisation
 exiftool \
-  -charset filename=UTF8 \
+  -charset title=UTF8 \
   -@ args.txt \
   -common_args \
   -overwrite_original \

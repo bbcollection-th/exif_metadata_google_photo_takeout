@@ -1,7 +1,5 @@
 import json
-from pathlib import Path
 
-import pytest
 import requests
 
 from google_takeout_metadata.sidecar import parse_sidecar
@@ -23,7 +21,7 @@ def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
     # Parse sidecar
     meta = parse_sidecar(json_path)
 
-    # Simuler les résultats du géocodage inverse
+    # Simuler les résultats du géocodage inverse et la clé API
     fake_results = [
         {
             "address_components": [
@@ -33,10 +31,11 @@ def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
             "formatted_address": "Paris, France",
         }
     ]
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "fake_key")
     monkeypatch.setattr(geocoding, "reverse_geocode", lambda lat, lon: fake_results)
 
     # Enrichir les métadonnées
-    processor._enrich_with_reverse_geocode(meta, json_path)
+    processor._enrich_with_reverse_geocode(meta, json_path, geocode=True)
 
     # Générer les arguments exiftool
     args = build_exiftool_args(meta)

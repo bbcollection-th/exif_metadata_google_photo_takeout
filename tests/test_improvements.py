@@ -320,8 +320,8 @@ def test_batch_sidecar_cleanup_with_real_failure(tmp_path: Path) -> None:
     
     # Traiter le lot avec suppression immédiate activée (immediate_delete=True)
     # Ceci devrait échouer à cause des arguments invalides
-    result = process_batch(batch, immediate_delete=True)
-    
+    result = process_batch(batch, immediate_delete=True, efile_dir=("/tmp"))
+
     # Vérifier que le traitement a échoué
     assert result == 0, "Le traitement aurait dû échouer avec des arguments invalides"
     
@@ -365,7 +365,7 @@ def test_batch_sidecar_cleanup_with_condition_success(tmp_path: Path) -> None:
     
     # Traiter avec process_sidecar_file en mode append-only (comportement normal)
     from google_takeout_metadata.processor import process_sidecar_file
-    process_sidecar_file(json_path, append_only=True, immediate_delete=True)
+    process_sidecar_file(json_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False, geocode=False)
     
     # Vérifier que le sidecar a été supprimé car le traitement a "réussi" 
     # (même si condition failed, c'est le comportement normal en append-only)
@@ -406,7 +406,7 @@ def test_batch_cleanup_logic_unit() -> None:
             assert json_path.exists()
             
             # Appeler process_batch avec immediate_delete=True
-            result = process_batch(batch, immediate_delete=True)
+            result = process_batch(batch, immediate_delete=True, efile_dir=("/tmp"))
             
             # Vérifier le succès et la suppression
             assert result == 1, "Le batch devrait être considéré comme réussi"

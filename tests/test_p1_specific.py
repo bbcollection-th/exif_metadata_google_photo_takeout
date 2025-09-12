@@ -20,19 +20,19 @@ def test_p1_write_metadata_conditional_args():
     
     # Scénario P1 : pas de description, mais des dates
     meta = SidecarData(
-        filename="test.jpg",
+        title="test.jpg",
         description=None,  # ❌ Pas de description
-        people=None,
-        taken_at=1640995200,  # ✅ Mais il y a des dates
-        created_at=1640995200,
-        latitude=None,
-        longitude=None,
-        altitude=None,
+        people_name=[],
+        photoTakenTime_timestamp=1640995200,  # ✅ Mais il y a des dates
+        creationTime_timestamp=1640995200,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None,
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=False,
+        favorited=False,
     )
     
     # Reproduire la logique de write_metadata (avant correction)

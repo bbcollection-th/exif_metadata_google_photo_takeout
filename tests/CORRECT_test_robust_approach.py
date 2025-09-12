@@ -7,15 +7,15 @@ from google_takeout_metadata.sidecar import SidecarData
 from google_takeout_metadata.exif_writer import write_metadata
 
 
-def read_exif_people(image_path: Path) -> list[str]:
+def read_exif_people_name(image_path: Path) -> list[str]:
     """Lit les personnes depuis un fichier image en utilisant exiftool."""
     try:
         cmd = ["exiftool", "-s", "-s", "-s", "-XMP-iptcExt:PersonInImage", str(image_path)]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, encoding='utf-8')
         if result.returncode == 0 and result.stdout.strip():
             # ExifTool retourne les valeurs séparées par des virgules
-            people = [p.strip() for p in result.stdout.strip().split(',')]
-            return [p for p in people if p]  # Filtrer les valeurs vides
+            people_name = [p.strip() for p in result.stdout.strip().split(',')]
+            return [p for p in people_name if p]  # Filtrer les valeurs vides
     except (subprocess.SubprocessError, OSError):
         pass
     return []
@@ -32,68 +32,68 @@ def test_robust_approach_no_duplicates():
         
         # Étape 1 : Ajouter les premières personnes (ancien takeout)
         meta1 = SidecarData(
-            filename="test_image.jpg",
+            title="test_image.jpg",
             description=None,
-            people=["Anthony", "Bernard"],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=["Anthony", "Bernard"],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False,
+            favorited=False,
             albums=["Vacances"]
         )
         write_metadata(test_image, meta1, append_only=True)
         
         # Vérifier l'état initial
-        people_initial = read_exif_people(test_image)
-        assert "Anthony" in people_initial
-        assert "Bernard" in people_initial
-        assert len([p for p in people_initial if p == "Anthony"]) == 1
-        assert len([p for p in people_initial if p == "Bernard"]) == 1
+        people_name_initial = read_exif_people_name(test_image)
+        assert "Anthony" in people_name_initial
+        assert "Bernard" in people_name_initial
+        assert len([p for p in people_name_initial if p == "Anthony"]) == 1
+        assert len([p for p in people_name_initial if p == "Bernard"]) == 1
         
         # Étape 2 : Ajouter nouveaux + existants (nouveau takeout avec tous les gens)
         meta2 = SidecarData(
-            filename="test_image.jpg",
+            title="test_image.jpg",
             description=None,
-            people=["Anthony", "Bernard", "Cindy"],  # Contient TOUS les gens, pas juste les nouveaux
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=["Anthony", "Bernard", "Cindy"],  # Contient TOUS les gens, pas juste les nouveaux
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False,
+            favorited=False,
             albums=["Vacances", "Famille"]
         )
         write_metadata(test_image, meta2, append_only=True)
         
         # Vérifier le résultat final : pas de doublons malgré la redondance
-        people_final = read_exif_people(test_image)
-        print(f"Personnes finales: {people_final}")
+        people_name_final = read_exif_people_name(test_image)
+        print(f"Personnes finales: {people_name_final}")
         
         # Assertions critiques : aucun doublon
-        assert "Anthony" in people_final
-        assert "Bernard" in people_final 
-        assert "Cindy" in people_final
-        assert len([p for p in people_final if p == "Anthony"]) == 1, f"Anthony apparaît plusieurs fois: {people_final}"
-        assert len([p for p in people_final if p == "Bernard"]) == 1, f"Bernard apparaît plusieurs fois: {people_final}"
-        assert len([p for p in people_final if p == "Cindy"]) == 1, f"Cindy apparaît plusieurs fois: {people_final}"
+        assert "Anthony" in people_name_final
+        assert "Bernard" in people_name_final 
+        assert "Cindy" in people_name_final
+        assert len([p for p in people_name_final if p == "Anthony"]) == 1, f"Anthony apparaît plusieurs fois: {people_name_final}"
+        assert len([p for p in people_name_final if p == "Bernard"]) == 1, f"Bernard apparaît plusieurs fois: {people_name_final}"
+        assert len([p for p in people_name_final if p == "Cindy"]) == 1, f"Cindy apparaît plusieurs fois: {people_name_final}"
         
         # Vérifier que toutes les personnes attendues sont présentes
-        expected_people = {"Anthony", "Bernard", "Cindy"}
-        actual_people = set(people_final)
-        assert expected_people.issubset(actual_people), f"Personnes manquantes. Attendu: {expected_people}, Réel: {actual_people}"
+        expected_people_name = {"Anthony", "Bernard", "Cindy"}
+        actual_people_name = set(people_name_final)
+        assert expected_people_name.issubset(actual_people_name), f"Personnes manquantes. Attendu: {expected_people_name}, Réel: {actual_people_name}"
 
 
-def test_robust_approach_only_new_people():
+def test_robust_approach_only_new_people_name():
     """Test de l'approche robuste (remove-then-add) : ajouter seulement les nouvelles personnes."""
     
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -107,50 +107,50 @@ def test_robust_approach_only_new_people():
         
         # Étape 1 : Ajouter les premières personnes
         meta1 = SidecarData(
-            filename="test_image.jpg",
+            title="test_image.jpg",
             description=None,
-            people=["Alice", "Bob"],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=["Alice", "Bob"],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False
+            favorited=False
         )
         write_metadata(test_image, meta1, append_only=True)
         
         # Étape 2 : Ajouter seulement les nouvelles personnes 
         meta2 = SidecarData(
-            filename="test_image.jpg",
+            title="test_image.jpg",
             description=None,
-            people=["Charlie"],  # Seulement la nouvelle personne
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=["Charlie"],  # Seulement la nouvelle personne
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False
+            favorited=False
         )
         write_metadata(test_image, meta2, append_only=True)
         
         # Vérifier le résultat : toutes les personnes présentes, pas de doublons
-        people_final = read_exif_people(test_image)
-        expected_people = {"Alice", "Bob", "Charlie"}
-        actual_people = set(people_final)
+        people_name_final = read_exif_people_name(test_image)
+        expected_people_name = {"Alice", "Bob", "Charlie"}
+        actual_people_name = set(people_name_final)
         
-        assert expected_people == actual_people, f"Attendu: {expected_people}, Réel: {actual_people}"
-        assert len(people_final) == 3, f"Doublons détectés: {people_final}"
+        assert expected_people_name == actual_people_name, f"Attendu: {expected_people_name}, Réel: {actual_people_name}"
+        assert len(people_name_final) == 3, f"Doublons détectés: {people_name_final}"
 
 
 if __name__ == "__main__":
     test_robust_approach_no_duplicates()
-    test_robust_approach_only_new_people()
+    test_robust_approach_only_new_people_name()
     print("✅ Tests de l'approche robuste (remove-then-add) : SUCCÈS")

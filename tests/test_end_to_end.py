@@ -9,20 +9,36 @@ from google_takeout_metadata.processor import process_directory
 
 
 @pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool not installed")
-def test_end_to_end(tmp_path: Path) -> None:
+def test_end_to_end_image(tmp_path: Path) -> None:
+    # créer une image factice
+    img_path = tmp_path / "IMG_0123456789.jpg"
+    Image.new("RGB", (10, 10), color="red").save(img_path)
+    # créer le sidecar correspondant
+    data = {
+        "title": "IMG_0123456789.jpg",
+        "description": 'Magicien "en" or',
+        "photoTakenTime": {"timestamp": "1745370366", "formatted": "23 avr. 2025, 01:06:06 UTC"},
+        "people": [{"name": "anthony vincent"}],
+    }
+    (tmp_path / "IMG_0123456789.jpg.supplemental-metadata.json").write_text(json.dumps(data), encoding="utf-8")
     # créer une image factice
     img_path = tmp_path / "sample.jpg"
     Image.new("RGB", (10, 10), color="red").save(img_path)
     # créer le sidecar correspondant
     data = {
-        "title": "sample.jpg",
+        "title": "IMG_0123456789.jpg",
         "description": 'Magicien "en" or',
-        "photoTakenTime": {"timestamp": "1736719606"},
+        "photoTakenTime": {"timestamp": "1745370366", "formatted": "23 avr. 2025, 01:06:06 UTC"},
         "people": [{"name": "anthony vincent"}],
     }
-    (tmp_path / "sample.jpg.json").write_text(json.dumps(data), encoding="utf-8")
+    (tmp_path / "IMG_0123456789.jpg.supplemental-data.json").write_text(json.dumps(data), encoding="utf-8")
 
-    process_directory(tmp_path)
+    process_directory(root=tmp_path,
+            use_localtime=False,
+            append_only=True,
+            immediate_delete=False,
+            organize_files=True,
+            geocode=False)
 
     exe = shutil.which("exiftool") or "exiftool"
     result = subprocess.run(

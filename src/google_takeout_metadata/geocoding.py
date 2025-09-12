@@ -61,7 +61,7 @@ def _save_cache(cache: Dict[str, Any]) -> None:
 
 
 def reverse_geocode(lat: float, lon: float) -> List[Dict[str, Any]]:
-    """Obtenir les informations d'adresse pour une latitude/longitude.
+    """Obtenir les informations d'adresse pour une geoData_latitude/geoData_longitude.
 
     Un cache JSON sur disque est utilisé pour éviter les appels répétés à
     l'API Google Geocoding. L'API key doit être fournie via la variable

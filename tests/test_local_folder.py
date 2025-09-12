@@ -11,7 +11,7 @@ sys.path.insert(0, "src")
 from google_takeout_metadata.sidecar import parse_sidecar
 from google_takeout_metadata.exif_writer import build_exiftool_args
 
-def test_local_folder_name_integration():
+def test_localFolderName_integration():
     """Test complet d'extraction et génération d'arguments pour localFolderName."""
     
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -40,9 +40,9 @@ def test_local_folder_name_integration():
         meta = parse_sidecar(json_path)
         
         print("🔍 Parsing résultats:")
-        print(f"   local_folder_name: {meta.local_folder_name}")
+        print(f"   localFolderName: {meta.localFolderName}")
         print(f"   albums: {meta.albums}")
-        print(f"   people: {meta.people}")
+        print(f"   people_name: {meta.people_name}")
         
         # 3. Générer les arguments ExifTool
         media_path = temp_path / "test_photo.jpg"
@@ -54,7 +54,7 @@ def test_local_folder_name_integration():
                 print(f"   {arg}")
         
         # 4. Vérifications
-        assert meta.local_folder_name == "Instagram", f"Attendu 'Instagram', obtenu {meta.local_folder_name}"
+        assert meta.localFolderName == "Instagram", f"Attendu 'Instagram', obtenu {meta.localFolderName}"
         
         # Chercher l'argument pour Alice (personnes)
         alice_found = False
@@ -64,7 +64,7 @@ def test_local_folder_name_integration():
             if isinstance(arg, str):
                 if "Alice" in arg:
                     alice_found = True
-                # local_folder_name ne devrait PAS être traité comme un album
+                # localFolderName ne devrait PAS être traité comme un album
                 if "Album: Instagram" in arg:
                     instagram_as_album_found = True
         
@@ -72,12 +72,12 @@ def test_local_folder_name_integration():
         assert alice_found, "L'argument 'Alice' devrait être présent"
         
         # Instagram ne devrait PAS être traité comme un album
-        assert not instagram_as_album_found, "local_folder_name ne devrait PAS être traité comme un album avec préfixe 'Album:'"
+        assert not instagram_as_album_found, "localFolderName ne devrait PAS être traité comme un album avec préfixe 'Album:'"
         
-        # Pour le moment, acceptons que local_folder_name ne soit pas utilisé dans les métadonnées
+        # Pour le moment, acceptons que localFolderName ne soit pas utilisé dans les métadonnées
         # (selon la logique métier expliquée par l'utilisateur)
-        print(f"✅ local_folder_name extrait correctement: {meta.local_folder_name}")
-        print("✅ local_folder_name correctement non traité comme album")
+        print(f"✅ localFolderName extrait correctement: {meta.localFolderName}")
+        print("✅ localFolderName correctement non traité comme album")
 
 
 if __name__ == "__main__":
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     print("=" * 50)
     
     try:
-        test_local_folder_name_integration()
+        test_localFolderName_integration()
         print("🎉 Tous les tests réussis!")
     except Exception as e:
         print(f"💥 Erreur: {e}")

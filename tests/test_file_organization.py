@@ -14,7 +14,7 @@ from google_takeout_metadata.processor import process_sidecar_file
 
 
 def test_sidecar_parsing_with_status():
-    """Test que le parsing des sidecars extrait bien les statuts archived, locked et trashed."""
+    """Test que le parsing des sidecars extrait bien les statuts archived, inLockedFolder et trashed."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         
@@ -29,7 +29,7 @@ def test_sidecar_parsing_with_status():
         meta = parse_sidecar(normal_sidecar)
         assert not meta.archived
         assert not meta.trashed
-        assert not meta.locked
+        assert not meta.inLockedFolder
 
         # Test fichier archivé
         archived_data = {
@@ -43,7 +43,7 @@ def test_sidecar_parsing_with_status():
         meta = parse_sidecar(archived_sidecar)
         assert meta.archived
         assert not meta.trashed
-        assert not meta.locked
+        assert not meta.inLockedFolder
 
         # Test fichier supprimé
         trashed_data = {
@@ -57,21 +57,21 @@ def test_sidecar_parsing_with_status():
         meta = parse_sidecar(trashed_sidecar)
         assert not meta.archived
         assert meta.trashed
-        assert not meta.locked
+        assert not meta.inLockedFolder
 
         # Test fichier verrouillé
-        locked_data = {
-            "title": "locked.jpg",
+        inLockedFolder_data = {
+            "title": "inLockedFolder.jpg",
             "description": "Fichier verrouillé",
             "inLockedFolder": True
         }
-        locked_sidecar = tmp_path / "locked.jpg.json"
-        locked_sidecar.write_text(json.dumps(locked_data), encoding="utf-8")
+        inLockedFolder_sidecar = tmp_path / "inLockedFolder.jpg.json"
+        inLockedFolder_sidecar.write_text(json.dumps(inLockedFolder_data), encoding="utf-8")
         
-        meta = parse_sidecar(locked_sidecar)
+        meta = parse_sidecar(inLockedFolder_sidecar)
         assert not meta.archived
         assert not meta.trashed
-        assert meta.locked
+        assert meta.inLockedFolder
 
         # Test fichier avec les trois statuts (trashed doit l'emporter)
         both_data = {
@@ -87,7 +87,7 @@ def test_sidecar_parsing_with_status():
         meta = parse_sidecar(both_sidecar)
         assert meta.archived
         assert meta.trashed
-        assert meta.locked
+        assert meta.inLockedFolder
         # Vérifier la priorité
         assert get_organization_status(meta) == "trashed"
         
@@ -105,8 +105,8 @@ def test_sidecar_parsing_with_status():
         meta = parse_sidecar(all_sidecar)
         assert meta.archived
         assert meta.trashed
-        assert meta.locked
-        # Vérifier la priorité (trashed > locked > archived)
+        assert meta.inLockedFolder
+        # Vérifier la priorité (trashed > inLockedFolder > archived)
         assert get_organization_status(meta) == "trashed"
         
         print("✅ Test parsing des statuts réussi !")
@@ -122,28 +122,28 @@ def test_file_organization_logic():
         # Test fichier normal - pas de déplacement
         from google_takeout_metadata.sidecar import SidecarData
         normal_meta = SidecarData(
-            filename="normal.jpg",
+            title="normal.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None
         )
         assert organizer.get_target_directory(normal_meta) is None
         assert not should_organize_file(normal_meta)
         
         # Test fichier archivé
         archived_meta = SidecarData(
-            filename="archived.jpg",
+            title="archived.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
@@ -155,14 +155,14 @@ def test_file_organization_logic():
         
         # Test fichier supprimé
         trashed_meta = SidecarData(
-            filename="trashed.jpg",
+            title="trashed.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
@@ -173,88 +173,88 @@ def test_file_organization_logic():
         assert should_organize_file(trashed_meta)
         
         # Test fichier verrouillé
-        locked_meta = SidecarData(
-            filename="locked.jpg",
+        inLockedFolder_meta = SidecarData(
+            title="inLockedFolder.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            locked=True
+            inLockedFolder=True
         )
-        assert organizer.get_target_directory(locked_meta) == organizer.locked_dir
-        assert should_organize_file(locked_meta)
+        assert organizer.get_target_directory(inLockedFolder_meta) == organizer.inLockedFolder_dir
+        assert should_organize_file(inLockedFolder_meta)
 
-        # Test priorité: trashed l'emporte sur locked qui l'emporte sur archived
+        # Test priorité: trashed l'emporte sur inLockedFolder qui l'emporte sur archived
         both_meta = SidecarData(
-            filename="both.jpg",
+            title="both.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
             archived=True,
-            locked=True,
+            inLockedFolder=True,
             trashed=True
         )
         assert organizer.get_target_directory(both_meta) == organizer.trash_dir
         assert should_organize_file(both_meta)
         
-        # Test priorité: trashed > locked > archived
+        # Test priorité: trashed > inLockedFolder > archived
         all_meta = SidecarData(
-            filename="all.jpg",
+            title="all.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
             archived=True,
             trashed=True,
-            locked=True
+            inLockedFolder=True
         )
         assert organizer.get_target_directory(all_meta) == organizer.trash_dir
         assert should_organize_file(all_meta)
         
-        # Test priorité: locked > archived
-        locked_archived_meta = SidecarData(
-            filename="locked_archived.jpg",
+        # Test priorité: inLockedFolder > archived
+        inLockedFolder_archived_meta = SidecarData(
+            title="inLockedFolder_archived.jpg",
             description=None,
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
             archived=True,
-            locked=True
+            inLockedFolder=True
         )
-        assert organizer.get_target_directory(locked_archived_meta) == organizer.locked_dir
-        assert should_organize_file(locked_archived_meta)
+        assert organizer.get_target_directory(inLockedFolder_archived_meta) == organizer.inLockedFolder_dir
+        assert should_organize_file(inLockedFolder_archived_meta)
         
-        # Test get_organization_status pour le cas locked + archived
-        assert get_organization_status(locked_archived_meta) == "locked"
+        # Test get_organization_status pour le cas inLockedFolder + archived
+        assert get_organization_status(inLockedFolder_archived_meta) == "inLockedFolder"
         
         print("✅ Test logique d'organisation réussi !")
 
@@ -288,8 +288,8 @@ def test_file_organization_end_to_end():
         assert sidecar_path.exists()
         
         # Traiter avec organisation
-        process_sidecar_file(sidecar_path, organize_files=True)
-        
+        process_sidecar_file(sidecar_path, use_localtime=True, organize_files=True, append_only=True, immediate_delete=False, geocode=False)
+
         # Vérifier que les répertoires ont été créés
         archive_dir = tmp_path / "_Archive"
         assert archive_dir.exists()
