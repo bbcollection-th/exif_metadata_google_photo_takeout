@@ -1,11 +1,12 @@
 {
-  "metadata_mappings": {
+  "exif_mapping": {
     "title": {
       "source_fields": [
         "title"
       ],
       "target_tags": [
-        "XMP:CustomTitle"
+        "IPTC:ObjectName",
+        "XMP-dc:Title"
       ],
       "default_strategy": "write_if_missing"
     },
@@ -14,11 +15,9 @@
         "description"
       ],
       "target_tags": [
-        "EXIF:ImageDescription",
-        "XMP-dc:Description",
-        "IPTC:Caption-Abstract"
+        "MWG:Description"
       ],
-      "default_strategy": "preserve_existing",
+      "default_strategy": "write_if_blank_or_missing",
       "sanitize": true
     },
     "imageviews": {
@@ -26,7 +25,7 @@
         "imageViews"
       ],
       "target_tags": [
-        "XMP:CustomImageviews"
+        "XMP:UserComment"
       ],
       "default_strategy": "write_if_missing"
     },
@@ -110,20 +109,16 @@
         "geoData.latitude"
       ],
       "target_tags": [
-        "GPS:GPSLatitude",
-        "GPS:GPSLongitude",
-        "GPS:GPSAltitude"
+        "GPSLatitude"
       ],
       "default_strategy": "replace_all"
     },
-    "geodata_longitude": {
+    "geoData_longitude": {
       "source_fields": [
         "geoData.longitude"
       ],
       "target_tags": [
-        "GPS:GPSLatitude",
-        "GPS:GPSLongitude",
-        "GPS:GPSAltitude"
+        "GPSLongitude"
       ],
       "default_strategy": "replace_all"
     },
@@ -132,11 +127,35 @@
         "geoData.altitude"
       ],
       "target_tags": [
-        "GPS:GPSLatitude",
-        "GPS:GPSLongitude",
-        "GPS:GPSAltitude"
+        "GPSAltitude"
       ],
       "default_strategy": "replace_all"
+    },
+    "geoData_latitude_ref": {
+      "source_fields": [
+        "geoData.latitude.ref"
+      ],
+      "target_tags": [
+        "GPSLatitudeRef"
+      ],
+      "default_strategy": "replace_all",
+      "value_mapping": {
+        "positive": "N",
+        "negative": "S"
+      }
+    },
+    "geoData_longitude_ref": {
+      "source_fields": [
+        "geoData.longitude.ref"
+      ],
+      "target_tags": [
+        "GPSLongitudeRef"
+      ],
+      "default_strategy": "replace_all",
+      "value_mapping": {
+        "positive": "E",
+        "negative": "W"
+      }
     },
     "geoData_latitudeSpan": {
       "source_fields": [
@@ -169,16 +188,6 @@
       ],
       "default_strategy": "write_if_missing"
     },
-    "people": {
-      "source_fields": [
-        "people"
-      ],
-      "target_tags": [
-        "XMP-iptcExt:PersonInImage"
-      ],
-      "default_strategy": "clean_duplicates",
-      "normalize": "person_name"
-    },
     "people_name": {
       "source_fields": [
         "people.name"
@@ -188,6 +197,43 @@
       ],
       "default_strategy": "clean_duplicates",
       "normalize": "person_name"
+    },
+    "people_name_keywords": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags": [
+        "IPTC:Keywords",
+        "XMP-dc:Subject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "normalize": "person_name"
+    },
+    "albums_keywords": {
+      "source_fields": [
+        "albums"
+      ],
+      "target_tags": [
+        "IPTC:Keywords"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "albums_subjects": {
+      "source_fields": [
+        "albums"
+      ],
+      "target_tags": [
+        "XMP-dc:Subject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
     },
     "googlephotosorigin": {
       "source_fields": [
@@ -261,7 +307,7 @@
       "target_tags": [
         "XMP:Rating"
       ],
-      "default_strategy": "preserve_existing",
+      "default_strategy": "preserve_positive_rating",
       "value_mapping": {
         "true": "5",
         "false": null
@@ -317,6 +363,45 @@
       ],
       "default_strategy": "replace_all",
       "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "city": {
+      "source_fields": [
+        "city"
+      ],
+      "target_tags": [
+        "XMP:City",
+        "IPTC:City"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "country": {
+      "source_fields": [
+        "country"
+      ],
+      "target_tags": [
+        "XMP:Country",
+        "IPTC:Country-PrimaryLocationName"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "state": {
+      "source_fields": [
+        "state"
+      ],
+      "target_tags": [
+        "XMP:State",
+        "IPTC:Province-State"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "place_name": {
+      "source_fields": [
+        "place_name"
+      ],
+      "target_tags": [
+        "XMP:Location"
+      ],
+      "default_strategy": "write_if_missing"
     }
   },
   "strategies": {
@@ -328,14 +413,17 @@
       ]
     },
     "replace_all": {
-      "description": "Remplacer toutes les métadonnées",
-      "exiftool_args": [
-        "-overwrite_original"
-      ]
+      "description": "Remplacer inconditionnellement la valeur",
+      "pattern": ["-${tag}=${value}"]
+    },
+    "write_if_blank_or_missing": {
+      "description": "Écrit seulement si le tag est inexistant ou vide (robuste multi-valué / lang-alt)",
+      "condition_template": "-if not defined $${tag} or not length($${tag}) or not length($${tag}[0])",
+      "pattern": ["-${tag}=${value}"]
     },
     "write_if_missing": {
-      "description": "Écrire seulement si absent",
-      "condition_template": "-if \"not ${tag}\""
+      "description": "Écrire seulement si absent (ancienne version moins robuste)",
+      "condition_template": "-if not $${tag}"
     },
     "clean_duplicates": {
       "description": "Nettoyer les doublons avant écriture",
@@ -343,6 +431,12 @@
         "${tag}-=${value}",
         "${tag}+=${value}"
       ]
+    },
+    "preserve_positive_rating": {
+      "description": "Pour favorited: écrire Rating=5 si favorited=true ET (Rating absent OU Rating=0), ne jamais toucher si favorited=false",
+      "condition_template": "-if not defined $${tag} or $${tag} eq '0'",
+      "pattern": ["-${tag}=${value}"],
+      "special_logic": "favorited_rating"
     }
   },
   "global_settings": {
@@ -356,7 +450,8 @@
     ],
     "common_args": [
       "-charset",
-      "title=UTF8"
+      "filename=utf8",
+      "-overwrite_original"
     ],
     "backup_original": true
   }

@@ -62,7 +62,7 @@ def test_main_normal_mode(mock_process_directory, tmp_path):
         main([str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -73,7 +73,7 @@ def test_main_batch_mode(mock_process_directory_batch, tmp_path):
         main(["--batch", str(tmp_path)])
 
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -84,7 +84,7 @@ def test_main_localtime_option(mock_process_directory, tmp_path):
         main(["--localtime", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=True, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -95,7 +95,7 @@ def test_main_overwrite_option(mock_process_directory, tmp_path):
         main(["--overwrite", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -106,7 +106,7 @@ def test_main_immediate_delete_option(mock_process_directory, tmp_path):
         main(["--immediate-delete", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=True, organize_files=False, geocode=False
     )
 
 
@@ -117,7 +117,7 @@ def test_main_batch_with_all_options(mock_process_directory_batch, tmp_path):
         main(["--batch", "--localtime", "--overwrite", "--immediate-delete", "--geocode", str(tmp_path)])
 
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=False, immediate_delete=True, organize_files=False, geocode=True
+        tmp_path, use_localTime=True, immediate_delete=True, organize_files=False, geocode=True
     )
 
 
@@ -128,7 +128,7 @@ def test_main_geocode_option(mock_process_directory, tmp_path):
         main(["--geocode", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=True
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=True
     )
 
 

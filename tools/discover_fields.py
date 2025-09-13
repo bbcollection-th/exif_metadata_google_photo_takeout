@@ -209,7 +209,7 @@ class FieldDiscoverer:
         logger.info("🏗️ Génération de la configuration...")
         
         config = {
-            "metadata_mappings": {},
+            "exif_mapping": {},
             "strategies": {
                 "preserve_existing": {
                     "description": "Utilise -wm cg pour préserver l'existant",
@@ -258,7 +258,7 @@ class FieldDiscoverer:
             if mapping:
                 # Nom sécurisé pour la configuration
                 safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', field_name).lower()
-                config["metadata_mappings"][safe_name] = mapping
+                config["exif_mapping"][safe_name] = mapping
         
         if output_file:
             # Générer le fichier de configuration épuré
@@ -278,7 +278,7 @@ class FieldDiscoverer:
     def _create_clean_config(self, full_config: Dict[str, Any]) -> Dict[str, Any]:
         """Crée une version épurée de la configuration sans les infos de debug"""
         clean_config = {
-            "metadata_mappings": {},
+            "exif_mapping": {},
             "strategies": {
                 "preserve_existing": {
                     "description": "Préserver les métadonnées existantes",
@@ -306,13 +306,13 @@ class FieldDiscoverer:
         }
         
         # Copier les mappings en supprimant les infos de debug
-        for name, mapping in full_config["metadata_mappings"].items():
+        for name, mapping in full_config["exif_mapping"].items():
             clean_mapping = {}
             for key, value in mapping.items():
                 # Exclure les clés de debug qui commencent par '_'
                 if not key.startswith('_'):
                     clean_mapping[key] = value
-            clean_config["metadata_mappings"][name] = clean_mapping
+            clean_config["exif_mapping"][name] = clean_mapping
         
         return clean_config
     

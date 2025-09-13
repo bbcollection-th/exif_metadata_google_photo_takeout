@@ -70,7 +70,7 @@ def main():
     with open(discovered_config, 'r', encoding='utf-8') as f:
         config = json.load(f)
     
-    mappings_count = len(config.get('metadata_mappings', {}))
+    mappings_count = len(config.get('exif_mapping', {}))
     print(f"   ✅ {mappings_count} champs découverts")
     
     # Étape 2: Validation
@@ -94,7 +94,7 @@ def main():
         with open(cleaned_config, 'r', encoding='utf-8') as f:
             clean_config = json.load(f)
         
-        clean_mappings_count = len(clean_config.get('metadata_mappings', {}))
+        clean_mappings_count = len(clean_config.get('exif_mapping', {}))
         reduction = ((mappings_count - clean_mappings_count) / mappings_count) * 100
         print(f"   ✅ Réduction: {mappings_count} → {clean_mappings_count} champs ({reduction:.1f}%)")
     
@@ -118,7 +118,7 @@ def main():
         
         print("   ✅ Configuration chargée avec succès")
         print(f"   📊 Stratégies disponibles: {list(loaded_config.get('strategies', {}).keys())}")
-        print(f"   📊 Mappings chargés: {len(loaded_config.get('metadata_mappings', {}))}")
+        print(f"   📊 Mappings chargés: {len(loaded_config.get('exif_mapping', {}))}")
         
     except ImportError as e:
         print(f"   ⚠️ Module config_loader non trouvé: {e}")

@@ -25,7 +25,7 @@ def clean_config_file(input_file: Path, output_file: Path = None):
     
     # Créer la version épurée
     clean_config = {
-        "metadata_mappings": {},
+        "exif_mapping": {},
         "strategies": config.get("strategies", {}),
         "global_settings": config.get("global_settings", {})
     }
@@ -45,10 +45,10 @@ def clean_config_file(input_file: Path, output_file: Path = None):
         clean_config["strategies"][strategy_name] = cleaned_strategy
     
     # Nettoyer les mappings (supprimer _discovery_info et autres infos de debug)
-    original_count = len(config.get("metadata_mappings", {}))
+    original_count = len(config.get("exif_mapping", {}))
     cleaned_count = 0
     
-    for name, mapping in config.get("metadata_mappings", {}).items():
+    for name, mapping in config.get("exif_mapping", {}).items():
         clean_mapping = {}
         
         # Copier seulement les propriétés essentielles
@@ -64,7 +64,7 @@ def clean_config_file(input_file: Path, output_file: Path = None):
         
         # Ajouter seulement si le mapping a du contenu utile
         if clean_mapping and "source_fields" in clean_mapping and "target_tags" in clean_mapping:
-            clean_config["metadata_mappings"][name] = clean_mapping
+            clean_config["exif_mapping"][name] = clean_mapping
             cleaned_count += 1
     
     # Déterminer le fichier de sortie

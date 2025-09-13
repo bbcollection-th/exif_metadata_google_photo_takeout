@@ -49,8 +49,5 @@ exiftool -api NoDups -XMP-iptcExt:PersonInImage -overwrite_original test_image.j
 3. **Préservation** : Toutes les données existantes sont conservées
 4. **Performance** : 2 commandes exiftool seulement
 
-### Implémentation recommandée :
-Cette solution peut être intégrée dans le mode `append_only` pour remplacer la logique actuelle de déduplication Python par cette approche hybride plus simple et plus fiable.
-
 ## Code de test
 Voir `experiments/test7_hybrid_solution.py` pour l'implémentation complète.

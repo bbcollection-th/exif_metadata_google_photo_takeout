@@ -113,7 +113,7 @@ La configuration générée suit cette structure :
 
 ```json
 {
-  "metadata_mappings": {
+  "exif_mapping": {
     "photoTakenTime_timestamp": {
       "source_fields": ["photoTakenTime.timestamp"],
       "target_tags": ["EXIF:DateTimeOriginal", "EXIF:CreateDate"],

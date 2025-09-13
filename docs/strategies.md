@@ -25,27 +25,6 @@ Le nouveau système permet de combiner différentes stratégies d'écriture selo
 ```python
 from google_takeout_metadata.exif_writer import build_exiftool_args
 
-# Exemple 1: Mode conservateur (défaut actuel)
-args = build_exiftool_args(meta, append_only=True)
-# ↓ Équivaut à :
-args = build_exiftool_args(
-    meta,
-    description_strategy="preserve_existing",
-    people_keywords_strategy="clean_duplicates", 
-    rating_strategy="preserve_existing",
-    source_app_strategy="write_if_missing"
-)
-
-# Exemple 2: Mode agressif de nettoyage
-args = build_exiftool_args(meta, append_only=False)
-# ↓ Équivaut à :
-args = build_exiftool_args(
-    meta,
-    description_strategy="replace_all",
-    people_keywords_strategy="replace_all",
-    rating_strategy="replace_all",
-    source_app_strategy="replace_all"
-)
 
 # Exemple 3: Stratégie mixte personnalisée
 args = build_exiftool_args(
@@ -76,19 +55,6 @@ args = build_exiftool_args(
 ```
 
 ## Cas d'usage typiques
-
-### Première importation (mode normal)
-```python
-# Première fois - on veut préserver mais éviter doublons
-args = build_exiftool_args(meta, append_only=True)
-```
-
-### Nettoyage/réorganisation 
-```python
-# On veut tout nettoyer et réécrire proprement
-args = build_exiftool_args(meta, append_only=False)
-```
-
 ### Reprise après interruption
 ```python
 # Mode super safe - ne toucher qu'aux métadonnées manquantes

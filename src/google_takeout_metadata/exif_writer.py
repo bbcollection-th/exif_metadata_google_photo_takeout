@@ -49,10 +49,10 @@ def get_all_keywords(meta: SidecarData) -> List[str]:
 def _is_video_file(path: Path) -> bool:
     return path.suffix.lower() in VIDEO_EXTS
 
-def _fmt_dt(ts: int | None, use_localtime: bool) -> str | None:
+def _fmt_dt(ts: int | None, use_localTime: bool) -> str | None:
     if ts is None:
         return None
-    dt = datetime.fromtimestamp(ts) if use_localtime else datetime.fromtimestamp(ts, tz=timezone.utc)
+    dt = datetime.fromtimestamp(ts) if use_localTime else datetime.fromtimestamp(ts, tz=timezone.utc)
     return dt.strftime("%Y:%m:%d %H:%M:%S")
 
 def normalize_person_name(name: str) -> str:
@@ -138,28 +138,26 @@ def build_conditional_add_args_for_people_name(people_name: Iterable[str]) -> Li
     return args
 
 def build_overwrite_args_for_people_name(people_name: Iterable[str]) -> List[str]:
-    """Arguments mode overwrite : vider puis ajouter chaque personne."""
+    """Arguments mode overwrite : remplacer complètement les personnes."""
     args: List[str] = []
+    # Vider d'abord puis ajouter toutes les personnes
+    args.append("-XMP-iptcExt:PersonInImage=")  # Vider
     if people_name:
-        # Vider d'abord
-        args.append("-XMP-iptcExt:PersonInImage=")
-        # Puis ajouter chaque personne normalisée
         for raw in people_name:
             person = normalize_person_name(raw)
             if person:
-                args.append(f"-XMP-iptcExt:PersonInImage+={person}")
+                args.append(f"-XMP-iptcExt:PersonInImage={person}")  # Utiliser = pour remplacer
     return args
 
 def build_overwrite_args_for_keywords(keywords: Iterable[str]) -> List[str]:
-    """Arguments mode overwrite : vider puis ajouter chaque keyword."""
+    """Arguments mode overwrite : remplacer complètement les keywords."""
     args: List[str] = []
-    if keywords:
-        # Vider d'abord
-        args.extend(["-XMP-dc:Subject=", "-IPTC:Keywords="])
-        # Puis ajouter chaque keyword 
-        for kw in keywords:
-            if kw.strip():
-                args.extend([f"-XMP-dc:Subject+={kw}", f"-IPTC:Keywords+={kw}"])
+    # Vider d'abord
+    args.extend(["-XMP-dc:Subject=", "-IPTC:Keywords="])
+    # Puis ajouter chaque keyword en mode remplacement
+    for kw in keywords:
+        if kw.strip():
+            args.extend([f"-XMP-dc:Subject={kw}", f"-IPTC:Keywords={kw}"])
     return args
 
 def build_conditional_add_args_for_keywords(keywords: Iterable[str]) -> List[str]:
@@ -257,18 +255,18 @@ def build_description_args(meta: SidecarData, *, conditional_mode: bool = False)
     
     return args
 
-def build_datetime_args(meta: SidecarData, use_localtime: bool, is_video: bool) -> List[str]:
+def build_datetime_args(meta: SidecarData, use_localTime: bool, is_video: bool) -> List[str]:
     """Construit les arguments pour les dates."""
     args: List[str] = []
     
     # Dates
-    if (s := _fmt_dt(meta.photoTakenTime_timestamp, use_localtime)):
+    if (s := _fmt_dt(meta.photoTakenTime_timestamp, use_localTime)):
         args.append(f"-DateTimeOriginal={s}")
         if is_video:
             args.append(f"-QuickTime:CreateDate={s}")
 
     base_ts = meta.creationTime_timestamp or meta.photoTakenTime_timestamp
-    if (s := _fmt_dt(base_ts, use_localtime)):
+    if (s := _fmt_dt(base_ts, use_localTime)):
         args.append(f"-CreateDate={s}")
         args.append(f"-ModifyDate={s}")
         if is_video:
@@ -359,140 +357,17 @@ def build_source_app_args(meta: SidecarData, *, conditional_mode: bool = False) 
         ])
     
     return args
-# === FONCTION PRINCIPALE REFACTORISÉE ===
-
-def build_exiftool_args(
-    meta: SidecarData, 
-    media_path: Path = None, 
-    use_localtime: bool = False, 
-    *,
-    # Stratégies pour différents types de métadonnées
-    description_strategy: str = "preserve_existing",  # "preserve_existing", "replace_all", "write_if_missing"
-    people_name_keywords_strategy: str = "clean_duplicates",  # "clean_duplicates", "replace_all", "write_if_missing"
-    datetime_strategy: str = "replace_all",  # Dates sont généralement écrasées
-    gps_strategy: str = "replace_all",  # GPS généralement écrasé
-    location_strategy: str = "replace_all",  # Localisation généralement écrasée
-    rating_strategy: str = "preserve_existing",  # Rating préservé par défaut
-    source_app_strategy: str = "write_if_missing",  # Application source seulement si absent
-    # Legacy compatibility
-    append_only: bool = None
-) -> list[str]:
-    """Construit les arguments exiftool avec des stratégies flexibles par type de métadonnée.
-    
-    STRATÉGIES DISPONIBLES :
-    - "preserve_existing": Utilise -wm cg pour préserver l'existant
-    - "replace_all": Remplace complètement les valeurs
-    - "write_if_missing": Utilise -if pour n'écrire que si absent
-    - "clean_duplicates": Pour listes, supprime puis ajoute (évite doublons)
-    
-    COMBINAISONS UTILES :
-    - write_if_missing + preserve_existing: Inscrire que si n'existe pas, en préservant l'existant
-    - clean_duplicates: Pour listes (personnes/mots-clés) - évite les doublons
-    
-    Args:
-        meta: Métadonnées à écrire
-        media_path: Chemin du fichier média (optionnel, pour la détection vidéo)
-        use_localtime: Utiliser l'heure locale au lieu d'UTC
-        description_strategy: Stratégie pour description
-        people_name_keywords_strategy: Stratégie pour personnes et mots-clés
-        datetime_strategy: Stratégie pour dates
-        gps_strategy: Stratégie pour GPS
-        location_strategy: Stratégie pour localisation
-        rating_strategy: Stratégie pour rating
-        source_app_strategy: Stratégie pour application source
-        append_only: (Legacy) Si fourni, configure toutes les stratégies en mode preserve/replace
-    
-    Returns:
-        Liste des arguments exiftool
-    """
-    # Compatibilité avec l'ancienne API
-    if append_only is not None:
-        if append_only:
-            description_strategy = "preserve_existing"
-            people_name_keywords_strategy = "clean_duplicates"
-            rating_strategy = "preserve_existing"
-            source_app_strategy = "write_if_missing"
-        else:
-            description_strategy = "replace_all"
-            people_name_keywords_strategy = "replace_all"
-            rating_strategy = "replace_all"
-            source_app_strategy = "replace_all"
-    
-    args = []
-    is_video = media_path and _is_video_file(media_path)
-    
-    if is_video:
-        args.extend(["-api", "QuickTimeUTC=1"])
-    
-    # Déterminer si on a besoin de -wm cg
-    needs_preserve_mode = any(strategy == "preserve_existing" for strategy in [
-        description_strategy, rating_strategy
-    ])
-    
-    if needs_preserve_mode:
-        args.extend(["-wm", "cg"])
-    
-    # Description
-    if description_strategy == "write_if_missing":
-        args.extend(build_description_args(meta, conditional_mode=True))
-    else:
-        args.extend(build_description_args(meta, conditional_mode=False))
-    
-    # PersonInImage et Keywords
-    if people_name_keywords_strategy == "replace_all":
-        args.extend(build_people_name_keywords_args(meta, conditional_mode=False, overwrite_mode=True))
-    elif people_name_keywords_strategy == "write_if_missing":
-        args.extend(build_people_name_keywords_args(meta, conditional_mode=True, overwrite_mode=False))
-    else:  # clean_duplicates (par défaut)
-        args.extend(build_people_name_keywords_args(meta, conditional_mode=False, overwrite_mode=False))
-    
-    # Dates
-    args.extend(build_datetime_args(meta, use_localtime, is_video))
-    
-    # Vidéo spécifique (description)
-    if is_video and meta.description:
-        safe_desc = _sanitize_description(meta.description)
-        if description_strategy == "write_if_missing":
-            args.extend([
-                "-if", "not $Keys:Description",
-                f"-Keys:Description={safe_desc}"
-            ])
-        else:
-            args.append(f"-Keys:Description={safe_desc}")
-    
-    # GPS
-    args.extend(build_gps_args(meta, is_video))
-
-    # Localisation (ville/pays/lieu)
-    args.extend(build_location_args(meta))
-    
-    # Rating
-    args.extend(build_rating_args(meta))
-    
-    # Application source
-    if source_app_strategy == "write_if_missing":
-        args.extend(build_source_app_args(meta, conditional_mode=True))
-    else:
-        args.extend(build_source_app_args(meta, conditional_mode=False))
-
-    return args
 
 # === FONCTIONS EXISTANTES PRÉSERVÉES ===
 
-def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool = True) -> None:
+def _run_exiftool_command(media_path: Path, args: list[str]) -> None:
     """Exécute une commande exiftool avec gestion d'erreurs."""
     cmd = [
         "exiftool", 
         "-overwrite_original", 
-        "-charset", "title=UTF8",
-        "-charset", "iptc=UTF8",
-        "-charset", "exif=UTF8", 
+        "-charset", "utf8",
         "-codedcharacterset=utf8"
     ]
-    
-    if not _append_only:
-        # En mode écrasement, on peut utiliser des options plus agressives
-        pass
     
     cmd.extend(args)
     cmd.append(str(media_path))
@@ -506,27 +381,28 @@ def _run_exiftool_command(media_path: Path, args: list[str], _append_only: bool 
         if result.stderr.strip():
             logger.warning(f"exiftool stderr: {result.stderr.strip()}")
     except subprocess.CalledProcessError as e:
-        # En mode append_only, le code de sortie 2 avec "files failed condition" est normal
-        # (cela signifie que les métadonnées existent déjà)
-        if _append_only and e.returncode == 2 and e.stdout and "files failed condition" in e.stdout:
-            logger.debug(f"Mode append-only: métadonnées existantes ignorées pour {media_path}")
-            return
-        
         logger.error(f"Erreur exiftool pour {media_path}: code {e.returncode}")
         logger.error(f"stdout: {e.stdout}")
         logger.error(f"stderr: {e.stderr}")
+        
+        # Code 2 avec "files failed condition" n'est pas une erreur fatale
+        # C'est le comportement normal quand les conditions -if échouent (ex: champ déjà rempli)
+        if e.returncode == 2 and "files failed condition" in e.stdout:
+            logger.info(f"Conditions exiftool échouées pour {media_path} (comportement normal pour préservation)")
+            return
+            
         raise RuntimeError(f"Échec de la commande exiftool pour {media_path}: {e.stderr}")
     except subprocess.TimeoutExpired:
         logger.error(f"Timeout exiftool pour {media_path}")
         raise RuntimeError(f"Timeout exiftool pour {media_path}")
 
-def write_metadata_with_config(media_path: Path, meta: SidecarData, use_localtime: bool = False, config_loader: 'ConfigLoader' = None) -> None:
+def write_metadata(media_path: Path, meta: SidecarData, use_localTime: bool = False, config_loader: 'ConfigLoader' = None) -> None:
     """Écrit les métadonnées en utilisant la configuration découverte automatiquement.
     
     Args:
         media_path: Chemin du fichier média
         meta: Métadonnées à écrire
-        use_localtime: Utiliser l'heure locale
+        use_localTime: Utiliser l'heure locale
         config_loader: Loader de configuration (créé automatiquement si None)
     """
     if config_loader is None:
@@ -534,24 +410,68 @@ def write_metadata_with_config(media_path: Path, meta: SidecarData, use_localtim
         config_loader = ConfigLoader()
         config_loader.load_config()
     
-    # Construire les arguments avec la configuration
-    args = build_exiftool_args_from_config(meta, media_path, use_localtime, config_loader)
+    # Séparer les arguments par type de stratégie pour éviter les conflits
+    args_by_strategy = _group_args_by_strategy(meta, media_path, use_localTime, config_loader)
     
-    if args:
-        # Déterminer le mode général depuis la configuration
-        global_settings = config_loader.config.get('global_settings', {})
-        default_strategy = global_settings.get('default_strategy', 'write_if_missing')
-        append_only = default_strategy in ['preserve_existing', 'write_if_missing']
-        
-        _run_exiftool_command(media_path, args, _append_only=append_only)
+    # Exécuter chaque groupe d'arguments séparément
+    for strategy_type, args in args_by_strategy.items():
+        if args:
+            logger.debug(f"Exécution des arguments {strategy_type}: {args}")
+            _run_exiftool_command(media_path, args)
 
-def build_exiftool_args_from_config(meta: SidecarData, media_path: Path, use_localtime: bool, config_loader: 'ConfigLoader') -> list[str]:
+def _group_args_by_strategy(meta: SidecarData, media_path: Path, use_localTime: bool, config_loader: 'ConfigLoader') -> dict:
+    """Groupe les arguments par type de stratégie pour les exécuter séparément."""
+    is_video = _is_video_file(media_path)
+    
+    # Récupérer la configuration
+    mappings = config_loader.config.get('exif_mapping', {})
+    strategies = config_loader.config.get('strategies', {})
+    
+    # Groupes d'arguments par type de stratégie
+    grouped_args = {
+        'conditional': [],     # Arguments avec conditions -if
+        'unconditional': [],   # Arguments sans condition (replace_all, clean_duplicates)
+        'patterns': [],        # Arguments avec patterns spéciaux
+        'special_logic': []    # Arguments avec logique spéciale (ex: preserve_positive_rating)
+    }
+    
+    # Traiter chaque mapping configuré
+    for mapping_name, mapping_config in mappings.items():
+        source_fields = mapping_config.get('source_fields', [])
+        target_tags = mapping_config.get('target_tags', [])
+        default_strategy = mapping_config.get('default_strategy', 'write_if_missing')
+        
+        # Extraire la valeur depuis les métadonnées
+        value = _extract_value_from_meta(meta, source_fields)
+        if value is None:
+            continue
+            
+        # Appliquer la stratégie pour chaque tag cible
+        strategy_config = strategies.get(default_strategy, {})
+        
+        for tag in target_tags:
+            tag_args = _build_tag_args(tag, value, strategy_config, mapping_config, is_video)
+            
+            # Classer les arguments selon leur type
+            if strategy_config.get('special_logic'):
+                # Logique spéciale exécutée séparément pour éviter les conflits
+                grouped_args['special_logic'].extend(tag_args)
+            elif any('-if' in str(arg) for arg in tag_args):
+                grouped_args['conditional'].extend(tag_args)
+            elif strategy_config.get('pattern'):
+                grouped_args['patterns'].extend(tag_args)
+            else:
+                grouped_args['unconditional'].extend(tag_args)
+    
+    return grouped_args
+
+def build_exiftool_args(meta: SidecarData, media_path: Path, use_localTime: bool, config_loader: 'ConfigLoader') -> list[str]:
     """Construit les arguments exiftool en utilisant les mappings de configuration découverts.
     
     Args:
         meta: Métadonnées à écrire
         media_path: Chemin du fichier média
-        use_localtime: Utiliser l'heure locale
+        use_localTime: Utiliser l'heure locale
         config_loader: Configuration chargée
         
     Returns:
@@ -563,11 +483,10 @@ def build_exiftool_args_from_config(meta: SidecarData, media_path: Path, use_loc
     # Récupérer la configuration
     mappings = config_loader.config.get('exif_mapping', {})
     strategies = config_loader.config.get('strategies', {})
-    global_settings = config_loader.config.get('global_settings', {})
     
-    # Arguments globaux
-    common_args = global_settings.get('common_args', [])
-    args.extend(common_args)
+    # Arguments globaux (SANS les ajouter via common_args pour éviter les doublons)
+    # common_args = global_settings.get('common_args', [])
+    # args.extend(common_args)
     
     # Traiter chaque mapping configuré
     for mapping_name, mapping_config in mappings.items():
@@ -602,27 +521,21 @@ def _extract_value_from_meta(meta: SidecarData, source_fields: list) -> any:
             return meta.title
         elif field_path in ["people", "people.name", "people[].name"] and meta.people_name:
             return meta.people_name
-        elif field_path == "photoTakenTime.timestamp" and meta.photoTakenTime_timestamp:
+        elif field_path == "photoTakenTime.timestamp" and meta.photoTakenTime_timestamp is not None:
             return meta.photoTakenTime_timestamp
-        elif field_path == "creationTime.timestamp" and meta.creationTime_timestamp:
+        elif field_path == "creationTime.timestamp" and meta.creationTime_timestamp is not None:
             return meta.creationTime_timestamp
-        elif field_path == "geoData.latitude" and meta.geoData_latitude:
+        elif field_path == "geoData.latitude" and meta.geoData_latitude is not None:
             return meta.geoData_latitude
-        elif field_path == "geoData.longitude" and meta.geoData_longitude:
+        elif field_path == "geoData.longitude" and meta.geoData_longitude is not None:
             return meta.geoData_longitude
-        elif field_path == "geoData.altitude" and meta.geoData_altitude:
+        elif field_path == "geoData.altitude" and meta.geoData_altitude is not None:
             return meta.geoData_altitude
-        # Patterns simplifiés (rétrocompatibilité)
-        elif field_path == "photoTakenTime" and meta.photoTakenTime_timestamp:
-            return meta.photoTakenTime_timestamp
-        elif field_path == "creationTime" and meta.creationTime_timestamp:
-            return meta.creationTime_timestamp
-        elif field_path == "latitude" and meta.geoData_latitude:
-            return meta.geoData_latitude
-        elif field_path == "longitude" and meta.geoData_longitude:
-            return meta.geoData_longitude
-        elif field_path == "altitude" and meta.geoData_altitude:
-            return meta.geoData_altitude
+        # Gérer les références GPS (N/S, E/W) basées sur le signe
+        elif field_path == "geoData.latitude.ref" and hasattr(meta, 'geoData_latitude') and meta.geoData_latitude is not None:
+            return "positive" if meta.geoData_latitude >= 0 else "negative"
+        elif field_path == "geoData.longitude.ref" and hasattr(meta, 'geoData_longitude') and meta.geoData_longitude is not None:
+            return "positive" if meta.geoData_longitude >= 0 else "negative"
         # Autres champs
         elif field_path == "albums" and meta.albums:
             return meta.albums
@@ -632,54 +545,228 @@ def _extract_value_from_meta(meta: SidecarData, source_fields: list) -> any:
             return meta.city
         elif field_path == "country" and meta.country:
             return meta.country
+        elif field_path == "state" and meta.state:
+            return meta.state
+        elif field_path == "place_name" and meta.place_name:
+            return meta.place_name
     
     return None
+
+def boolean_to_rating(val: bool | None) -> int | None:
+    if val is True:
+        return 5
+    return None  # False ou None => pas d'écriture
+
+def make_rating_args(favorited: bool | None) -> list[str]: 
+    value = boolean_to_rating(favorited)
+    if value is None:
+        return []  # ne rien écrire si False/None
+
+    # Windows: garder les guillemets dans l'argument -if
+    return [
+        '-if', 'not defined $XMP:Rating or $XMP:Rating eq 0',
+        f'-XMP:Rating={value}'
+    ]
+
+def _format_timestamp_value(value: any, format_template: str) -> any:
+    """Formate une valeur timestamp selon le template spécifié."""
+    if not format_template or not isinstance(value, (int, float)):
+        return value
+    
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.fromtimestamp(value, tz=timezone.utc)
+        return dt.strftime(format_template)
+    except (ValueError, OSError):
+        # En cas d'erreur, garder la valeur originale
+        return value
+
+def _apply_processing_to_value(value: any, processing: dict) -> any:
+    """Applique le traitement (prefix, normalisation) à une valeur."""
+    if not processing:
+        return value
+    
+    prefix = processing.get('prefix', '')
+    processing_normalize = processing.get('normalize')
+    
+    if not prefix and not processing_normalize:
+        return value
+    
+    def process_single_item(item):
+        processed_item = item
+        if prefix:
+            processed_item = f"{prefix}{processed_item}"
+        if processing_normalize == 'keyword':
+            processed_item = normalize_keyword(processed_item)
+        elif processing_normalize == 'person_name':
+            processed_item = normalize_person_name(processed_item)
+        return processed_item
+    
+    if isinstance(value, list):
+        return [process_single_item(item) for item in value]
+    else:
+        return process_single_item(value)
+
+def _apply_direct_normalization(value: any, normalize_type: str) -> any:
+    """Applique la normalisation directe selon le type spécifié."""
+    if not normalize_type or not value:
+        return value
+    
+    if normalize_type == 'person_name':
+        if isinstance(value, list):
+            return [normalize_person_name(item) for item in value]
+        else:
+            return normalize_person_name(str(value))
+    elif normalize_type == 'keyword':
+        if isinstance(value, list):
+            return [normalize_keyword(item) for item in value]
+        else:
+            return normalize_keyword(str(value))
+    
+    return value
+
+def _apply_value_mapping(value: any, value_mapping: dict) -> any:
+    """Applique le mapping de valeurs selon la configuration."""
+    if not value_mapping:
+        return value
+    
+    str_value = str(value).lower()
+    if str_value in value_mapping:
+        mapped_value = value_mapping[str_value]
+        if mapped_value is None:
+            # Valeur mappée à null = signal pour ignorer
+            return None
+        return mapped_value
+    
+    return value
+
+def _build_condition_args(condition_template: str, tag: str) -> list[str]:
+    """Construit les arguments de condition pour ExifTool."""
+    if not condition_template:
+        return []
+    
+    condition = condition_template.replace('${tag}', tag)
+    
+    if condition.startswith('-if'):
+        # Extraire la condition après "-if "
+        condition_value = condition[4:].strip()
+        return ["-if", condition_value]
+    else:
+        return [condition]
+
+def _build_pattern_args(pattern: list, tag: str, value: any) -> list[str]:
+    """Construit les arguments basés sur des patterns personnalisés."""
+    if not pattern:
+        return []
+    
+    args = []
+    
+    if isinstance(value, list):
+        # Pour les patterns avec listes, traiter chaque élément individuellement
+        for item in value:
+            for pattern_template in pattern:
+                arg = pattern_template.replace('${tag}', tag).replace('${value}', str(item))
+                # Les arguments doivent commencer par -
+                if not arg.startswith('-'):
+                    arg = f'-{arg}'
+                args.append(arg)
+    else:
+        # Pattern simple pour valeurs uniques
+        for pattern_template in pattern:
+            arg = pattern_template.replace('${tag}', tag).replace('${value}', str(value))
+            # Les arguments doivent commencer par -
+            if not arg.startswith('-'):
+                arg = f'-{arg}'
+            args.append(arg)
+    
+    return args
+
+def _build_simple_tag_args(tag: str, value: any) -> list[str]:
+    """Construit les arguments simples tag=value."""
+    if isinstance(value, list):
+        # Pour les listes, ajouter chaque élément séparément
+        return [f"-{tag}={item}" for item in value]
+    else:
+        return [f"-{tag}={value}"]
+
+def _build_preserve_positive_rating_args(tag: str, value: any) -> list[str]:
+    """Logique spéciale pour preserve_positive_rating (favorited/Rating).
+    
+    Si favorited=true ET Rating>0 existant → ne pas toucher (preserve)
+    Si favorited=true ET Rating=0 → changer à Rating=5 
+    Si favorited=true ET Rating absent → créer Rating=5
+    Si favorited=false ET Rating>0 → ne pas changer
+    Si favorited=false ET Rating=0 → ne pas changer  
+    Si favorited=false ET Rating absent → ne pas ajouter
+    """
+    if not value or str(value).lower() == 'false':
+        # favorited=false → ne jamais toucher à Rating
+        return []
+    
+    if str(value).lower() == 'true' or str(value) == '5':
+        # favorited=true → écrire Rating=5 seulement si absent ou =0
+        # Note: Testing both string and numeric 0 for ExifTool compatibility
+        return [
+            "-if", f"not defined ${tag} or ${tag} eq '0' or ${tag} eq 0",
+            f"-{tag}=5"
+        ]
+    
+    return []
 
 def _build_tag_args(tag: str, value: any, strategy_config: dict, mapping_config: dict, is_video: bool) -> list[str]:
     """Construit les arguments pour un tag spécifique selon la stratégie."""
     args = []
     
-    # Arguments de stratégie de base
+    # 1. Appliquer le formatage de timestamp si nécessaire
+    format_template = mapping_config.get('format')
+    value = _format_timestamp_value(value, format_template)
+    
+    # 2. Appliquer le traitement (prefix, normalisation)
+    processing = mapping_config.get('processing', {})
+    value = _apply_processing_to_value(value, processing)
+    
+    # 3. Appliquer la normalisation directe si spécifiée
+    normalize_type = mapping_config.get('normalize')
+    value = _apply_direct_normalization(value, normalize_type)
+    
+    # 4. Appliquer transformation si spécifiée (ex: boolean_to_rating)
+    transform = mapping_config.get('transform')
+    if transform == 'boolean_to_rating' and isinstance(value, bool):
+        return make_rating_args(value)
+    
+    # 5. Appliquer value_mapping si présent
+    value_mapping = mapping_config.get('value_mapping', {})
+    mapped_value = _apply_value_mapping(value, value_mapping)
+    if mapped_value is None:
+        # Valeur mappée à null = ignorer
+        return []
+    value = mapped_value
+    
+    # 5.5. Logique spéciale pour preserve_positive_rating (favorited/Rating)
+    special_logic = strategy_config.get('special_logic')
+    if special_logic == 'favorited_rating':
+        logger.debug(f"Utilisation de la logique spéciale favorited_rating pour {tag} avec valeur {value}")
+        special_args = _build_preserve_positive_rating_args(tag, value)
+        logger.debug(f"Arguments spéciaux générés: {special_args}")
+        return special_args
+    
+    # 6. Arguments de stratégie de base
     strategy_args = strategy_config.get('exiftool_args', [])
     args.extend(strategy_args)
     
-    # Condition template si présente
+    # 7. Condition template si présente
     condition_template = strategy_config.get('condition_template')
-    if condition_template:
-        condition = condition_template.replace('${tag}', tag)
-        args.append(condition)
+    condition_args = _build_condition_args(condition_template, tag)
+    args.extend(condition_args)
     
-    # Pattern personnalisé si présent (pour clean_duplicates par exemple)
+    # 8. Pattern personnalisé ou arguments simples
     pattern = strategy_config.get('pattern')
-    if pattern and isinstance(value, list):
-        # Pour les patterns avec listes, traiter chaque élément individuellement
-        for item in value:
-            for pattern_template in pattern:
-                arg = pattern_template.replace('${tag}', tag).replace('${value}', str(item))
-                args.append(arg)
-    elif pattern:
-        # Pattern simple pour valeurs uniques
-        for pattern_template in pattern:
-            arg = pattern_template.replace('${tag}', tag).replace('${value}', str(value))
-            args.append(arg)
+    if pattern:
+        pattern_args = _build_pattern_args(pattern, tag, value)
+        args.extend(pattern_args)
     else:
-        # Argument simple tag=value
-        if isinstance(value, list):
-            # Pour les listes, ajouter chaque élément séparément
-            for item in value:
-                args.append(f"-{tag}={item}")
-        else:
-            args.append(f"-{tag}={value}")
+        simple_args = _build_simple_tag_args(tag, value)
+        args.extend(simple_args)
     
     return args
 
-def write_metadata(media_path: Path, meta: SidecarData, use_localtime: bool = False, append_only: bool = True) -> None:
-    """Écrit les métadonnées sur un média en utilisant ExifTool."""
-    
-    # Utiliser build_exiftool_args avec l'ancienne API pour compatibilité
-    all_args = build_exiftool_args(meta, media_path, use_localtime, append_only=append_only)
-    
-    if all_args:
-        _run_exiftool_command(media_path, all_args, _append_only=append_only)
-
-# Fonctions utilitaires héritées

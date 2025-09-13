@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 from google_takeout_metadata.sidecar import parse_sidecar
+from google_takeout_metadata.config_loader import ConfigLoader
 from google_takeout_metadata.exif_writer import build_exiftool_args
 
 def test_localFolderName_integration():
@@ -43,10 +44,11 @@ def test_localFolderName_integration():
         print(f"   localFolderName: {meta.localFolderName}")
         print(f"   albums: {meta.albums}")
         print(f"   people_name: {meta.people_name}")
-        
+        config_loader = ConfigLoader()
+        config_loader.load_config()
         # 3. Générer les arguments ExifTool
         media_path = temp_path / "test_photo.jpg"
-        args = build_exiftool_args(meta, media_path=media_path, use_localtime=False, append_only=True)
+        args = build_exiftool_args(meta, media_path=media_path, use_localTime=False, config_loader=config_loader)
         
         print("🔧 Arguments ExifTool générés:")
         for arg in args:

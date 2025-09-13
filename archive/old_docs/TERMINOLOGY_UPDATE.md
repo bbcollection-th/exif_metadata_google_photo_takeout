@@ -23,14 +23,11 @@
 ### Correspondance avec exif_writer.py :
 
 ```python
-# Mode append_only=True utilise par défaut l'approche "robuste"
-args.extend(build_remove_then_add_args_for_people(meta.people))
-
 # Alternative "conditional" pour performance  
-args.extend(build_conditional_add_args_for_people(meta.people))
+args.extend(build_conditional_add_args_for_people(meta.people_name))
 
 # Mode overwrite_mode=True
-args.extend(build_overwrite_args_for_people(meta.people))
+args.extend(build_overwrite_args_for_people(meta.people_name))
 ```
 
 ## Justification

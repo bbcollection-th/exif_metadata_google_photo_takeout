@@ -133,7 +133,7 @@ class ConfigLoader:
                     source_field, target_tag, strategy = parts[:3]
                     custom_name = f"custom_{source_field}"
                     
-                    self.config.setdefault('metadata_mappings', {})[custom_name] = {
+                    self.config.setdefault('exif_mapping', {})[custom_name] = {
                         'source_fields': [source_field],
                         'target_tags': [target_tag],
                         'default_strategy': strategy
@@ -155,7 +155,7 @@ class ConfigLoader:
     
     def _parse_mappings(self):
         """Parse les configurations de mappings"""
-        mappings_config = self.config.get('metadata_mappings', {})
+        mappings_config = self.config.get('exif_mapping', {})
         user_overrides = self.config.get('user_overrides', {})
         
         for name, config in mappings_config.items():
@@ -180,7 +180,7 @@ class ConfigLoader:
     def _get_default_config(self) -> Dict[str, Any]:
         """Configuration par défaut si aucun fichier n'est trouvé"""
         return {
-            "metadata_mappings": {
+            "exif_mapping": {
                 "description": {
                     "source_fields": ["description"],
                     "target_tags": ["EXIF:ImageDescription", "XMP-dc:Description", "IPTC:Caption-Abstract"],

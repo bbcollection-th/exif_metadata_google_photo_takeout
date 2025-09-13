@@ -161,12 +161,6 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Pour le format hérité : IMG_001.jpg.json -> filename attendu : IMG_001.jpg
     if path.name.lower().endswith(".supplemental-metadata.json"):
         expected_filename = path.name[:-len(".supplemental-metadata.json")]
-    elif path.name.lower().endswith(".supplemental-metadat.json"):
-        expected_filename = path.name[:-len(".supplemental-metadat.json")]
-    elif path.name.lower().endswith(".supplemental-me.json"):
-        expected_filename = path.name[:-len(".supplemental-me.json")]
-    elif path.name.lower().endswith(".supplemental-meta.json"):
-        expected_filename = path.name[:-len(".supplemental-meta.json")]
     elif path.name.lower().endswith(".json"):
         expected_filename = path.stem
     else:
@@ -270,10 +264,34 @@ def parse_sidecar(path: Path) -> SidecarData:
     )
 
 
-def parse_album_metadata(path: Path) -> List[str]:
-    """Analyser un fichier metadata.json d'album et retourner la liste des noms d'albums.
+def _is_image_sidecar(json_path: Path) -> bool:
+    """Détermine si un fichier JSON est un sidecar d'image plutôt qu'un fichier d'album.
     
-    Les fichiers metadata.json d'albums (Google Takeout) contiennent généralement :
+    Les sidecars d'images ont des motifs de noms spécifiques :
+    - photo.jpg.supplemental-metadata.json (nouveau format)
+    - photo.jpg.json (ancien format)
+    """
+    name_lower = json_path.name.lower()
+    
+    # Nouveau format : *.supplemental-metadata.json
+    if name_lower.endswith(".supplemental-metadata.json"):
+        return True
+    
+    # Ancien format : *.jpg.json, *.png.json, etc.
+    if name_lower.endswith(".json"):
+        # Extraire le nom sans .json
+        stem = name_lower[:-5]  # Enlever ".json"
+        # Vérifier si c'est un nom de fichier image
+        image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".mp4", ".mov", ".avi"]
+        return any(stem.endswith(ext) for ext in image_extensions)
+    
+    return False
+
+
+def parse_album_metadata(path: Path) -> List[str]:
+    """Analyser les fichiers metadata.json, métadonnées.json, métadonnées(i).json d'album et retourner la liste des noms d'albums.
+
+    Les fichiers metadata.json, métadonnées.json, métadonnées(i).json d'albums (Google Takeout) contiennent généralement :
     {
         "title": "halloween",
         "description": "",
@@ -284,7 +302,7 @@ def parse_album_metadata(path: Path) -> List[str]:
         }
     }
     
-    Un seul album par fichier metadata.json.
+    Un seul album par fichier metadata.json/métadonnées.json/métadonnées(i).json.
     Retourne une liste avec le nom de l'album (ou liste vide si erreur).
     """
     try:
@@ -317,15 +335,17 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
     - metadata.json (anglais)
     - métadonnées.json (français)  
     - métadonnées(1).json, métadonnées(2).json, etc. (français avec doublons)
-    - album_metadata.json, folder_metadata.json (hérités)
     """
     albums = []
     
     metadata_patterns = [
         "metadata.json",
         "métadonnées.json", 
-        "album_metadata.json", 
-        "folder_metadata.json"
+        "métadonnées(1).json", 
+        "métadonnées(2).json", 
+        "métadonnées(3).json", 
+        "métadonnées(4).json", 
+        "métadonnées(5).json"
     ]
     
     # Rechercher dans le répertoire courant et ses parents avec limite de profondeur
@@ -361,18 +381,28 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
                     logger.debug(f"Impossible d'accéder au répertoire {current_dir}")
         
         # Vérifier les variations numérotées comme métadonnées(1).json, métadonnées(2).json, etc.
-        # (recherche insensible à la casse)
+        # ET les autres fichiers contenant metadata/métadonnées (recherche insensible à la casse)
         try:
             for metadata_file in current_dir.iterdir():
                 if (metadata_file.is_file() and 
-                    metadata_file.name.lower().startswith("métadonnées") and 
-                    metadata_file.name.lower().endswith(".json") and
-                    metadata_file.name.lower() not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
-                    try:
-                        albums.extend(parse_album_metadata(metadata_file))
-                    except (OSError, PermissionError) as e:
-                        # Ignorer les erreurs de parsing et continuer
-                        logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+                    metadata_file.name.lower().endswith(".json")):
+                    name_lower = metadata_file.name.lower()
+                    # Variations numérotées de métadonnées
+                    if (name_lower.startswith("métadonnées") and 
+                        name_lower not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
+                        try:
+                            albums.extend(parse_album_metadata(metadata_file))
+                        except (OSError, PermissionError) as e:
+                            logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+                    # Autres fichiers contenant metadata (album_metadata.json, folder_metadata.json, etc.)  
+                    # MAIS PAS les sidecars d'images
+                    elif ("metadata" in name_lower and 
+                          name_lower not in ["metadata.json"] and
+                          not _is_image_sidecar(metadata_file)):  # Exclure les sidecars
+                        try:
+                            albums.extend(parse_album_metadata(metadata_file))
+                        except (OSError, PermissionError) as e:
+                            logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
         except (OSError, PermissionError):
             # Ignorer les erreurs d'accès au répertoire et continuer
             logger.debug(f"Impossible d'accéder au répertoire {current_dir}")

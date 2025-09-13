@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from google_takeout_metadata.config_loader import ConfigLoader
-from google_takeout_metadata.exif_writer import build_exiftool_args_from_config
+from google_takeout_metadata.exif_writer import build_exiftool_args
 from google_takeout_metadata.sidecar import SidecarData
 
 def test_args_generation():
@@ -22,7 +22,7 @@ def test_args_generation():
     # 1. Charger la configuration
     config_loader = ConfigLoader()
     config = config_loader.load_config()
-    print(f"✅ Configuration chargée: {len(config.get('metadata_mappings', {}))} mappings")
+    print(f"✅ Configuration chargée: {len(config.get('exif_mapping', {}))} mappings")
     
     # 2. Créer des métadonnées test
     meta = SidecarData(
@@ -45,7 +45,7 @@ def test_args_generation():
     # 3. Générer les arguments
     print("\n⚙️ Génération des arguments ExifTool...")
     try:
-        args = build_exiftool_args_from_config(meta, Path("test.jpg"), False, config_loader)
+        args = build_exiftool_args(meta, Path("test.jpg"), False, config_loader)
         
         print(f"✅ {len(args)} arguments générés:")
         for i, arg in enumerate(args[:10]):  # Afficher les 10 premiers
@@ -77,20 +77,27 @@ def test_args_generation():
         for tag in desc_tags[:3]:
             print(f"      {tag}")
             
-        return True
+        # Assertions pour pytest
+        assert len(args) > 0, "Aucun argument généré"
+        assert len(tag_args) > 0, "Aucun tag à écrire généré"
+        assert len(people_name_tags) > 0, "Aucun argument PersonInImage généré"
         
     except Exception as e:
         print(f"❌ Erreur: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        raise  # Re-lancer l'exception pour pytest
 
 def main():
     """Test principal"""
     print("🚀 TEST DE GÉNÉRATION D'ARGUMENTS EXIFTOOL")
     print("=" * 80)
     
-    success = test_args_generation()
+    try:
+        test_args_generation()
+        success = True
+    except Exception:
+        success = False
     
     print("\n" + "=" * 80)
     if success:

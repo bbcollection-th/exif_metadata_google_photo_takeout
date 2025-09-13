@@ -242,9 +242,9 @@ Pour un Takeout massif, la **grosse différence** vient de :
 
 ```python
 # Mode append-only avec déduplication (nouveau comportement)
-if meta.people:
-    normalized_people = [normalize_person_name(person) for person in meta.people]
-    for person in normalized_people:
+if meta.people_name:
+    normalized_people_name = [normalize_person_name(person) for person in meta.people_name]
+    for person in normalized_people_name:
         args.extend([
             f"-XMP-iptcExt:PersonInImage-={person}",
             f"-XMP-iptcExt:PersonInImage+={person}"

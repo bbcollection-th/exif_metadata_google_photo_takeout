@@ -21,21 +21,9 @@ def test_end_to_end_image(tmp_path: Path) -> None:
         "people": [{"name": "anthony vincent"}],
     }
     (tmp_path / "IMG_0123456789.jpg.supplemental-metadata.json").write_text(json.dumps(data), encoding="utf-8")
-    # créer une image factice
-    img_path = tmp_path / "sample.jpg"
-    Image.new("RGB", (10, 10), color="red").save(img_path)
-    # créer le sidecar correspondant
-    data = {
-        "title": "IMG_0123456789.jpg",
-        "description": 'Magicien "en" or',
-        "photoTakenTime": {"timestamp": "1745370366", "formatted": "23 avr. 2025, 01:06:06 UTC"},
-        "people": [{"name": "anthony vincent"}],
-    }
-    (tmp_path / "IMG_0123456789.jpg.supplemental-data.json").write_text(json.dumps(data), encoding="utf-8")
 
     process_directory(root=tmp_path,
-            use_localtime=False,
-            append_only=True,
+            use_localTime=False,
             immediate_delete=False,
             organize_files=True,
             geocode=False)

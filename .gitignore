@@ -9,12 +9,17 @@ lerna-debug.log*
 exiftool_test/
 Google Photos copy/
 Google Photos/
-
+archive/
 repomix.config.json
 repomix-output.md.txt
 .repomixignore
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+config/debug_exif_mapping.json
+error_files.txt
+unchanged_files.txt
+failed_condition_files.txt
+updated_files.txt
 
 # Runtime data
 pids

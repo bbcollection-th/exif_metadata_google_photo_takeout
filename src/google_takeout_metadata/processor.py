@@ -267,13 +267,12 @@ def _enrich_with_reverse_geocode(meta, json_path: Path, geocode: bool) -> None:
     meta.place_name = first.get("formatted_address") or meta.place_name
 
 
-def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
+def process_sidecar_file(json_path: Path, use_localTime: bool = False, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter un fichier annexe ``.json``.
     
     Args:
         json_path: Chemin du fichier JSON annexe
-        use_localtime: Convertir les dates en heure locale au lieu d'UTC
-        append_only: Ajouter uniquement les champs manquants
+        use_localTime: Convertir les dates en heure locale au lieu d'UTC
         immediate_delete: Mode destructeur - supprimer immédiatement le JSON après succès 
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
@@ -309,7 +308,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
     
     # Tenter d'écrire les métadonnées dans l'image
     try:
-        write_metadata(media_path, meta, use_localtime=use_localtime, append_only=append_only)
+        write_metadata(media_path, meta, use_localTime=use_localTime)
         current_json_path = json_path
         
         # Enregistrer le succès
@@ -342,7 +341,7 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
                 directory_albums = find_albums_for_directory(actual_json_path.parent)
                 meta.albums.extend(directory_albums)
                 
-                write_metadata(fixed_media_path, meta, use_localtime=use_localtime, append_only=append_only)
+                write_metadata(fixed_media_path, meta, use_localTime=use_localTime)
                 current_json_path = actual_json_path
                 
                 # Enregistrer le succès après correction
@@ -379,13 +378,12 @@ def process_sidecar_file(json_path: Path, use_localtime: bool = False, append_on
             logger.warning("Échec du marquage du sidecar %s : %s", current_json_path, exc)
 
 
-def process_directory(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
+def process_directory(root: Path, use_localTime: bool = False, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter récursivement tous les fichiers annexes sous ``root``.
     
     Args:
         root: Répertoire racine à parcourir récursivement
-        use_localtime: Convertir les dates en heure locale au lieu d'UTC
-        append_only: Ajouter uniquement les champs manquants
+        use_localTime: Convertir les dates en heure locale au lieu d'UTC
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé)
@@ -420,7 +418,7 @@ def process_directory(root: Path, use_localtime: bool = False, append_only: bool
     for json_file in sidecar_files:
             
         try:
-            process_sidecar_file(json_file, use_localtime=use_localtime, append_only=append_only, immediate_delete=immediate_delete, organize_files=organize_files, geocode=geocode)
+            process_sidecar_file(json_file, use_localTime=use_localTime, immediate_delete=immediate_delete, organize_files=organize_files, geocode=geocode)
         except (FileNotFoundError, ValueError, RuntimeError) as exc:
             logger.warning("❌ Échec du traitement de %s : %s", json_file.name, exc)
             # Les statistiques sont déjà mises à jour dans process_sidecar_file

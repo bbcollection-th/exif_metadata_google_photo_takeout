@@ -144,7 +144,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
 def test_process_directory_batch_no_sidecars(tmp_path, caplog):
     """Vérifier le traitement par lot lorsque aucun fichier de sidecar n'est trouvé."""
     # Execute
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Assert
     assert "Aucun fichier de métadonnées (.json) trouvé" in caplog.text
@@ -169,7 +169,7 @@ def test_process_directory_batch_single_file(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
         
         # Vérifier que les métadonnées ont été écrites en les relisant
         cmd = [
@@ -220,7 +220,7 @@ def test_process_directory_batch_multiple_files(tmp_path):
             json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False)
         
         # Vérifier que tous les fichiers ont été traités correctement
         for title, expected_description, expected_person in files_data:
@@ -277,7 +277,7 @@ def test_process_directory_batch_with_albums(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
         
         # Vérifier que l'album a été ajouté aux mots-clés
         cmd = [
@@ -326,7 +326,7 @@ def test_process_directory_batch_immediate_delete(tmp_path):
         assert json_path.exists()
         
         # Traiter avec la suppression immédiate activée
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False, geocode=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=True, organize_files=False, geocode=False)
         
         # Comportement attendu avec immediate_delete=True :
         # - Si exiftool réussit → sidecar supprimé immédiatement
@@ -368,7 +368,7 @@ def test_process_directory_batch_invalid_sidecar(mock_parse_sidecar, tmp_path, c
     json_path.write_text("invalid json")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier
     assert "Échec de la préparation de" in caplog.text
@@ -391,7 +391,7 @@ def test_process_directory_batch_no_args_generated(mock_build_args, tmp_path):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter (ne devrait pas planter même sans arguments)
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Aucune assertion spécifique nécessaire - juste s'assurer que ça ne plante pas
 
@@ -407,7 +407,7 @@ def test_process_directory_batch_missing_media_file(tmp_path, caplog):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier
     assert "Fichier image introuvable" in caplog.text
@@ -468,7 +468,7 @@ def test_process_directory_batch_file_extension_fix(mock_parse_sidecar, mock_fix
     ]
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier que fix_file_extension_mismatch a été appelé
     mock_fix_extension.assert_called()

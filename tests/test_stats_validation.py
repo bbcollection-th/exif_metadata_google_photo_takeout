@@ -33,7 +33,7 @@ def test_stats_connected():
         processed_sidecar.write_text(json.dumps({"title": "test2.jpg"}), encoding="utf-8")
         
         # Traiter le répertoire
-        process_directory(tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=True,
+        process_directory(tmp_path, use_localTime=False, immediate_delete=False, organize_files=True,
             geocode=False)
         
         # Vérifier les statistiques

@@ -35,7 +35,7 @@ def test_hybrid_solution():
         geoData_altitude=None
     )
     
-    write_metadata(test_file, meta1, append_only=True)
+    write_metadata(test_file, meta1, use_localTime=True)
     
     # Lire l'état initial
     def read_tags():
@@ -69,7 +69,7 @@ def test_hybrid_solution():
         geoData_altitude=None
     )
     
-    write_metadata(test_file, meta2, append_only=True)
+    write_metadata(test_file, meta2, use_localTime=True)
     
     after_our_logic = read_tags()
     print(f"PersonInImage: '{after_our_logic['persons']}'")

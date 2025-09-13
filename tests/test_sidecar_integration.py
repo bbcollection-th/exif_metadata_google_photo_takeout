@@ -12,6 +12,7 @@ import sys
 sys.path.append('src')
 
 from google_takeout_metadata.sidecar import parse_sidecar
+from google_takeout_metadata.config_loader import ConfigLoader
 from google_takeout_metadata.exif_writer import build_exiftool_args, normalize_person_name, normalize_keyword
 
 
@@ -43,10 +44,10 @@ def test_sidecar_to_exiftool_integration():
         
         # Les noms depuis parse_sidecar ne sont PAS encore normalisés (comportement attendu)
         assert meta.people_name == ["ALICE DUPONT", "anthony vincent", "jean de la fontaine", "john mcdonald", "patrick o'connor"]
-        
+        config_loader = ConfigLoader()
+        config_loader.load_config()
         # Construire les arguments exiftool (qui DOIT normaliser)
-        args = build_exiftool_args(meta, append_only=True)
-        print(f"Arguments exiftool: {args}")
+        args = build_exiftool_args(meta, json_path, False, config_loader=config_loader)
         
         # Vérifier que les arguments contiennent les noms normalisés
         args_str = " ".join(args)
@@ -67,7 +68,8 @@ def test_sidecar_to_exiftool_integration():
 
 def test_sidecar_album_normalization():
     """Test que les albums des sidecars sont normalisés avec normalize_keyword."""
-    
+    config_loader = ConfigLoader()
+    config_loader.load_config()
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         
@@ -88,7 +90,7 @@ def test_sidecar_album_normalization():
         meta.albums = ["vacances été", "photos de famille", "ÉVÉNEMENTS SPÉCIAUX"]
         
         # Construire les arguments exiftool
-        args = build_exiftool_args(meta, append_only=True)
+        args = build_exiftool_args(meta, json_path, False, config_loader=config_loader)
         args_str = " ".join(args)
         print(f"Arguments avec albums: {args_str}")
         

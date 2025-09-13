@@ -35,7 +35,7 @@ def test_final_implementation():
         geoData_altitude=None
     )
     
-    write_metadata(test_file, meta1, append_only=True)
+    write_metadata(test_file, meta1, use_localTime=True)
     
     # Lire l'état initial
     def read_tags():
@@ -68,9 +68,9 @@ def test_final_implementation():
         geoData_longitude=None,
         geoData_altitude=None
     )
-    
-    write_metadata(test_file, meta2, append_only=True)
-    
+
+    write_metadata(test_file, meta2, use_localTime=True)
+
     final_state = read_tags()
     print(f"PersonInImage: '{final_state['persons']}'")
     print(f"Subject: '{final_state['subject']}'")

@@ -43,8 +43,7 @@ def test_batch_organization():
         # 3. Lancer le traitement batch avec organisation
         process_directory_batch(
             root=test_dir,
-            use_localtime=False,
-            append_only=True,
+            use_localTime=False,
             immediate_delete=False,
             organize_files=True,
             geocode=False

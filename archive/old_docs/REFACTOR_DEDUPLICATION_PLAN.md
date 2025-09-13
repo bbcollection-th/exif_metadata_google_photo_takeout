@@ -53,15 +53,15 @@ img.jpg
 **Changement :**
 ```python
 # ❌ Code actuel
-if meta.people:
-    for person in meta.people:
+if meta.people_name:
+    for person in meta.people_name:
         args.append(f"-XMP-iptcExt:PersonInImage+={person}")
 
 # ✅ Nouveau code (Option A) - Sans -wm cg pour cette étape
-if meta.people:
+if meta.people_name:
     # Normalisation de casse AVANT écriture (crucial pour déduplication)
-    normalized_people = [normalize_person_name(person) for person in meta.people]
-    for person in normalized_people:
+    normalized_people_name = [normalize_person_name(person) for person in meta.people_name]
+    for person in normalized_people_name:
         args.extend([
             f"-XMP-iptcExt:PersonInImage-={person}",
             f"-XMP-iptcExt:PersonInImage+={person}"

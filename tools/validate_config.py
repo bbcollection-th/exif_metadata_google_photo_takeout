@@ -60,7 +60,7 @@ class ConfigValidator:
             is_valid = False
             
         # Validation des mappings
-        if not self._validate_mappings(config.get('metadata_mappings', {})):
+        if not self._validate_mappings(config.get('exif_mapping', {})):
             is_valid = False
             
         # Validation des paramètres globaux
@@ -71,7 +71,7 @@ class ConfigValidator:
     
     def _validate_structure(self, config: Dict[str, Any]) -> bool:
         """Valide la structure de base de la configuration"""
-        required_sections = ['metadata_mappings', 'strategies', 'global_settings']
+        required_sections = ['exif_mapping', 'strategies', 'global_settings']
         missing_sections = [s for s in required_sections if s not in config]
         
         if missing_sections:
@@ -168,7 +168,7 @@ class ConfigValidator:
         
         cleaned_config = json.loads(json.dumps(config))  # Deep copy
         
-        mappings = cleaned_config.get('metadata_mappings', {})
+        mappings = cleaned_config.get('exif_mapping', {})
         original_count = len(mappings)
         
         # Supprimer les mappings peu fréquents ou problématiques

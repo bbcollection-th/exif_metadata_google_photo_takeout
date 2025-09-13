@@ -288,7 +288,7 @@ def test_file_organization_end_to_end():
         assert sidecar_path.exists()
         
         # Traiter avec organisation
-        process_sidecar_file(sidecar_path, use_localtime=True, organize_files=True, append_only=True, immediate_delete=False, geocode=False)
+        process_sidecar_file(sidecar_path, use_localTime=True, organize_files=True, immediate_delete=False, geocode=False)
 
         # Vérifier que les répertoires ont été créés
         archive_dir = tmp_path / "_Archive"

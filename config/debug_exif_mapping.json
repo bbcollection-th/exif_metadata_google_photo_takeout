@@ -1,5 +1,5 @@
 {
-  "metadata_mappings": {
+  "exif_mapping": {
     "title": {
       "source_fields": [
         "title"

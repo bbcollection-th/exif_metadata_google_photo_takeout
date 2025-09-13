@@ -218,13 +218,12 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             Path(argfile_path).unlink()
 
 
-def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
+def process_directory_batch(root: Path, use_localTime: bool = False,  immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots.
     
     Args:
         root: Répertoire racine à parcourir
-        use_localtime: Convertir les dates en heure locale au lieu d'UTC
-        append_only: Ajouter uniquement les champs manquants
+        use_localTime: Convertir les dates en heure locale au lieu d'UTC
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé/vérouillé)
@@ -232,7 +231,8 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     """
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
-    
+    config_loader = ConfigLoader()
+    config_loader.load_config()   
     # Initialiser les statistiques
     statistics.stats.start_processing()
     
@@ -312,7 +312,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                     logger.warning(f"⚠️ Échec de l'organisation du fichier {media_path.name}: {e}")
             
             args = build_exiftool_args(
-                meta, media_path=fixed_media_path, use_localtime=use_localtime, append_only=append_only
+                meta, media_path=fixed_media_path, use_localTime=use_localTime, config_loader=config_loader
             )
 
             if args:
@@ -323,7 +323,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                 statistics.stats.skipped_files.append(json_path.name)
 
             if len(batch) >= BATCH_SIZE:
-                process_batch(batch, immediate_delete, efile_dir)
+                process_batch(batch, immediate_delete, efile_dir=Path('/tmp'))
                 batch = []
 
         except (ValueError, RuntimeError) as exc:
@@ -332,7 +332,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
-        process_batch(batch, immediate_delete, efile_dir)
+        process_batch(batch, immediate_delete, efile_dir=Path('/tmp'))
 
     statistics.stats.end_processing()
     
