@@ -329,17 +329,17 @@ def build_rating_args(meta: SidecarData) -> List[str]:
     return args
 
 def build_source_app_args(meta: SidecarData, *, conditional_mode: bool = False) -> List[str]:
-    """Construit les arguments pour l'application/source d'origine (localFolderName).
+    """Construit les arguments pour l'application/source d'origine (googlePhotosOrigin_localFolderName).
     
     Écrit dans les tags Software/CreatorTool pour indiquer l'application source
     (Camera, WhatsApp, Instagram, etc.) plutôt que comme album.
     """
     args: List[str] = []
     
-    if not meta.localFolderName:
+    if not meta.googlePhotosOrigin_localFolderName:
         return args
     
-    source_app = meta.localFolderName.strip()
+    source_app = meta.googlePhotosOrigin_localFolderName.strip()
     
     if conditional_mode:
         # Mode conditionnel : n'écrire que si absent

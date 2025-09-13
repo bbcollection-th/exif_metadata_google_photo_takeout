@@ -1,5 +1,5 @@
 """
-Tests pour la fonction get_all_keywords et la cohérence du traitement de localFolderName.
+Tests pour la fonction get_all_keywords et la cohérence du traitement de googlePhotosOrigin_localFolderName.
 """
 
 from google_takeout_metadata.sidecar import SidecarData
@@ -95,8 +95,8 @@ def test_get_all_keywords_albums_only():
     assert keywords == expected
 
 
-def test_get_all_keywords_excludes_localFolderName():
-    """Test que localFolderName n'est PAS inclus dans les mots-clés."""
+def test_get_all_keywords_excludes_googlePhotosOrigin_localFolderName():
+    """Test que googlePhotosOrigin_localFolderName n'est PAS inclus dans les mots-clés."""
     meta = SidecarData(
         title="test.jpg",
         description=None,
@@ -150,7 +150,7 @@ def test_build_people_name_keywords_args_uses_get_all_keywords():
     assert "Alice Dupont" in args_str
     assert "Album: Vacances" in args_str
     
-    # Vérifier que localFolderName n'est PAS traité comme album
+    # Vérifier que googlePhotosOrigin_localFolderName n'est PAS traité comme album
     assert "Album: WhatsApp" not in args_str
     assert "WhatsApp" not in args_str
 
@@ -160,6 +160,6 @@ if __name__ == "__main__":
     test_get_all_keywords_empty()
     test_get_all_keywords_people_name_only()
     test_get_all_keywords_albums_only()
-    test_get_all_keywords_excludes_localFolderName()
+    test_get_all_keywords_excludes_googlePhotosOrigin_localFolderName()
     test_build_people_name_keywords_args_uses_get_all_keywords()
     print("✅ Tous les tests get_all_keywords passent !")

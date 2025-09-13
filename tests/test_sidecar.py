@@ -184,7 +184,7 @@ def test_parse_missing_timestamps(tmp_path: Path) -> None:
     assert meta.creationTime_timestamp is None
 
 
-def test_parse_localFolderName(tmp_path: Path) -> None:
+def test_parse_googlePhotosOrigin_localFolderName(tmp_path: Path) -> None:
     """Tester l'extraction du nom du dossier local de l'appareil."""
     sample = {
         "title": "messenger_photo.jpg",
@@ -201,10 +201,10 @@ def test_parse_localFolderName(tmp_path: Path) -> None:
     json_path = tmp_path / "messenger_photo.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.localFolderName == "Messenger"
+    assert meta.googlePhotosOrigin_localFolderName == "Messenger"
 
 
-def test_parse_no_localFolderName(tmp_path: Path) -> None:
+def test_parse_no_googlePhotosOrigin_localFolderName(tmp_path: Path) -> None:
     """Tester quand il n'y a pas de dossier local."""
     sample = {
         "title": "normal_photo.jpg",
@@ -213,7 +213,7 @@ def test_parse_no_localFolderName(tmp_path: Path) -> None:
     json_path = tmp_path / "normal_photo.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.localFolderName is None
+    assert meta.googlePhotosOrigin_localFolderName is None
 
 
 def test_parse_album_metadata(tmp_path: Path) -> None:

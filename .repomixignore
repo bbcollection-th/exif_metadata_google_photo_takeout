@@ -32,3 +32,7 @@ test_assets/
 updated_files.txt
 exiftool.org/
 src/google_takeout_metadata/exif_writer.py.backup
+error_files.txt
+unchanged_files.txt
+failed_condition_files.txt
+updated_files.txt
