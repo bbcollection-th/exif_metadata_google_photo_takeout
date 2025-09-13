@@ -24,18 +24,18 @@ def test_final_implementation():
     # Étape 1: Simuler état initial (ancien takeout)
     print("\n1. État initial (ancien takeout):")
     meta1 = SidecarData(
-        filename="test5.jpg",
+        title="test5.jpg",
         description="Test description",
-        people=["Anthony", "Bernard"],
+        people_name=["Anthony", "Bernard"],
         albums=["Vacances"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
     
-    write_metadata(test_file, meta1, append_only=True)
+    write_metadata(test_file, meta1, use_localTime=True)
     
     # Lire l'état initial
     def read_tags():
@@ -58,19 +58,19 @@ def test_final_implementation():
     # Étape 2: Simuler nouveau takeout avec personne supplémentaire
     print("\n2. Nouveau takeout avec Anthony, Bernard, Cindy:")
     meta2 = SidecarData(
-        filename="test5.jpg",
+        title="test5.jpg",
         description="Test description",
-        people=["Anthony", "Bernard", "Cindy"],  # JSON complet avec nouvelle personne
+        people_name=["Anthony", "Bernard", "Cindy"],  # JSON complet avec nouvelle personne
         albums=["Vacances", "Famille"],  # Nouvel album aussi
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
-    
-    write_metadata(test_file, meta2, append_only=True)
-    
+
+    write_metadata(test_file, meta2, use_localTime=True)
+
     final_state = read_tags()
     print(f"PersonInImage: '{final_state['persons']}'")
     print(f"Subject: '{final_state['subject']}'")

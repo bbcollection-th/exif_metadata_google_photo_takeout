@@ -35,7 +35,6 @@
 
 ### ✅ test_integration.py (7/7 tests)
 **Couverture :**
-- ✅ **Append-only** : `test_append_only_mode` valide la préservation des données existantes
 - ✅ **Overwrite** : `test_explicit_overwrite_behavior` valide l'accumulation en mode écrasement
 - ✅ **GPS** : `test_write_and_read_gps` valide les références GPS N/S/E/W
 - ✅ **Encodage** : `test_write_and_read_albums` valide UTF-8 avec accents
@@ -81,7 +80,6 @@
 
 #### test_processor.py (7/7 tests)
 **État :** ✅ Passent - tests unitaires du processor principal
-**Action :** Vérifier cohérence avec les modes append_only vs overwrite
 
 #### test_resume_handler.py (12/12 tests)
 **État :** ✅ Passent - gestion des reprises de traitement

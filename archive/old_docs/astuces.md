@@ -242,9 +242,9 @@ Pour un Takeout massif, la **grosse différence** vient de :
 
 ```python
 # Mode append-only avec déduplication (nouveau comportement)
-if meta.people:
-    normalized_people = [normalize_person_name(person) for person in meta.people]
-    for person in normalized_people:
+if meta.people_name:
+    normalized_people_name = [normalize_person_name(person) for person in meta.people_name]
+    for person in normalized_people_name:
         args.extend([
             f"-XMP-iptcExt:PersonInImage-={person}",
             f"-XMP-iptcExt:PersonInImage+={person}"
@@ -264,7 +264,7 @@ if meta.people:
 ```bash
 exiftool \
   -overwrite_original \
-  -charset filename=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
+  -charset title=UTF8 -charset iptc=UTF8 -charset exif=UTF8 \
   -codedcharacterset=utf8 \
   -XMP-iptcExt:PersonInImage-="Anthony Vincent" -XMP-iptcExt:PersonInImage+="Anthony Vincent" \
   -XMP-iptcExt:PersonInImage-=Bernard        -XMP-iptcExt:PersonInImage+=Bernard        \
@@ -281,7 +281,7 @@ exiftool \
 ```bash
 # En mode batch : ajout des options -efile pour journalisation
 exiftool \
-  -charset filename=UTF8 \
+  -charset title=UTF8 \
   -@ args.txt \
   -common_args \
   -overwrite_original \

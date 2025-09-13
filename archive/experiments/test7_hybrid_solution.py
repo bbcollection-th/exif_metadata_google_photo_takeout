@@ -24,18 +24,18 @@ def test_hybrid_solution():
     # Étape 1: État initial (ancien takeout)
     print("\n1. État initial (ancien takeout):")
     meta1 = SidecarData(
-        filename="test7.jpg",
+        title="test7.jpg",
         description="Test description",
-        people=["Anthony", "Bernard"],
+        people_name=["Anthony", "Bernard"],
         albums=["Vacances"],
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
     
-    write_metadata(test_file, meta1, append_only=True)
+    write_metadata(test_file, meta1, use_localTime=True)
     
     # Lire l'état initial
     def read_tags():
@@ -58,18 +58,18 @@ def test_hybrid_solution():
     # Étape 2: Nouveau takeout avec nouvelle personne (notre logique)
     print("\n2. Nouveau takeout avec Anthony, Bernard, Cindy (notre logique):")
     meta2 = SidecarData(
-        filename="test7.jpg",
+        title="test7.jpg",
         description="Test description",
-        people=["Anthony", "Bernard", "Cindy"],  # JSON complet
+        people_name=["Anthony", "Bernard", "Cindy"],  # JSON complet
         albums=["Vacances", "Famille"],  # Nouvel album
-        taken_at=None,
-        created_at=None,
-        latitude=None,
-        longitude=None,
-        altitude=None
+        photoTakenTime_timestamp=None,
+        creationTime_timestamp=None,
+        geoData_latitude=None,
+        geoData_longitude=None,
+        geoData_altitude=None
     )
     
-    write_metadata(test_file, meta2, append_only=True)
+    write_metadata(test_file, meta2, use_localTime=True)
     
     after_our_logic = read_tags()
     print(f"PersonInImage: '{after_our_logic['persons']}'")

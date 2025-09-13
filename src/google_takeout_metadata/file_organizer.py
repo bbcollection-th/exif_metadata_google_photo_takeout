@@ -25,14 +25,14 @@ class FileOrganizer:
         self.base_directory = Path(base_directory)
         self.archive_dir = self.base_directory / "_Archive"
         self.trash_dir = self.base_directory / "_Corbeille"
-        self.locked_dir = self.base_directory / "_Verrouillé"
+        self.inLockedFolder_dir = self.base_directory / "_Verrouillé"
     
     def ensure_directories(self) -> None:
         """Créer les répertoires d'organisation s'ils n'existent pas."""
         self.archive_dir.mkdir(exist_ok=True)
         self.trash_dir.mkdir(exist_ok=True)
-        self.locked_dir.mkdir(exist_ok=True)
-        logger.debug(f"Répertoires d'organisation créés: {self.archive_dir}, {self.trash_dir}, {self.locked_dir}")
+        self.inLockedFolder_dir.mkdir(exist_ok=True)
+        logger.debug(f"Répertoires d'organisation créés: {self.archive_dir}, {self.trash_dir}, {self.inLockedFolder_dir}")
     
     def get_target_directory(self, meta: SidecarData) -> Optional[Path]:
         """
@@ -46,14 +46,14 @@ class FileOrganizer:
             
         Règles de priorité:
         1. Si trashed=True -> Corbeille (priorité absolue)
-        2. Si locked=True -> Dossier verrouillé (priorité haute)
+        2. Si inLockedFolder=True -> Dossier verrouillé (priorité haute)
         3. Si archived=True -> Archive  
         4. Sinon -> None (pas de déplacement)
         """
         if meta.trashed:
             return self.trash_dir
-        elif meta.locked:
-            return self.locked_dir
+        elif meta.inLockedFolder:
+            return self.inLockedFolder_dir
         elif meta.archived:
             return self.archive_dir
         else:
@@ -161,7 +161,7 @@ def should_organize_file(meta: SidecarData) -> bool:
     Returns:
         True si le fichier doit être déplacé
     """
-    return meta.trashed or meta.archived or meta.locked
+    return meta.trashed or meta.archived or meta.inLockedFolder
 
 
 def get_organization_status(meta: SidecarData) -> str:
@@ -172,12 +172,12 @@ def get_organization_status(meta: SidecarData) -> str:
         meta: Métadonnées du fichier
         
     Returns:
-        String décrivant le statut ("trashed", "archived", "locked", "normal")
+        String décrivant le statut ("trashed", "archived", "inLockedFolder", "normal")
     """
     if meta.trashed:
         return "trashed"
-    elif meta.locked:
-        return "locked"
+    elif meta.inLockedFolder:
+        return "inLockedFolder"
     elif meta.archived:
         return "archived"
     else:

@@ -65,7 +65,7 @@ Code type :
 existing_persons = _get_existing_list_values(media_path, "XMP-iptcExt:PersonInImage")
 
 # Combiner et dédupliquer  
-final_persons = list(existing_persons | set(meta.people or []))
+final_persons = list(existing_persons | set(meta.people_name or []))
 
 # Écrire avec assignations multiples
 for person in final_persons:

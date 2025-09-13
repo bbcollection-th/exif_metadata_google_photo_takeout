@@ -1,320 +1,287 @@
-# exif_metadata_google_photo_takeout
+# 📸 Google Photos Takeout Metadata Processor
 
-Ce projet permet d'incorporer les métadonnées des fichiers JSON produits par Google Takeout dans les photos correspondantes.
+**Outil professionnel pour appliquer automatiquement les métadonnées JSON de Google Photos Takeout à vos fichiers images/vidéos avec un système de stratégies avancé.**
 
-## Fonctionnalités
+[![Tests](https://img.shields.io/badge/tests-129%20passing-green)](tests/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
+[![ExifTool](https://img.shields.io/badge/exiftool-13.34%2B-orange)](https://exiftool.org)
 
-✅ **Métadonnées supportées:**
-- Descriptions/légendes
-- Personnes identifiées (avec déduplication automatique)
-- Dates de prise de vue et de création
-- Coordonnées GPS (filtrage automatique des coordonnées 0/0 peu fiables)
-- Favoris (mappés sur le tag Favorite booléen)
-- **Albums** (détectés depuis les fichiers metadata.json de dossier et ajoutés comme mots-clés "Album: <nom>")
+---
 
-✅ **Mode de fonctionnement sûr par défaut:**
-- **Append-only par défaut**: Les métadonnées existantes sont préservées
-- Les descriptions ne sont écrites que si elles n'existent pas déjà
-- Les personnes et albums sont ajoutés aux listes existantes sans suppression
-- **Mode sécurisé des sidecars**: Par défaut, les sidecars JSON sont marqués avec le préfixe "OK_" après traitement réussi
-- Utiliser `--overwrite` pour forcer l'écrasement des métadonnées existantes
-- Utiliser `--immediate-delete` pour supprimer immédiatement les sidecars (mode destructeur)
+## 🎯 Fonctionnalités Principales
 
-✅ **Options avancées:**
-- `--localtime`: Conversion des timestamps en heure locale au lieu d'UTC
-- `--overwrite`: Force l'écrasement des métadonnées existantes (mode destructif)
-- `--immediate-delete`: Mode destructeur - supprime immédiatement les sidecars JSON après succès
-- `--batch`: Mode batch pour traitement optimisé de gros volumes de fichiers
-- `--organize-files`: Organisation automatique des fichiers selon leur statut trashed/locked/archived (→ `_Corbeille` / `_Verrouillé` / `_Archive`)
-✅ **Qualité:**
-- Tests unitaires complets
-- Tests d'intégration E2E avec exiftool
-- Support des formats photo et vidéo
-- **Arguments sécurisés** : Protection contre l'injection shell avec noms contenant des espaces
-- **Opérateur `+=` optimisé** : Utilise l'opérateur exiftool `+=` pour accumulation sûre des tags de type liste
+✅ **Système de stratégies sophistiqué** - Contrôle précis de l'écriture des métadonnées  
+✅ **Configuration JSON flexible** - Mapping personnalisable des champs vers les tags EXIF/XMP  
+✅ **Gestion intelligente des doublons** - Évite la duplication des personnes et albums  
+✅ **Support GPS et géolocalisation** - Préservation des coordonnées géographiques  
+✅ **Rating/Favoris avancé** - Logique spéciale pour les photos favorites  
+✅ **Normalisation automatique** - Casse intelligente pour noms de personnes  
+✅ **129 tests automatisés** - Fiabilité et robustesse garanties  
 
-## Installation
+## ⚡ Installation et Démarrage Rapide
 
-Prérequis:
-
-- `exiftool` doit être installé et accessible dans le PATH
-- Une clé API **Google Maps Geocoding** est nécessaire pour la résolution d'adresses (optionnelle, utilisée avec `--geocode`)
-
+### Prérequis
 ```bash
-pip install -e .
+# 1. Installer ExifTool (requis)
+# Windows: scoop install exiftool
+# macOS: brew install exiftool  
+# Linux: sudo apt install libimage-exiftool-perl
 
-# Définir la clé API pour l'application
-export GOOGLE_MAPS_API_KEY="votre_clé_api"
+# 2. Installer les dépendances Python
+pip install -r requirements.txt
 ```
 
-### Créer une clé API Google Geocoding
-
-1. Se connecter à la [Google Cloud Console](https://console.cloud.google.com/)
-2. Créer ou sélectionner un projet existant
-3. Activer l'API **Geocoding** depuis la bibliothèque d'API
-4. Aller dans **APIs & Services > Identifiants** et créer une clé API
-5. (Optionnel) Restreindre la clé pour l'API Geocoding
-6. Copier la clé générée puis la définir dans la variable d'environnement `GOOGLE_MAPS_API_KEY`
-
-## Utilisation
-
-### Utilisation basique (mode sûr par défaut)
+### Usage de base
 ```bash
-# Mode append-only par défaut - préserve les métadonnées existantes
-google-takeout-metadata /chemin/vers/le/dossier
+# Traiter un dossier Google Photos Takeout
+python -m google_takeout_metadata.processor "data/Google Photos/"
+
+# Avec options avancées
+python -m google_takeout_metadata.processor "data/Google Photos/" \
+    --batch \
+    --local-time \
+    --overwrite
 ```
 
-### Avec options
-```bash
-# Utiliser l'heure locale pour les timestamps
-google-takeout-metadata --localtime /chemin/vers/le/dossier
+## 🏗️ Architecture et Stratégies
 
-# Mode destructif: écraser les métadonnées existantes (à utiliser avec précaution)
-google-takeout-metadata --overwrite /chemin/vers/le/dossier
+### Stratégies de Métadonnées Disponibles
 
-# Mode destructeur: supprimer les sidecars immédiatement après traitement
-google-takeout-metadata --immediate-delete /chemin/vers/le/dossier
+| Stratégie | Description | Usage |
+|-----------|-------------|-------|
+| `write_if_missing` | Écrit seulement si le tag n'existe pas | Titres, champs de base |
+| `write_if_blank_or_missing` | Écrit si absent ou vide (robuste) | Descriptions |
+| `replace_all` | Remplace toujours la valeur | Dates, coordonnées GPS |
+| `preserve_existing` | Ne touche jamais aux valeurs existantes | Protection de données |
+| `clean_duplicates` | Ajoute sans doublons (remove→add) | Personnes, mots-clés |
+| `preserve_positive_rating` | Logique spéciale favoris/rating | Photos favorites |
 
-# Organisation automatique des fichiers selon leur statut
-google-takeout-metadata --organize-files /chemin/vers/le/dossier
+### Configuration par Défaut
 
-# Combiner les options (mode sûr avec heure locale)
-google-takeout-metadata --localtime /chemin/vers/le/dossier
-
-# Exemple complet avec toutes les options utiles
-google-takeout-metadata --batch --localtime --organize-files /chemin/vers/le/dossier
-```
-
-### Mode batch (optimisé pour gros volumes)
-```bash
-# Mode batch: traitement optimisé pour de nombreux fichiers
-google-takeout-metadata --batch /chemin/vers/le/dossier
-
-# Mode batch avec autres options
-google-takeout-metadata --batch --localtime /chemin/vers/le/dossier
-google-takeout-metadata --batch --overwrite /chemin/vers/le/dossier
-
-# Exemple concret avec toutes les options (pointer vers le dossier Takeout)
-google-takeout-metadata --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
-```
-
-**Si la commande `google-takeout-metadata` n'est pas trouvée:**
-```bash
-# Option 1: Utiliser le module Python directement (attention aux underscores)
-python -m google_takeout_metadata --batch --localtime --immediate-delete "/chemin/vers/dossier"
-
-# Option 2: Utiliser l'environnement virtuel complet avec le module
-C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/python.exe -m google_takeout_metadata --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
-
-# Option 3: Utiliser l'exécutable directement depuis l'environnement virtuel
-C:/Users/anthony/Documents/PROJETS/exif_metadata_google_photo_takeout/.venv/Scripts/google-takeout-metadata.exe --batch --localtime --immediate-delete "C:\Users\anthony\Downloads\google photos\Takeout"
-
-# Option 4: Activer l'environnement virtuel d'abord
-.venv/Scripts/activate  # Sur Windows
-google-takeout-metadata --batch --localtime --immediate-delete "/chemin/vers/dossier"
-```
-
-**Avantages du mode batch:**
-- **Performance améliorée** : Traitement par lots avec exiftool pour réduire le nombre d'appels système
-- **Idéal pour gros volumes** : Optimisé pour traiter des milliers de fichiers
-- **Moins de fragmentation** : Réduit la charge système en groupant les opérations
-- **Même sécurité** : Conserve le comportement append-only par défaut
-
-**Quand utiliser le mode batch:**
-- Traitement de bibliothèques photo importantes (>100 fichiers)
-- Archives Google Takeout volumineuses
-- Situations où la performance est critique
-
-**Note de performance:**
-Le mode batch réduit significativement le temps de traitement en groupant les appels à exiftool. 
-Pour 1000 fichiers, le gain peut être de 50-80% selon la configuration système.
-
-## Organisation automatique des fichiers
-
-**Nouvelle fonctionnalité** : Organisation automatique des fichiers selon leur statut dans Google Takeout.
-
-```bash
-# Activer l'organisation automatique
-google-takeout-metadata --organize-files /chemin/vers/le/dossier
-
-# Combiner avec d'autres options
-google-takeout-metadata --batch --organize-files --localtime /chemin/vers/le/dossier
-```
-
-### 📁 Fonctionnement:
-
-**Statuts détectés** dans les sidecars JSON Google Takeout:
-- `"trashed": true` → Fichier déplacé vers `_Corbeille/`
-- `"locked": true` → Fichier déplacé vers `_Verrouillé/` (dossiers verrouillés)
-- `"archived": true` → Fichier déplacé vers `_Archive/`
-- **Priorité** : `trashed > locked > archived`
-  - Si `trashed` et `locked`/`archived` coexistent → `trashed` gagne
-  - Si `locked` et `archived` coexistent → `locked` gagne
-
-**Structure créée automatiquement:**
-```
-dossier_source/
-├── _Archive/         # Fichiers avec "archived": true
-├── _Corbeille/       # Fichiers avec "trashed": true  
-├── _Verrouillé/      # Fichiers avec "locked": true
-└── autres_fichiers/  # Fichiers sans statut spécial
-```
-
-### 🔒 Sécurité:
-
-- **Gestion des conflits** : Si un fichier existe déjà dans le dossier de destination, un suffixe numérique est ajouté
-- **Déplacement avec sidecar** : Le fichier JSON correspondant est déplacé avec le fichier média
-- **Préservation** : Tous les fichiers sont déplacés, jamais supprimés
-- **Logs détaillés** : Information sur chaque déplacement effectué
-
-### ⚙️ Avantages:
-
-- **Nettoyage automatique** : Sépare automatiquement les fichiers selon leur statut Google Photos
-- **Préservation de l'historique** : Les fichiers "trashés" restent accessibles dans `_Corbeille/`
-- **Respect des dossiers verrouillés** : Les fichiers de dossiers verrouillés sont isolés dans `_Verrouillé/`
-- **Workflow Google Takeout** : Respecte parfaitement la hiérarchie de statut de Google Photos
-- **Combinable** : Fonctionne avec toutes les autres options (batch, localtime, etc.)
-
-**Exemple concret:**
-```bash
-# Traitement complet d'un export Google Takeout avec organisation
-google-takeout-metadata --batch --localtime --organize-files "C:\Downloads\Takeout\Google Photos"
-```
-
-Le programme parcourt récursivement le dossier, cherche les fichiers `*.json` et écrit les informations pertinentes dans les fichiers image correspondants à l'aide d'`exiftool`.
-
-## Comportement par défaut (Sécurisé)
-
-**Le mode append-only est désormais activé par défaut** pour éviter la perte accidentelle de métadonnées:
-
-### ✅ Métadonnées préservées:
-- **Descriptions existantes** ne sont jamais écrasées
-- **Dates existantes** ne sont jamais modifiées
-- **Coordonnées GPS existantes** ne sont jamais remplacées
-- **Ratings existants** ne sont jamais changés
-
-### ✅ Métadonnées ajoutées:
-- **Personnes** sont ajoutées aux listes existantes avec déduplication intelligente
-- **Albums** sont ajoutés aux mots-clés existants avec déduplication intelligente
-
-### 🔧 Déduplication intelligente:
-**Nouvelle fonctionnalité** : Le système évite automatiquement les doublons dans les tags de liste.
-
-- **Normalisation des noms** : "anthony vincent" et "Anthony Vincent" sont reconnus comme identiques
-- **Gestion des cas spéciaux** : Support intelligent pour "McDonald", "O'Connor", "van der Berg", etc.
-- **Approche robuste** : Utilise la stratégie "supprimer puis ajouter" (-TAG-=val -TAG+=val) pour garantir zéro doublon final
-- **Performance optimisée** : Logs -efile pour reprises intelligentes en cas d'interruption
-- **Gestion des `-wm cg`** : Logic groupée pour optimiser les arguments ExifTool en mode append-only
-
-### ⚠️ Mode destructif:
-Utilisez `--overwrite` seulement si vous voulez explicitement écraser les métadonnées existantes.
-
-### 🔐 Gestion des sidecars JSON:
-**Mode sécurisé par défaut** : Les sidecars sont préservés avec un préfixe après traitement réussi.
-
-- **Mode sécurisé** (défaut) : Les sidecars sont renommés avec le préfixe "OK_" après succès
-- **Mode destructeur** (`--immediate-delete`) : Les sidecars sont supprimés immédiatement après traitement réussi
-- **Sécurité** : En cas d'erreur, les sidecars restent intacts pour permettre de retenter
-- **Traçabilité** : Les fichiers "OK_" permettent de voir quels sidecars ont été traités avec succès
-
-## Détails techniques
-
-### Opérateur exiftool `+=` pour les listes
-Notre implémentation utilise l'opérateur `+=` d'exiftool pour une gestion sûre des tags de type liste :
-
-```bash
-# ✅ Correct : L'opérateur += ajoute ET crée le tag si nécessaire
-exiftool "-XMP-iptcExt:PersonInImage+=John Doe" photo.jpg
-
-# ❌ Incorrect : L'opérateur += seul ne crée pas un tag inexistant
-# (ancien comportement qui échouait)
-```
-
-**Avantages de notre approche :**
-- **Création automatique** : `+=` crée le tag s'il n'existe pas
-- **Accumulation sûre** : Ajoute aux listes existantes sans duplication
-- **Sécurité** : Arguments séparés préviennent l'injection shell avec espaces
-- **Mode overwrite** : Vide explicitement puis reremplit avec `+=`
-- **Logic `-wm cg` optimisée** : Arguments groupés pour éviter la fragmentation des paramètres
-
-### Format Google Takeout supporté
 ```json
 {
-  "title": "IMG_20240716_200232.jpg",
-  "description": "Description de la photo",
-  "photoTakenTime": {"timestamp": "1721152952"},
-  "creationTime": {"timestamp": "1721152952"},
-  "geoData": {
-    "latitude": 48.8566,
-    "longitude": 2.3522,
-    "altitude": 35.0
-  },
-  "people": [
-    {"name": "John Doe"},
-    {"name": "Jane Smith"}
-  ],
-  "favorited": true,
-  "favorited": true,
-  "archived": false,
-  "trashed": false,
-  "inLockedFolder": false,
-  "localFolderName": "Instagram"
+  "exif_mapping": {
+    "description": {
+      "target_tags": ["MWG:Description"],
+      "default_strategy": "write_if_blank_or_missing"
+    },
+    "people_name": {
+      "target_tags": ["XMP-iptcExt:PersonInImage"],
+      "default_strategy": "clean_duplicates",
+      "normalize": "person_name"
+    },
+    "favorited": {
+      "target_tags": ["XMP:Rating"],
+      "default_strategy": "preserve_positive_rating",
+      "value_mapping": {"true": "5", "false": null}
+    }
+  }
 }
 ```
 
-**Champs supportés pour l'organisation des fichiers:**
-- `archived`: Déplace le fichier vers le dossier `archive/` si `true`
-- `trashed`: Déplace le fichier vers le dossier `corbeille/` si `true` (priorité sur `archived`)
- 
+## 📋 Champs Supportés
 
-## Géocodage des coordonnées GPS
+### Métadonnées Texte
+- **Description** → `MWG:Description`
+- **Titre** → `IPTC:ObjectName`, `XMP-dc:Title`
+- **Personnes** → `XMP-iptcExt:PersonInImage`, mots-clés
+- **Albums** → Mots-clés avec préfixe "Album: "
 
-L'option `--geocode` permet d'enrichir les photos en transformant les coordonnées GPS en informations lisibles.
-Elle repose sur l'API **Google Maps Geocoding** via la bibliothèque `requests`.
+### Métadonnées Techniques
+- **Dates de création** → `EXIF:DateTimeOriginal`, `EXIF:CreateDate`
+- **GPS (latitude/longitude/altitude)** → Tags GPS standard
+- **Rating/Favoris** → `XMP:Rating` (5 si favori)
 
-### Fournir la clé API
+### Normalisation Automatique
+- **Noms de personnes** : "john DOE" → "John Doe"
+- **Mots-clés** : Capitalisation intelligente
+- **Petits mots** : "de", "du", "van", etc. en minuscules
 
-1. Obtenir une clé pour l'API **Geocoding** dans la Google Cloud Console.
-2. Définir la variable d'environnement `GOOGLE_MAPS_API_KEY` :
+## 🔧 Outils de Développement
 
+### Scripts Utilitaires
 ```bash
-export GOOGLE_MAPS_API_KEY="votre_clé_api"
+# Découverte automatique des champs
+python tools/discover_fields.py "data/Google Photos/"
+
+# Validation de la configuration
+python tools/validate_config.py
+
+# Nettoyage de la configuration
+python tools/clean_config_file.py
 ```
 
-Un cache local (`~/.cache/google_takeout_metadata/geocode_cache.json`) est utilisé et peut être redéfini via `GOOGLE_TAKEOUT_METADATA_CACHE`.
-
-### Activer depuis la CLI
-
+### Tests et Validation
 ```bash
-google-takeout-metadata --geocode /chemin/vers/le/dossier
-```
-
-### Tags Exif ajoutés
-
-Lorsque le géocodage est actif, les tags suivants sont ajoutés si absents :
-
-- `XMP:City` / `IPTC:City`
-- `XMP:Country` / `IPTC:Country-PrimaryLocationName`
-- `XMP:Location` (adresse formatée)
-
-## Tests
-
-```bash
-# Tests unitaires
-pytest tests/ -m "not integration"
-
-# Tests complets (nécessite exiftool)
-pytest tests/
+# Exécuter tous les tests
+python -m pytest tests/ -v
 
 # Tests d'intégration uniquement
-pytest tests/ -m "integration"
+python -m pytest tests/test_integration.py -v
+
+# Tests par stratégie
+python -m pytest tests/test_integration.py -k "strategy_pure" -v
 ```
 
-Les tests comprennent:
-- **Tests unitaires**: Parsing des sidecars, génération des arguments exiftool
-- **Tests d'intégration**: Écriture et relecture effective des métadonnées avec exiftool
-- **Tests du mode batch**: Vérification des performances et de la compatibilité du traitement par lots
-- **Tests CLI**: Validation de l'interface en ligne de commande et de toutes les options
-- **Tests de l'approche robuste**: Validation de la déduplication et de la logique "supprimer puis ajouter"
-- **Tests P1**: Vérification du fix pour l'écrasement des timestamps en mode append-only
-- **Tests d'organisation**: Validation du déplacement automatique des fichiers archived/trashed
+## � Structure du Projet
+
+```
+📁 exif_metadata_google_photo_takeout/
+├── 📁 config/
+│   ├── exif_mapping.json          ← Configuration principale
+│   └── debug_exif_mapping.json    ← Version debug
+├── 📁 src/google_takeout_metadata/
+│   ├── processor.py               ← Point d'entrée principal
+│   ├── exif_writer.py            ← Système de stratégies
+│   ├── config_loader.py          ← Chargement configuration
+│   └── sidecar.py                ← Parsing JSON Google
+├── 📁 tests/
+│   ├── test_integration.py       ← Tests complets (10 tests)
+│   ├── test_exif_writer.py       ← Tests unitaires
+│   └── test_*.py                 ← 129 tests au total
+├── 📁 tools/
+│   ├── discover_fields.py        ← Découverte automatique
+│   ├── validate_config.py        ← Validation config
+│   └── demo_discovery.py         ← Démonstrations
+└── 📁 docs/
+    ├── strategies.md              ← Guide des stratégies
+    └── discovery.md               ← Processus de découverte
+```
+
+## 🚀 Cas d'Usage Avancés
+
+### Traitement par Lots
+```bash
+# Mode batch avec toutes les options
+python -m google_takeout_metadata.processor \
+    "data/Google Photos/" \
+    --batch \
+    --local-time \
+    --overwrite \
+    --immediate-delete \
+    --geocode
+```
+
+### Configuration Personnalisée
+```bash
+# Utiliser une configuration spécifique
+EXIF_CONFIG_PATH="config/custom_mapping.json" \
+    python -m google_takeout_metadata.processor "data/"
+```
+
+### Debugging et Logs
+```bash
+# Mode verbose avec logs détaillés
+python -m google_takeout_metadata.processor \
+    "data/Google Photos/" \
+    --verbose \
+    --log-level DEBUG
+```
+
+## 🔍 Logique Métier Spéciale
+
+### Photos Favorites (preserve_positive_rating)
+- `favorited=true` + `Rating>0` → **Préserver** le rating existant
+- `favorited=true` + `Rating=0/absent` → **Écrire** Rating=5
+- `favorited=false` → **Ne jamais toucher** au rating
+
+### Gestion des Personnes (clean_duplicates)
+- Normalisation automatique : "jane doe" → "Jane Doe"  
+- Déduplication robuste : évite les doublons lors d'ajouts
+- Pattern ExifTool : `-PersonInImage-=Nom` puis `-PersonInImage+=Nom`
+
+### Descriptions (write_if_blank_or_missing)
+- Condition robuste : `not defined $tag or not length($tag) or not length($tag[0])`
+- Support multi-langues et lang-alt
+- Préservation des descriptions existantes
+
+## 🧪 Tests et Qualité
+
+### Couverture de Tests
+- **129 tests** au total
+- **10 tests d'intégration** complets
+- **6 tests purs par stratégie**
+- **Tests GPS, favoris, personnes**
+- **Validation ExifTool directe**
+
+### Tests Spécifiques par Stratégie
+```bash
+# Test preserve_positive_rating
+python -m pytest tests/test_integration.py::test_preserve_positive_rating_strategy_pure -v
+
+# Test clean_duplicates  
+python -m pytest tests/test_integration.py::test_clean_duplicates_strategy_pure -v
+
+# Test write_if_blank_or_missing
+python -m pytest tests/test_integration.py::test_write_if_blank_or_missing_strategy_pure -v
+```
+
+## 🐛 Debugging et Dépannage
+
+### Logs et Diagnostics
+```bash
+# Activer les logs debug
+python -m google_takeout_metadata.processor \
+    "data/" --verbose --log-level DEBUG
+
+# Tester ExifTool directement
+exiftool -ver  # Vérifier version ExifTool
+```
+
+### Problèmes Courants
+
+**ExifTool introuvable**
+```bash
+# Vérifier l'installation
+exiftool -ver
+# Si erreur: installer ExifTool ou l'ajouter au PATH
+```
+
+**Files failed condition**
+```
+# Normal ! Signifie que la condition de stratégie a échoué
+# Ex: preserve_existing sur un champ déjà rempli
+```
+
+**Encodage des caractères**
+```bash
+# L'outil gère UTF-8 automatiquement
+# Options ExifTool : -charset utf8 -codedcharacterset=utf8
+```
+
+## 🤝 Contribution
+
+### Développement Local
+```bash
+# Cloner et installer
+git clone <repo>
+cd exif_metadata_google_photo_takeout
+pip install -r requirements.txt
+
+# Exécuter les tests
+python -m pytest tests/ -v
+
+# Vérifier la qualité du code  
+python -m pytest tests/ --tb=short
+```
+
+### Ajouter une Nouvelle Stratégie
+
+1. **Définir dans config** : `config/exif_mapping.json`
+2. **Implémenter la logique** : `src/google_takeout_metadata/exif_writer.py`
+3. **Ajouter des tests** : `tests/test_integration.py`
+4. **Documenter** : `docs/strategies.md`
+
+## 📄 Licence
+
+[Voir LICENSE](LICENSE)
+
+---
+
+**🎉 Prêt à traiter vos photos Google ?**
+
+```bash
+python -m google_takeout_metadata.processor "data/Google Photos/"
+```
+
+**Questions ?** Consultez [`docs/`](docs/) ou ouvrez une issue !

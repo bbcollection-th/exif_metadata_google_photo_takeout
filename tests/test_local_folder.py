@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test rapide de l'extraction du localFolderName."""
+"""Test rapide de l'extraction du googlePhotosOrigin_localFolderName."""
 
 import json
 import sys
@@ -9,15 +9,16 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 from google_takeout_metadata.sidecar import parse_sidecar
+from google_takeout_metadata.config_loader import ConfigLoader
 from google_takeout_metadata.exif_writer import build_exiftool_args
 
-def test_local_folder_name_integration():
-    """Test complet d'extraction et génération d'arguments pour localFolderName."""
+def test_googlePhotosOrigin_localFolderName_integration():
+    """Test complet d'extraction et génération d'arguments pour googlePhotosOrigin_localFolderName."""
     
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         
-        # 1. Créer un sidecar avec localFolderName
+        # 1. Créer un sidecar avec googlePhotosOrigin_localFolderName
         sidecar_data = {
             "title": "test_photo.jpg",
             "description": "Photo test",
@@ -40,13 +41,14 @@ def test_local_folder_name_integration():
         meta = parse_sidecar(json_path)
         
         print("🔍 Parsing résultats:")
-        print(f"   local_folder_name: {meta.local_folder_name}")
+        print(f"   googlePhotosOrigin_localFolderName: {meta.googlePhotosOrigin_localFolderName}")
         print(f"   albums: {meta.albums}")
-        print(f"   people: {meta.people}")
-        
+        print(f"   people_name: {meta.people_name}")
+        config_loader = ConfigLoader()
+        config_loader.load_config()
         # 3. Générer les arguments ExifTool
         media_path = temp_path / "test_photo.jpg"
-        args = build_exiftool_args(meta, media_path=media_path, use_localtime=False, append_only=True)
+        args = build_exiftool_args(meta, media_path=media_path, use_localTime=False, config_loader=config_loader)
         
         print("🔧 Arguments ExifTool générés:")
         for arg in args:
@@ -54,7 +56,7 @@ def test_local_folder_name_integration():
                 print(f"   {arg}")
         
         # 4. Vérifications
-        assert meta.local_folder_name == "Instagram", f"Attendu 'Instagram', obtenu {meta.local_folder_name}"
+        assert meta.googlePhotosOrigin_localFolderName == "Instagram", f"Attendu 'Instagram', obtenu {meta.googlePhotosOrigin_localFolderName}"
         
         # Chercher l'argument pour Alice (personnes)
         alice_found = False
@@ -64,7 +66,7 @@ def test_local_folder_name_integration():
             if isinstance(arg, str):
                 if "Alice" in arg:
                     alice_found = True
-                # local_folder_name ne devrait PAS être traité comme un album
+                # googlePhotosOrigin_localFolderName ne devrait PAS être traité comme un album
                 if "Album: Instagram" in arg:
                     instagram_as_album_found = True
         
@@ -72,20 +74,20 @@ def test_local_folder_name_integration():
         assert alice_found, "L'argument 'Alice' devrait être présent"
         
         # Instagram ne devrait PAS être traité comme un album
-        assert not instagram_as_album_found, "local_folder_name ne devrait PAS être traité comme un album avec préfixe 'Album:'"
+        assert not instagram_as_album_found, "googlePhotosOrigin_localFolderName ne devrait PAS être traité comme un album avec préfixe 'Album:'"
         
-        # Pour le moment, acceptons que local_folder_name ne soit pas utilisé dans les métadonnées
+        # Pour le moment, acceptons que googlePhotosOrigin_localFolderName ne soit pas utilisé dans les métadonnées
         # (selon la logique métier expliquée par l'utilisateur)
-        print(f"✅ local_folder_name extrait correctement: {meta.local_folder_name}")
-        print("✅ local_folder_name correctement non traité comme album")
+        print(f"✅ googlePhotosOrigin_localFolderName extrait correctement: {meta.googlePhotosOrigin_localFolderName}")
+        print("✅ googlePhotosOrigin_localFolderName correctement non traité comme album")
 
 
 if __name__ == "__main__":
-    print("🧪 Test d'intégration localFolderName")
+    print("🧪 Test d'intégration googlePhotosOrigin_localFolderName")
     print("=" * 50)
     
     try:
-        test_local_folder_name_integration()
+        test_googlePhotosOrigin_localFolderName_integration()
         print("🎉 Tous les tests réussis!")
     except Exception as e:
         print(f"💥 Erreur: {e}")
