@@ -2,11 +2,12 @@ import logging
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from datetime import datetime
 import shutil
 
 from .exif_writer import build_exiftool_args
+from .config_loader import ConfigLoader
 from .sidecar import find_albums_for_directory, parse_sidecar
 from .processor import (
     IMAGE_EXTS,
@@ -23,10 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 
-def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool) -> int:
+def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool, efile_dir: Union[str, Path] = "logs") -> int:
     """Traiter un lot de fichiers avec exiftool via un fichier d'arguments."""
     if not batch:
         return 0
+
+    # Convertir efile_dir en Path si nécessaire
+    efile_dir = Path(efile_dir)
 
     argfile_path = None
     try:
@@ -43,6 +47,14 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
         logger.info(f"📦 Traitement d'un lot de {len(batch)} fichier(s)...")
 
         # ✅ IMPLÉMENTATION -efile pour journalisation et reprises intelligentes
+        # Répertoire de sortie pour les fichiers -efile (ex: logs/)
+        # S'assurer que le dossier existe
+        try:
+            efile_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # Ne pas interrompre le traitement si création impossible; fallback sur cwd
+            pass
+
         cmd = [
             "exiftool",
             # Charset settings MUST come before -@ for proper ExifTool behavior.
@@ -55,10 +67,10 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             "-overwrite_original",
             "-q", "-q",
             "-api", "NoDups=1",            # For intra-batch deduplication
-            "-efile1", "error_files.txt",     # errors = 1
-            "-efile2", "unchanged_files.txt", # unchanged = 2  
-            "-efile4", "failed_condition_files.txt", # failed -if condition = 4
-            "-efile8", "updated_files.txt"    # updated = 8
+            "-efile1", str(efile_dir / "error_files.txt"),                 # errors = 1
+            "-efile2", str(efile_dir / "unchanged_files.txt"),            # unchanged = 2  
+            "-efile4", str(efile_dir / "failed_condition_files.txt"),     # failed -if condition = 4
+            "-efile8", str(efile_dir / "updated_files.txt")               # updated = 8
         ]
         
         timeout_seconds = 60 + (len(batch) * 5)
@@ -203,13 +215,12 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             Path(argfile_path).unlink()
 
 
-def process_directory_batch(root: Path, use_localtime: bool = False, append_only: bool = True, immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
+def process_directory_batch(root: Path, use_localTime: bool = False,  immediate_delete: bool = False, organize_files: bool = False, geocode: bool = False) -> None:
     """Traiter récursivement tous les fichiers sidecar sous ``root`` par lots.
     
     Args:
         root: Répertoire racine à parcourir
-        use_localtime: Convertir les dates en heure locale au lieu d'UTC
-        append_only: Ajouter uniquement les champs manquants
+        use_localTime: Convertir les dates en heure locale au lieu d'UTC
         immediate_delete: Mode destructeur - supprimer immédiatement les JSON après succès
                          (par défaut: mode sécurisé avec préfixe OK_)
         organize_files: Organiser les fichiers selon leur statut (archivé/supprimé/vérouillé)
@@ -217,9 +228,24 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
     """
     batch: List[Tuple[Path, Path, List[str]]] = []
     BATCH_SIZE = 100
-    
+    config_loader = ConfigLoader()
+    config_loader.load_config()   
     # Initialiser les statistiques
     statistics.stats.start_processing()
+    
+    # Dossier de destination pour les fichiers -efile (configurable via exif_mapping.json)
+    try:
+        cfg = ConfigLoader()
+        cfg.load_config()
+        efile_dir_setting = (
+            cfg.config.get('global_settings', {}).get('efile_output_dir', 'logs')
+        )
+    except Exception:
+        efile_dir_setting = 'logs'
+
+    efile_dir = Path(efile_dir_setting)
+    if not efile_dir.is_absolute():
+        efile_dir = root / efile_dir
     
     # Initialiser l'organisateur de fichiers si demandé
     file_organizer = None
@@ -257,9 +283,9 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             directory_albums = find_albums_for_directory(json_path.parent)
             meta.albums.extend(directory_albums)
             
-            media_path = json_path.with_name(meta.filename)
+            media_path = json_path.with_name(meta.title)
             if not media_path.exists():
-                error_msg = f"Fichier image introuvable : {meta.filename}"
+                error_msg = f"Fichier image introuvable : {meta.title}"
                 statistics.stats.add_failed_file(json_path, "file_not_found", error_msg)
                 logger.warning(f"❌ {error_msg}")
                 continue
@@ -271,7 +297,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                 meta.albums.extend(find_albums_for_directory(fixed_json_path.parent))
             
             # Organisation des fichiers si demandée
-            if file_organizer and (meta.archived or meta.trashed or meta.locked):
+            if file_organizer and (meta.archived or meta.trashed or meta.inLockedFolder):
                 try:
                     moved_media, moved_json = file_organizer.move_file_with_sidecar(fixed_media_path, fixed_json_path, meta)
                     if moved_media and moved_json:
@@ -283,7 +309,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                     logger.warning(f"⚠️ Échec de l'organisation du fichier {media_path.name}: {e}")
             
             args = build_exiftool_args(
-                meta, media_path=fixed_media_path, use_localtime=use_localtime, append_only=append_only
+                meta, media_path=fixed_media_path, use_localTime=use_localTime, config_loader=config_loader
             )
 
             if args:
@@ -294,7 +320,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
                 statistics.stats.skipped_files.append(json_path.name)
 
             if len(batch) >= BATCH_SIZE:
-                process_batch(batch, immediate_delete)
+                process_batch(batch, immediate_delete, efile_dir=efile_dir)
                 batch = []
 
         except (ValueError, RuntimeError) as exc:
@@ -303,7 +329,7 @@ def process_directory_batch(root: Path, use_localtime: bool = False, append_only
             logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
-        process_batch(batch, immediate_delete)
+        process_batch(batch, immediate_delete, efile_dir=efile_dir)
 
     statistics.stats.end_processing()
     

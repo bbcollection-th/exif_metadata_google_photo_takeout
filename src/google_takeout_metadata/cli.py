@@ -76,10 +76,6 @@ def main(argv: list[str] | None = None) -> None:
     # Réinitialiser les statistiques pour cette exécution (nouvelle instance)
     stats_module.stats = ProcessingStats()
 
-    # Le mode par défaut est maintenant append_only=True (sécurité par défaut)
-    # L'option --overwrite permet d'écraser les métadonnées existantes
-    append_only = not args.overwrite
-
     # Vérifier que exiftool est disponible uniquement si on va traiter
     if shutil.which("exiftool") is None:
         logging.error("exiftool introuvable. Veuillez l'installer pour utiliser ce script.")
@@ -88,8 +84,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.batch:
         process_directory_batch(
             args.path,
-            use_localtime=args.localtime,
-            append_only=append_only,
+            use_localTime=args.localtime,
             immediate_delete=immediate_delete,
             organize_files=args.organize_files,
             geocode=args.geocode,
@@ -97,8 +92,7 @@ def main(argv: list[str] | None = None) -> None:
     else:
         process_directory(
             args.path,
-            use_localtime=args.localtime,
-            append_only=append_only,
+            use_localTime=args.localtime,
             immediate_delete=immediate_delete,
             organize_files=args.organize_files,
             geocode=args.geocode,

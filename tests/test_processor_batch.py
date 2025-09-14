@@ -12,9 +12,9 @@ from google_takeout_metadata.processor_batch import process_batch, process_direc
 from google_takeout_metadata.sidecar import SidecarData
 
 
-def test_process_batch_empty_batch():
+def test_process_batch_empty_batch(tmp_path):
     """Tester que process_batch retourne 0 pour un lot vide."""
-    result = process_batch([], immediate_delete=False)
+    result = process_batch([], immediate_delete=False, efile_dir=tmp_path)
     assert result == 0
 
 
@@ -31,7 +31,7 @@ def test_process_batch_success(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Exécution
-    result = process_batch(batch, immediate_delete=False)
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Vérification
     assert result == 1
@@ -66,7 +66,7 @@ def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
     ]
     
     # Execute
-    result = process_batch(batch, immediate_delete=False)
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Assert
     assert result == 2
@@ -95,7 +95,7 @@ def test_process_batch_immediate_delete_sidecars(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, immediate_delete=True)
+    result = process_batch(batch, immediate_delete=True, efile_dir=tmp_path)
     
     # Assert
     assert result == 1
@@ -103,7 +103,7 @@ def test_process_batch_immediate_delete_sidecars(mock_subprocess_run, tmp_path):
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
-def test_process_batch_exiftool_not_found(mock_subprocess_run):
+def test_process_batch_exiftool_not_found(mock_subprocess_run, tmp_path):
     """Vérifier la gestion d'erreurs lorsque exiftool n'est pas trouvé."""
     # Setup
     mock_subprocess_run.side_effect = FileNotFoundError("exiftool introuvable")
@@ -116,11 +116,11 @@ def test_process_batch_exiftool_not_found(mock_subprocess_run):
     
     # Execute & Assert
     with pytest.raises(RuntimeError, match="exiftool introuvable"):
-        process_batch(batch, immediate_delete=False)
+        process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
-def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
+def test_process_batch_exiftool_error(mock_subprocess_run, caplog, tmp_path):
     """Vérifier la gestion d'erreurs lorsque exiftool retourne une erreur."""
     # Setup
     mock_subprocess_run.side_effect = subprocess.CalledProcessError(
@@ -134,7 +134,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, immediate_delete=False)
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Assert
     assert result == 0
@@ -144,7 +144,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
 def test_process_directory_batch_no_sidecars(tmp_path, caplog):
     """Vérifier le traitement par lot lorsque aucun fichier de sidecar n'est trouvé."""
     # Execute
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Assert
     assert "Aucun fichier de métadonnées (.json) trouvé" in caplog.text
@@ -169,7 +169,7 @@ def test_process_directory_batch_single_file(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
         
         # Vérifier que les métadonnées ont été écrites en les relisant
         cmd = [
@@ -184,10 +184,10 @@ def test_process_directory_batch_single_file(tmp_path):
         metadata = json.loads(result.stdout)[0]
         
         assert metadata.get("ImageDescription") == "Batch test description"
-        people = metadata.get("PersonInImage", [])
-        if isinstance(people, str):
-            people = [people]
-        assert "Batch Test Person" in people
+        people_name = metadata.get("PersonInImage", [])
+        if isinstance(people_name, str):
+            people_name = [people_name]
+        assert "Batch Test Person" in people_name
         
     except FileNotFoundError:
         pytest.skip("Exiftool non trouvé - ignore les tests d'intégration")
@@ -204,27 +204,27 @@ def test_process_directory_batch_multiple_files(tmp_path):
             ("test3.jpg", "Third batch test", "Person Three")
         ]
         
-        for filename, description, person in files_data:
+        for title, description, person in files_data:
             # Créer l'image
-            media_path = tmp_path / filename
+            media_path = tmp_path / title
             img = Image.new('RGB', (100, 100), color='red')
             img.save(media_path)
             
             # Créer le fichier annexe
             sidecar_data = {
-                "title": filename,
+                "title": title,
                 "description": description,
                 "people": [{"name": person}]
             }
-            json_path = tmp_path / f"{filename}.json"
+            json_path = tmp_path / f"{title}.json"
             json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False)
         
         # Vérifier que tous les fichiers ont été traités correctement
-        for filename, expected_description, expected_person in files_data:
-            media_path = tmp_path / filename
+        for title, expected_description, expected_person in files_data:
+            media_path = tmp_path / title
             
             cmd = [
                 "exiftool",
@@ -238,10 +238,10 @@ def test_process_directory_batch_multiple_files(tmp_path):
             metadata = json.loads(result.stdout)[0]
             
             assert metadata.get("ImageDescription") == expected_description
-            people = metadata.get("PersonInImage", [])
-            if isinstance(people, str):
-                people = [people]
-            assert expected_person in people
+            people_name = metadata.get("PersonInImage", [])
+            if isinstance(people_name, str):
+                people_name = [people_name]
+            assert expected_person in people_name
         
     except FileNotFoundError:
         pytest.skip("Exiftool non trouvé - ignore les tests d'intégration")
@@ -277,7 +277,7 @@ def test_process_directory_batch_with_albums(tmp_path):
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
         
         # Traiter en mode batch
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
         
         # Vérifier que l'album a été ajouté aux mots-clés
         cmd = [
@@ -326,7 +326,7 @@ def test_process_directory_batch_immediate_delete(tmp_path):
         assert json_path.exists()
         
         # Traiter avec la suppression immédiate activée
-        process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=True)
+        process_directory_batch(tmp_path, use_localTime=False, immediate_delete=True, organize_files=False, geocode=False)
         
         # Comportement attendu avec immediate_delete=True :
         # - Si exiftool réussit → sidecar supprimé immédiatement
@@ -368,7 +368,7 @@ def test_process_directory_batch_invalid_sidecar(mock_parse_sidecar, tmp_path, c
     json_path.write_text("invalid json")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier
     assert "Échec de la préparation de" in caplog.text
@@ -391,7 +391,7 @@ def test_process_directory_batch_no_args_generated(mock_build_args, tmp_path):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter (ne devrait pas planter même sans arguments)
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Aucune assertion spécifique nécessaire - juste s'assurer que ça ne plante pas
 
@@ -407,7 +407,7 @@ def test_process_directory_batch_missing_media_file(tmp_path, caplog):
     json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier
     assert "Fichier image introuvable" in caplog.text
@@ -434,41 +434,41 @@ def test_process_directory_batch_file_extension_fix(mock_parse_sidecar, mock_fix
     # Simuler parse_sidecar pour retourner des données différentes pour chaque appel
     mock_parse_sidecar.side_effect = [
         SidecarData(
-            filename="test.jpg",
+            title="test.jpg",
             description="Original",
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False,
+            favorited=False,
             albums=[],
         ),
         SidecarData(
-            filename="test.jpeg",
+            title="test.jpeg",
             description="Fixed",
-            people=[],
-            taken_at=None,
-            created_at=None,
-            latitude=None,
-            longitude=None,
-            altitude=None,
+            people_name=[],
+            photoTakenTime_timestamp=None,
+            creationTime_timestamp=None,
+            geoData_latitude=None,
+            geoData_longitude=None,
+            geoData_altitude=None,
             city=None,
             state=None,
             country=None,
             place_name=None,
-            favorite=False,
+            favorited=False,
             albums=[],
         ),
     ]
     
     # Exécuter
-    process_directory_batch(tmp_path, use_localtime=False, append_only=True, immediate_delete=False)
+    process_directory_batch(tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False)
     
     # Vérifier que fix_file_extension_mismatch a été appelé
     mock_fix_extension.assert_called()

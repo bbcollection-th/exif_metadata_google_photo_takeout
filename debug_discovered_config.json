@@ -1,0 +1,1522 @@
+{
+  "exif_mapping": {
+    "title": {
+      "source_fields": [
+        "title"
+      ],
+      "target_tags_image": [
+        "XMP:CustomTitle"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17414,
+        "data_types": [
+          "str",
+          "list"
+        ],
+        "sample_values": [
+          "IMG_20240928_233036.jpg",
+          "IMG_20240928_233038.jpg",
+          [
+            "A Night on the Town 🌃✨",
+            "Sailin' Away ⛵"
+          ]
+        ],
+        "is_list": true,
+        "max_length": 142
+      }
+    },
+    "description": {
+      "source_fields": [
+        "description"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 17398,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "",
+          "",
+          ""
+        ],
+        "is_list": false,
+        "max_length": 40
+      },
+      "sanitize": true
+    },
+    "imageviews": {
+      "source_fields": [
+        "imageViews"
+      ],
+      "target_tags_image": [
+        "XMP:CustomImageviews"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "2",
+          "2",
+          "2"
+        ],
+        "is_list": false,
+        "max_length": 3
+      }
+    },
+    "creationtime": {
+      "source_fields": [
+        "creationTime"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "timestamp": "1732638732",
+            "formatted": "26 nov. 2024, 16:32:12 UTC"
+          },
+          {
+            "timestamp": "1732638737",
+            "formatted": "26 nov. 2024, 16:32:17 UTC"
+          },
+          {
+            "timestamp": "1745365188",
+            "formatted": "Apr 22, 2025, 11:39:48 PM UTC"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "creationtime_timestamp": {
+      "source_fields": [
+        "creationTime.timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "1732638732",
+          "1732638737",
+          "1745365188"
+        ],
+        "is_list": false,
+        "max_length": 10
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "creationtime_formatted": {
+      "source_fields": [
+        "creationTime.formatted"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "26 nov. 2024, 16:32:12 UTC",
+          "26 nov. 2024, 16:32:17 UTC",
+          "Apr 22, 2025, 11:39:48 PM UTC"
+        ],
+        "is_list": false,
+        "max_length": 29
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "phototakentime": {
+      "source_fields": [
+        "photoTakenTime"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "timestamp": "1727541036",
+            "formatted": "28 sept. 2024, 16:30:36 UTC"
+          },
+          {
+            "timestamp": "1727541038",
+            "formatted": "28 sept. 2024, 16:30:38 UTC"
+          },
+          {
+            "timestamp": "1728956690",
+            "formatted": "Oct 15, 2024, 1:44:50 AM UTC"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "phototakentime_timestamp": {
+      "source_fields": [
+        "photoTakenTime.timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "1727541036",
+          "1727541038",
+          "1728956690"
+        ],
+        "is_list": false,
+        "max_length": 10
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "phototakentime_formatted": {
+      "source_fields": [
+        "photoTakenTime.formatted"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "28 sept. 2024, 16:30:36 UTC",
+          "28 sept. 2024, 16:30:38 UTC",
+          "Oct 15, 2024, 1:44:50 AM UTC"
+        ],
+        "is_list": false,
+        "max_length": 29
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "geodata": {
+      "source_fields": [
+        "geoData"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodata"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "latitude": 12.9187611,
+            "longitude": 100.87109439999999,
+            "altitude": -0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          },
+          {
+            "latitude": 12.9187611,
+            "longitude": 100.87109439999999,
+            "altitude": -0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          },
+          {
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "altitude": 0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodata_latitude": {
+      "source_fields": [
+        "geoData.latitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodatalatitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          12.9187611,
+          12.9187611,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodata_longitude": {
+      "source_fields": [
+        "geoData.longitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodatalongitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          100.87109439999999,
+          100.87109439999999,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodata_altitude": {
+      "source_fields": [
+        "geoData.altitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataaltitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          -0.0,
+          -0.0,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodata_latitudespan": {
+      "source_fields": [
+        "geoData.latitudeSpan"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodatalatitudespan"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodata_longitudespan": {
+      "source_fields": [
+        "geoData.longitudeSpan"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodatalongitudespan"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "url": {
+      "source_fields": [
+        "url"
+      ],
+      "target_tags_image": [
+        "XMP:CustomUrl"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 17373,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "https://photos.google.com/photo/AF1QipMOexbDYdk86v0Zbxr9p4Gw_C8KT2iuCL9mviXb",
+          "https://photos.google.com/photo/AF1QipOASBFjx_PdmL49m8GUNUP3spAYHscmtr8o5zMu",
+          "https://photos.google.com/photo/AF1QipNhHtVqWlXfM6K1I0ggBcwg5hl8aWfxNeegLuzn"
+        ],
+        "is_list": false,
+        "max_length": 76
+      }
+    },
+    "googlephotosorigin": {
+      "source_fields": [
+        "googlePhotosOrigin"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGooglephotosorigin"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 16848,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "mobileUpload": {
+              "deviceFolder": {
+                "localFolderName": ""
+              },
+              "deviceType": "ANDROID_PHONE"
+            }
+          },
+          {
+            "mobileUpload": {
+              "deviceFolder": {
+                "localFolderName": ""
+              },
+              "deviceType": "ANDROID_PHONE"
+            }
+          },
+          {
+            "mobileUpload": {
+              "deviceFolder": {
+                "localFolderName": "LINE"
+              },
+              "deviceType": "ANDROID_PHONE"
+            }
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "googlephotosorigin_mobileupload": {
+      "source_fields": [
+        "googlePhotosOrigin.mobileUpload"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGooglephotosoriginmobileupload"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 14016,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "deviceFolder": {
+              "localFolderName": ""
+            },
+            "deviceType": "ANDROID_PHONE"
+          },
+          {
+            "deviceFolder": {
+              "localFolderName": ""
+            },
+            "deviceType": "ANDROID_PHONE"
+          },
+          {
+            "deviceFolder": {
+              "localFolderName": "LINE"
+            },
+            "deviceType": "ANDROID_PHONE"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "googlephotosorigin_mobileupload_devicetype": {
+      "source_fields": [
+        "googlePhotosOrigin.mobileUpload.deviceType"
+      ],
+      "target_tags_image": [
+        "EXIF:Software",
+        "XMP-xmp:CreatorTool"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 13961,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "ANDROID_PHONE",
+          "ANDROID_PHONE",
+          "ANDROID_PHONE"
+        ],
+        "is_list": false,
+        "max_length": 14
+      }
+    },
+    "googlephotosorigin_mobileupload_devicefolder": {
+      "source_fields": [
+        "googlePhotosOrigin.mobileUpload.deviceFolder"
+      ],
+      "target_tags_image": [
+        "XMP-dc:Subject",
+        "IPTC:Keywords"
+      ],
+      "default_strategy": "clean_duplicates",
+      "_discovery_info": {
+        "frequency": 13798,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "localFolderName": ""
+          },
+          {
+            "localFolderName": ""
+          },
+          {
+            "localFolderName": "LINE"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "googlephotosorigin_mobileupload_devicefolder_localfoldername": {
+      "source_fields": [
+        "googlePhotosOrigin.mobileUpload.deviceFolder.localFolderName"
+      ],
+      "target_tags_image": [
+        "XMP-dc:Subject",
+        "IPTC:Keywords"
+      ],
+      "default_strategy": "clean_duplicates",
+      "_discovery_info": {
+        "frequency": 13798,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "",
+          "",
+          "LINE"
+        ],
+        "is_list": false,
+        "max_length": 21
+      },
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "geodataexif": {
+      "source_fields": [
+        "geoDataExif"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexif"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "latitude": 12.9187611,
+            "longitude": 100.87109439999999,
+            "altitude": -0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          },
+          {
+            "latitude": 12.9187611,
+            "longitude": 100.87109439999999,
+            "altitude": -0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          },
+          {
+            "latitude": 12.9187972,
+            "longitude": 100.8709583,
+            "altitude": -0.0,
+            "latitudeSpan": 0.0,
+            "longitudeSpan": 0.0
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodataexif_latitude": {
+      "source_fields": [
+        "geoDataExif.latitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexiflatitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          12.9187611,
+          12.9187611,
+          12.9187972
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodataexif_longitude": {
+      "source_fields": [
+        "geoDataExif.longitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexiflongitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          100.87109439999999,
+          100.87109439999999,
+          100.8709583
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodataexif_altitude": {
+      "source_fields": [
+        "geoDataExif.altitude"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexifaltitude"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          -0.0,
+          -0.0,
+          -0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodataexif_latitudespan": {
+      "source_fields": [
+        "geoDataExif.latitudeSpan"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexiflatitudespan"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "geodataexif_longitudespan": {
+      "source_fields": [
+        "geoDataExif.longitudeSpan"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGeodataexiflongitudespan"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 9899,
+        "data_types": [
+          "float"
+        ],
+        "sample_values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "people_name": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags_image": [
+        "XMP:CustomPeoplename"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 6533,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "Anthony",
+          "Anthony",
+          "Bernard"
+        ],
+        "is_list": false,
+        "max_length": 15
+      }
+    },
+    "people": {
+      "source_fields": [
+        "people"
+      ],
+      "target_tags_image": [
+        "XMP:CustomPeople"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 5346,
+        "data_types": [
+          "list"
+        ],
+        "sample_values": [
+          [
+            {
+              "name": "Anthony"
+            }
+          ],
+          [
+            {
+              "name": "Anthony"
+            },
+            {
+              "name": "Bernard"
+            }
+          ],
+          [
+            {
+              "name": "anthony vincent"
+            }
+          ]
+        ],
+        "is_list": true,
+        "max_length": 5
+      }
+    },
+    "appsource": {
+      "source_fields": [
+        "appSource"
+      ],
+      "target_tags_image": [
+        "EXIF:Software",
+        "XMP-xmp:CreatorTool"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 4508,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "androidPackageName": "com.android.camera"
+          },
+          {
+            "androidPackageName": "com.android.camera"
+          },
+          {
+            "androidPackageName": "jp.naver.line.android"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "appsource_androidpackagename": {
+      "source_fields": [
+        "appSource.androidPackageName"
+      ],
+      "target_tags_image": [
+        "EXIF:Software",
+        "XMP-xmp:CreatorTool"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 4508,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "com.android.camera",
+          "com.android.camera",
+          "jp.naver.line.android"
+        ],
+        "is_list": false,
+        "max_length": 39
+      }
+    },
+    "googlephotosorigin_webupload": {
+      "source_fields": [
+        "googlePhotosOrigin.webUpload"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGooglephotosoriginwebupload"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 2659,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "computerUpload": {}
+          },
+          {
+            "computerUpload": {}
+          },
+          {
+            "computerUpload": {}
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "googlephotosorigin_webupload_computerupload": {
+      "source_fields": [
+        "googlePhotosOrigin.webUpload.computerUpload"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGooglephotosoriginwebuploadcomputerupload"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 2659,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {},
+          {},
+          {}
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "archived": {
+      "source_fields": [
+        "archived"
+      ],
+      "target_tags_image": [
+        "XMP:CustomArchived"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 998,
+        "data_types": [
+          "bool"
+        ],
+        "sample_values": [
+          true,
+          true,
+          true
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "trashed": {
+      "source_fields": [
+        "trashed"
+      ],
+      "target_tags_image": [
+        "XMP:CustomTrashed"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 523,
+        "data_types": [
+          "bool"
+        ],
+        "sample_values": [
+          true,
+          true,
+          true
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "favorited": {
+      "source_fields": [
+        "favorited"
+      ],
+      "target_tags_image": [
+        "XMP:Rating"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 512,
+        "data_types": [
+          "bool"
+        ],
+        "sample_values": [
+          true,
+          true,
+          true
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "value_mapping": {
+        "true": "5",
+        "false": null
+      }
+    },
+    "googlephotosorigin_frompartnersharing": {
+      "source_fields": [
+        "googlePhotosOrigin.fromPartnerSharing"
+      ],
+      "target_tags_image": [
+        "XMP:CustomGooglephotosoriginfrompartnersharing"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 102,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {},
+          {},
+          {}
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "inlockedfolder": {
+      "source_fields": [
+        "inLockedFolder"
+      ],
+      "target_tags_image": [
+        "XMP-dc:Subject",
+        "IPTC:Keywords"
+      ],
+      "default_strategy": "clean_duplicates",
+      "_discovery_info": {
+        "frequency": 72,
+        "data_types": [
+          "bool"
+        ],
+        "sample_values": [
+          true,
+          true,
+          true
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "googlephotosorigin_fromsharedalbum": {
+      "source_fields": [
+        "googlePhotosOrigin.fromSharedAlbum"
+      ],
+      "target_tags_image": [
+        "XMP-dc:Subject",
+        "IPTC:Keywords"
+      ],
+      "default_strategy": "clean_duplicates",
+      "_discovery_info": {
+        "frequency": 71,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {},
+          {},
+          {}
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "removeresultreason_reason": {
+      "source_fields": [
+        "removeResultReason.reason"
+      ],
+      "target_tags_image": [
+        "XMP:CustomRemoveresultreasonreason"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 31,
+        "data_types": [
+          "list"
+        ],
+        "sample_values": [
+          [
+            "NOT_IN_PHOTO",
+            "NON_HUMAN"
+          ],
+          [
+            "NOT_IN_PHOTO",
+            "NON_HUMAN"
+          ],
+          [
+            "NOT_IN_PHOTO"
+          ]
+        ],
+        "is_list": true,
+        "max_length": 2
+      }
+    },
+    "removeresultreason": {
+      "source_fields": [
+        "removeResultReason"
+      ],
+      "target_tags_image": [
+        "XMP:CustomRemoveresultreason"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 28,
+        "data_types": [
+          "list"
+        ],
+        "sample_values": [
+          [
+            {
+              "reason": [
+                "NOT_IN_PHOTO",
+                "NON_HUMAN"
+              ]
+            }
+          ],
+          [
+            {
+              "reason": [
+                "NOT_IN_PHOTO",
+                "NON_HUMAN"
+              ]
+            }
+          ],
+          [
+            {
+              "reason": [
+                "NOT_IN_PHOTO"
+              ]
+            }
+          ]
+        ],
+        "is_list": true,
+        "max_length": 2
+      }
+    },
+    "access": {
+      "source_fields": [
+        "access"
+      ],
+      "target_tags_image": [
+        "XMP:CustomAccess"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 25,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "protected",
+          "protected",
+          "protected"
+        ],
+        "is_list": false,
+        "max_length": 9
+      }
+    },
+    "date": {
+      "source_fields": [
+        "date"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 25,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "timestamp": "1720286382",
+            "formatted": "6 juil. 2024, 17:19:42 UTC"
+          },
+          {
+            "timestamp": "1723075160",
+            "formatted": "7 août 2024, 23:59:20 UTC"
+          },
+          {
+            "timestamp": "1721773112",
+            "formatted": "23 juil. 2024, 22:18:32 UTC"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "date_timestamp": {
+      "source_fields": [
+        "date.timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 25,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "1720286382",
+          "1723075160",
+          "1721773112"
+        ],
+        "is_list": false,
+        "max_length": 10
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "date_formatted": {
+      "source_fields": [
+        "date.formatted"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 25,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "6 juil. 2024, 17:19:42 UTC",
+          "7 août 2024, 23:59:20 UTC",
+          "23 juil. 2024, 22:18:32 UTC"
+        ],
+        "is_list": false,
+        "max_length": 28
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "execution_timestamp": {
+      "source_fields": [
+        "execution_timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "default_strategy": "replace_all",
+      "_discovery_info": {
+        "frequency": 5,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "2025-09-08T16:24:28.079126",
+          "2025-09-08T16:27:04.476760",
+          "2025-09-08T16:28:40.411769"
+        ],
+        "is_list": false,
+        "max_length": 26
+      },
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "summary": {
+      "source_fields": [
+        "summary"
+      ],
+      "target_tags_image": [
+        "XMP:CustomSummary"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 5,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "total_sidecars_found": 3,
+            "total_processed": 3,
+            "total_failed": 0,
+            "total_skipped": 0,
+            "images_processed": 3,
+            "videos_processed": 0,
+            "files_fixed_extension": 0,
+            "sidecars_cleaned": 0,
+            "success_rate": 100.0,
+            "duration_seconds": 1.412122
+          },
+          {
+            "total_sidecars_found": 3,
+            "total_processed": 3,
+            "total_failed": 0,
+            "total_skipped": 0,
+            "images_processed": 3,
+            "videos_processed": 0,
+            "files_fixed_extension": 0,
+            "sidecars_cleaned": 0,
+            "success_rate": 100.0,
+            "duration_seconds": 1.34861
+          },
+          {
+            "total_sidecars_found": 3,
+            "total_processed": 3,
+            "total_failed": 0,
+            "total_skipped": 0,
+            "images_processed": 3,
+            "videos_processed": 0,
+            "files_fixed_extension": 0,
+            "sidecars_cleaned": 0,
+            "success_rate": 100.0,
+            "duration_seconds": 1.36249
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "details": {
+      "source_fields": [
+        "details"
+      ],
+      "target_tags_image": [
+        "XMP:CustomDetails"
+      ],
+      "default_strategy": "write_if_missing",
+      "_discovery_info": {
+        "frequency": 5,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "failed_files": [],
+            "skipped_files": [],
+            "fixed_extensions": [],
+            "errors_by_type": {}
+          },
+          {
+            "failed_files": [],
+            "skipped_files": [],
+            "fixed_extensions": [],
+            "errors_by_type": {}
+          },
+          {
+            "failed_files": [],
+            "skipped_files": [],
+            "fixed_extensions": [],
+            "errors_by_type": {}
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      }
+    },
+    "sharedalbumcomments": {
+      "source_fields": [
+        "sharedAlbumComments"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "list"
+        ],
+        "sample_values": [
+          [
+            {
+              "creationTime": {
+                "timestamp": "1644143072",
+                "formatted": "6 févr. 2022, 10:24:32 UTC"
+              },
+              "contentOwnerName": "anthony vincent",
+              "liked": true
+            }
+          ]
+        ],
+        "is_list": true,
+        "max_length": 1
+      },
+      "sanitize": true
+    },
+    "sharedalbumcomments_creationtime": {
+      "source_fields": [
+        "sharedAlbumComments.creationTime"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "dict"
+        ],
+        "sample_values": [
+          {
+            "timestamp": "1644143072",
+            "formatted": "6 févr. 2022, 10:24:32 UTC"
+          }
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "sanitize": true
+    },
+    "sharedalbumcomments_creationtime_timestamp": {
+      "source_fields": [
+        "sharedAlbumComments.creationTime.timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "1644143072"
+        ],
+        "is_list": false,
+        "max_length": 10
+      },
+      "sanitize": true
+    },
+    "sharedalbumcomments_creationtime_formatted": {
+      "source_fields": [
+        "sharedAlbumComments.creationTime.formatted"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "6 févr. 2022, 10:24:32 UTC"
+        ],
+        "is_list": false,
+        "max_length": 26
+      },
+      "sanitize": true
+    },
+    "sharedalbumcomments_contentownername": {
+      "source_fields": [
+        "sharedAlbumComments.contentOwnerName"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "str"
+        ],
+        "sample_values": [
+          "anthony vincent"
+        ],
+        "is_list": false,
+        "max_length": 15
+      },
+      "sanitize": true
+    },
+    "sharedalbumcomments_liked": {
+      "source_fields": [
+        "sharedAlbumComments.liked"
+      ],
+      "target_tags_image": [
+        "EXIF:ImageDescription",
+        "XMP-dc:Description",
+        "IPTC:Caption-Abstract"
+      ],
+      "default_strategy": "preserve_existing",
+      "_discovery_info": {
+        "frequency": 1,
+        "data_types": [
+          "bool"
+        ],
+        "sample_values": [
+          true
+        ],
+        "is_list": false,
+        "max_length": 0
+      },
+      "sanitize": true
+    }
+  },
+  "strategies": {
+    "preserve_existing": {
+      "description": "Utilise -wm cg pour préserver l'existant",
+      "exiftool_args": [
+        "-wm",
+        "cg"
+      ],
+      "icon": "⚠️"
+    },
+    "replace_all": {
+      "description": "Remplace complètement les valeurs",
+      "for_lists": "clear_then_add",
+      "icon": "🔄"
+    },
+    "write_if_missing": {
+      "description": "Utilise -if pour n'écrire que si absent",
+      "condition_template": "-if \"not ${tag}\"",
+      "for_lists": "conditional_add",
+      "icon": "➕"
+    },
+    "clean_duplicates": {
+      "description": "Supprime puis ajoute pour éviter doublons",
+      "pattern": [
+        "${tag}-=${value}",
+        "${tag}+=${value}"
+      ],
+      "icon": "✨"
+    }
+  },
+  "global_settings": {
+    "default_strategy": "preserve_existing",
+    "video_extensions": [
+      ".mp4",
+      ".mov",
+      ".m4v",
+      ".3gp"
+    ],
+    "common_args": [
+      "-overwrite_original"
+    ],
+    "charset_args": [
+      "-charset",
+      "filename=UTF8",
+      "-charset",
+      "iptc=UTF8",
+      "-charset",
+      "exif=UTF8",
+      "-codedcharacterset=utf8"
+    ]
+  }
+}
