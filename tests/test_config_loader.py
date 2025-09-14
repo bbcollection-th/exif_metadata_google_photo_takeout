@@ -20,10 +20,10 @@ def test_config_driven_argument_generation():
         # Créer une version minimale de la config si elle n'existe pas
         minimal_config = {
           "exif_mapping": {
-            "description": {"source_fields": ["description"], "target_tags": ["EXIF:ImageDescription"], "default_strategy": "preserve_existing"},
-            "people": {"source_fields": ["people_name"], "target_tags": ["XMP-iptcExt:PersonInImage"], "default_strategy": "clean_duplicates"},
-            "photoTakenTime_timestamp": {"source_fields": ["photoTakenTime.timestamp"], "target_tags": ["EXIF:DateTimeOriginal"], "default_strategy": "replace_all"},
-            "favorited": {"source_fields": ["favorited"], "target_tags": ["XMP:Rating"], "default_strategy": "write_if_missing", "transform": "boolean_to_rating"}
+            "description": {"source_fields": ["description"], "target_tags_image": ["EXIF:ImageDescription"], "default_strategy": "preserve_existing"},
+            "people": {"source_fields": ["people_name"], "target_tags_image": ["XMP-iptcExt:PersonInImage"], "default_strategy": "clean_duplicates"},
+            "photoTakenTime_timestamp": {"source_fields": ["photoTakenTime.timestamp"], "target_tags_image": ["EXIF:DateTimeOriginal"], "default_strategy": "replace_all"},
+            "favorited": {"source_fields": ["favorited"], "target_tags_image": ["XMP:Rating"], "default_strategy": "write_if_missing", "transform": "boolean_to_rating"}
           },
           "strategies": {
             "preserve_existing": {"pattern": ["-wm", "cg", "-${tag}=${value}"]},

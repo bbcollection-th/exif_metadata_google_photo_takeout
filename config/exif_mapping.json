@@ -4,8 +4,11 @@
       "source_fields": [
         "title"
       ],
-      "target_tags": [
+      "target_tags_image": [
         "IPTC:ObjectName",
+        "XMP-dc:Title"
+      ],
+      "target_tags_video": [
         "XMP-dc:Title"
       ],
       "default_strategy": "write_if_missing"
@@ -14,28 +17,26 @@
       "source_fields": [
         "description"
       ],
-      "target_tags": [
+      "target_tags_image": [
         "MWG:Description"
+      ],
+      "target_tags_video": [
+        "XMP-dc:Description"
       ],
       "default_strategy": "write_if_blank_or_missing",
       "sanitize": true
     },
-    "imageviews": {
+    "photoTakenTime_timestamp": {
       "source_fields": [
-        "imageViews"
+        "photoTakenTime.timestamp"
       ],
-      "target_tags": [
-        "XMP:UserComment"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "creationTime": {
-      "source_fields": [
-        "creationTime"
-      ],
-      "target_tags": [
+      "target_tags_image": [
         "EXIF:DateTimeOriginal",
         "EXIF:CreateDate"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:DateCreated",
+        "QuickTime:CreateDate"
       ],
       "default_strategy": "replace_all",
       "format": "%Y:%m:%d %H:%M:%S"
@@ -44,72 +45,24 @@
       "source_fields": [
         "creationTime.timestamp"
       ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
+      "target_tags_image": [
+        "XMP-xmp:CreateDate"
       ],
-      "default_strategy": "replace_all",
+      "target_tags_video": [
+        "XMP-xmp:CreateDate"
+      ],
+      "default_strategy": "write_if_missing",
       "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "creationTime_formatted": {
-      "source_fields": [
-        "creationTime.formatted"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "photoTakenTime": {
-      "source_fields": [
-        "photoTakenTime"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "photoTakenTime_timestamp": {
-      "source_fields": [
-        "photoTakenTime.timestamp"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "photoTakenTime_formatted": {
-      "source_fields": [
-        "photoTakenTime.formatted"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "geodata": {
-      "source_fields": [
-        "geoData"
-      ],
-      "target_tags": [
-        "XMP:CustomGeodata"
-      ],
-      "default_strategy": "write_if_missing"
     },
     "geoData_latitude": {
       "source_fields": [
         "geoData.latitude"
       ],
-      "target_tags": [
+      "target_tags_image": [
         "GPSLatitude"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSLatitude"
       ],
       "default_strategy": "replace_all"
     },
@@ -117,8 +70,11 @@
       "source_fields": [
         "geoData.longitude"
       ],
-      "target_tags": [
+      "target_tags_image": [
         "GPSLongitude"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSLongitude"
       ],
       "default_strategy": "replace_all"
     },
@@ -126,107 +82,48 @@
       "source_fields": [
         "geoData.altitude"
       ],
-      "target_tags": [
+      "target_tags_image": [
         "GPSAltitude"
       ],
-      "default_strategy": "replace_all"
-    },
-    "geoData_latitude_ref": {
-      "source_fields": [
-        "geoData.latitude.ref"
-      ],
-      "target_tags": [
-        "GPSLatitudeRef"
-      ],
-      "default_strategy": "replace_all",
-      "value_mapping": {
-        "positive": "N",
-        "negative": "S"
-      }
-    },
-    "geoData_longitude_ref": {
-      "source_fields": [
-        "geoData.longitude.ref"
-      ],
-      "target_tags": [
-        "GPSLongitudeRef"
-      ],
-      "default_strategy": "replace_all",
-      "value_mapping": {
-        "positive": "E",
-        "negative": "W"
-      }
-    },
-    "geoData_latitudeSpan": {
-      "source_fields": [
-        "geoData.latitudeSpan"
-      ],
-      "target_tags": [
-        "GPS:GPSLatitude",
-        "GPS:GPSLongitude",
-        "GPS:GPSAltitude"
+      "target_tags_video": [
+        "XMP-exif:GPSAltitude"
       ],
       "default_strategy": "replace_all"
-    },
-    "geodata_longitudeSpan": {
-      "source_fields": [
-        "geoData.longitudeSpan"
-      ],
-      "target_tags": [
-        "GPS:GPSLatitude",
-        "GPS:GPSLongitude",
-        "GPS:GPSAltitude"
-      ],
-      "default_strategy": "replace_all"
-    },
-    "url": {
-      "source_fields": [
-        "url"
-      ],
-      "target_tags": [
-        "XMP:CustomUrl"
-      ],
-      "default_strategy": "write_if_missing"
     },
     "people_name": {
       "source_fields": [
         "people.name"
       ],
-      "target_tags": [
+      "target_tags_image": [
+        "XMP-iptcExt:PersonInImage"
+      ],
+      "target_tags_video": [
         "XMP-iptcExt:PersonInImage"
       ],
       "default_strategy": "clean_duplicates",
       "normalize": "person_name"
     },
-    "people_name_keywords": {
+    "people_keywords": {
       "source_fields": [
         "people.name"
       ],
-      "target_tags": [
-        "IPTC:Keywords",
+      "target_tags_image": [
+        "IPTC:Keywords"
+      ],
+      "target_tags_video": [
         "XMP-dc:Subject"
       ],
       "default_strategy": "clean_duplicates",
       "normalize": "person_name"
     },
-    "albums_keywords": {
+    "albums": {
       "source_fields": [
         "albums"
       ],
-      "target_tags": [
-        "IPTC:Keywords"
+      "target_tags_image": [
+        "XMP-dc:Subject"
       ],
-      "default_strategy": "clean_duplicates",
-      "processing": {
-        "prefix": "Album: ",
-        "normalize": "keyword"
-      }
-    },
-    "albums_subjects": {
-      "source_fields": [
-        "albums"
-      ],
-      "target_tags": [
+      "target_tags_video": [
         "XMP-dc:Subject"
       ],
       "default_strategy": "clean_duplicates",
@@ -235,68 +132,15 @@
         "normalize": "keyword"
       }
     },
-    "googlephotosorigin": {
-      "source_fields": [
-        "googlePhotosOrigin"
-      ],
-      "target_tags": [
-        "XMP:CustomGooglephotosorigin"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "googlephotosorigin_mobileupload": {
-      "source_fields": [
-        "googlePhotosOrigin.mobileUpload"
-      ],
-      "target_tags": [
-        "XMP:CustomGooglephotosoriginmobileupload"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "googlephotosorigin_mobileupload_devicefolder": {
-      "source_fields": [
-        "googlePhotosOrigin.mobileUpload.deviceFolder"
-      ],
-      "target_tags": [
-        "XMP-dc:Subject",
-        "IPTC:Keywords"
-      ],
-      "default_strategy": "clean_duplicates",
-      "processing": {
-        "prefix": "Album: ",
-        "normalize": "keyword"
-      }
-    },
-    "googlephotosorigin_mobileupload_devicefolder_localfoldername": {
+    "localFolderName": {
       "source_fields": [
         "googlePhotosOrigin.mobileUpload.deviceFolder.localFolderName"
       ],
-      "target_tags": [
-        "XMP-dc:Subject",
-        "IPTC:Keywords"
+      "target_tags_image": [
+        "EXIF:Software"
       ],
-      "default_strategy": "clean_duplicates",
-      "processing": {
-        "prefix": "Album: ",
-        "normalize": "keyword"
-      }
-    },
-    "googlephotosorigin_mobileupload_devicetype": {
-      "source_fields": [
-        "googlePhotosOrigin.mobileUpload.deviceType"
-      ],
-      "target_tags": [
-        "EXIF:Software",
+      "target_tags_video": [
         "XMP-xmp:CreatorTool"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "archived": {
-      "source_fields": [
-        "archived"
-      ],
-      "target_tags": [
-        "XMP:CustomArchived"
       ],
       "default_strategy": "write_if_missing"
     },
@@ -304,7 +148,10 @@
       "source_fields": [
         "favorited"
       ],
-      "target_tags": [
+      "target_tags_image": [
+        "XMP:Rating"
+      ],
+      "target_tags_video": [
         "XMP:Rating"
       ],
       "default_strategy": "preserve_positive_rating",
@@ -312,96 +159,6 @@
         "true": "5",
         "false": null
       }
-    },
-    "trashed": {
-      "source_fields": [
-        "trashed"
-      ],
-      "target_tags": [
-        "XMP:CustomTrashed"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "access": {
-      "source_fields": [
-        "access"
-      ],
-      "target_tags": [
-        "XMP:CustomAccess"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "date": {
-      "source_fields": [
-        "date"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "date_timestamp": {
-      "source_fields": [
-        "date.timestamp"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "date_formatted": {
-      "source_fields": [
-        "date.formatted"
-      ],
-      "target_tags": [
-        "EXIF:DateTimeOriginal",
-        "EXIF:CreateDate"
-      ],
-      "default_strategy": "replace_all",
-      "format": "%Y:%m:%d %H:%M:%S"
-    },
-    "city": {
-      "source_fields": [
-        "city"
-      ],
-      "target_tags": [
-        "XMP:City",
-        "IPTC:City"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "country": {
-      "source_fields": [
-        "country"
-      ],
-      "target_tags": [
-        "XMP:Country",
-        "IPTC:Country-PrimaryLocationName"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "state": {
-      "source_fields": [
-        "state"
-      ],
-      "target_tags": [
-        "XMP:State",
-        "IPTC:Province-State"
-      ],
-      "default_strategy": "write_if_missing"
-    },
-    "place_name": {
-      "source_fields": [
-        "place_name"
-      ],
-      "target_tags": [
-        "XMP:Location"
-      ],
-      "default_strategy": "write_if_missing"
     }
   },
   "strategies": {
@@ -451,6 +208,10 @@
     "common_args": [
       "-charset",
       "filename=utf8",
+      "-charset",
+      "iptc=UTF8",
+      "-charset",
+      "exif=UTF8",
       "-overwrite_original"
     ],
     "backup_original": true

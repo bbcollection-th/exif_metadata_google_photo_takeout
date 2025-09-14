@@ -21,7 +21,7 @@ python tools/validate_config.py config/exif_mapping.json
 ### 3. Traitement
 ```bash
 # Traiter vos photos
-python -m google_takeout_metadata.processor "data/Google Photos/"
+python -m google_takeout_metadata "data/Google Photos/"
 ```
 
 ## 📁 Structure du Projet

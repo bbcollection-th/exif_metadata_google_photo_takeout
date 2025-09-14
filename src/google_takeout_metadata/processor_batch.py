@@ -2,7 +2,7 @@ import logging
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from datetime import datetime
 import shutil
 
@@ -24,16 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 
-def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool, efile_dir) -> int:
+def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool, efile_dir: Union[str, Path] = "logs") -> int:
     """Traiter un lot de fichiers avec exiftool via un fichier d'arguments."""
     if not batch:
         return 0
 
-    # Convertir efile_dir en Path si c'est une string
-    if isinstance(efile_dir, str):
-        efile_dir = Path(efile_dir)
-    elif not isinstance(efile_dir, Path):
-        efile_dir = Path(efile_dir)
+    # Convertir efile_dir en Path si nécessaire
+    efile_dir = Path(efile_dir)
 
     argfile_path = None
     try:
@@ -61,7 +58,7 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
         cmd = [
             "exiftool",
             # Charset settings MUST come before -@ for proper ExifTool behavior.
-            "-charset", "title=UTF8",    # For Unicode titles (must be before -@)
+            "-charset", "filename=UTF8",    # For Unicode filenames (must be before -@)
             "-charset", "iptc=UTF8",        # For IPTC writing
             "-charset", "exif=UTF8",        # For EXIF writing
             "-codedcharacterset=utf8",      # For IPTC encoding (must be before -@)
@@ -323,7 +320,7 @@ def process_directory_batch(root: Path, use_localTime: bool = False,  immediate_
                 statistics.stats.skipped_files.append(json_path.name)
 
             if len(batch) >= BATCH_SIZE:
-                process_batch(batch, immediate_delete, efile_dir=Path('/tmp'))
+                process_batch(batch, immediate_delete, efile_dir=efile_dir)
                 batch = []
 
         except (ValueError, RuntimeError) as exc:
@@ -332,7 +329,7 @@ def process_directory_batch(root: Path, use_localTime: bool = False,  immediate_
             logger.warning("❌ Échec de la préparation de %s : %s", json_path.name, exc)
 
     if batch:
-        process_batch(batch, immediate_delete, efile_dir=Path('/tmp'))
+        process_batch(batch, immediate_delete, efile_dir=efile_dir)
 
     statistics.stats.end_processing()
     

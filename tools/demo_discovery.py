@@ -22,6 +22,7 @@ import os
 # Ajouter le répertoire src au path pour les imports
 current_dir = Path(__file__).parent
 src_dir = current_dir / "src"
+project_root = current_dir.parent
 if src_dir.exists():
     sys.path.insert(0, str(src_dir))
 
@@ -95,26 +96,27 @@ def main():
             clean_config = json.load(f)
         
         clean_mappings_count = len(clean_config.get('exif_mapping', {}))
-        reduction = ((mappings_count - clean_mappings_count) / mappings_count) * 100
+        reduction = 0.0 if mappings_count == 0 else ((mappings_count - clean_mappings_count) / mappings_count) * 100
         print(f"   ✅ Réduction: {mappings_count} → {clean_mappings_count} champs ({reduction:.1f}%)")
     
     # Étape 4: Démo d'intégration
     print("\n🔗 ÉTAPE 4: Démonstration d'intégration...")
     
     # Copier la config nettoyée vers le fichier principal
-    main_config = current_dir / "exif_mapping_config.json"
+    main_config = project_root / "config" / "exif_mapping.json"
     if cleaned_config.exists():
         import shutil
+        main_config.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(cleaned_config, main_config)
         print(f"   ✅ Configuration copiée vers : {main_config}")
     
     # Test de chargement avec config_loader
     try:
         sys.path.insert(0, str(current_dir / "src" / "google_takeout_metadata"))
-        from config_loader import ConfigLoader
+        from google_takeout_metadata.config_loader import ConfigLoader
         
-        loader = ConfigLoader()
-        loaded_config = loader.load_config()
+        loader = ConfigLoader(config_dir=main_config.parent)
+        loaded_config = loader.load_config(json_file=main_config.name)
         
         print("   ✅ Configuration chargée avec succès")
         print(f"   📊 Stratégies disponibles: {list(loaded_config.get('strategies', {}).keys())}")

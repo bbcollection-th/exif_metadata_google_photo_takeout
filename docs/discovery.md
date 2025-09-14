@@ -116,7 +116,7 @@ La configuration générée suit cette structure :
   "exif_mapping": {
     "photoTakenTime_timestamp": {
       "source_fields": ["photoTakenTime.timestamp"],
-      "target_tags": ["EXIF:DateTimeOriginal", "EXIF:CreateDate"],
+      "target_tags_image": ["EXIF:DateTimeOriginal", "EXIF:CreateDate"],
       "default_strategy": "write_if_missing",
       "data_transformer": "timestamp_to_datetime",
       "description": "Date et heure de prise de vue",

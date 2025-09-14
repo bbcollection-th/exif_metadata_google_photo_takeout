@@ -46,7 +46,7 @@ class FieldDiscoverer:
             # Texte/Description
             r'.*description.*|.*caption.*|.*comment.*': {
                 'category': 'description',
-                'target_tags': ['EXIF:ImageDescription', 'XMP-dc:Description', 'IPTC:Caption-Abstract'],
+                'target_tags_image': ['EXIF:ImageDescription', 'XMP-dc:Description', 'IPTC:Caption-Abstract'],
                 'default_strategy': 'preserve_existing',
                 'sanitize': True
             },
@@ -54,7 +54,7 @@ class FieldDiscoverer:
             # Personnes
             r'.*people_name.*|.*person.*|.*face.*|.*who.*': {
                 'category': 'people_name',
-                'target_tags': ['XMP-iptcExt:PersonInImage'],
+                'target_tags_image': ['XMP-iptcExt:PersonInImage'],
                 'default_strategy': 'clean_duplicates',
                 'normalize': 'person_name'
             },
@@ -62,21 +62,21 @@ class FieldDiscoverer:
             # Localisation
             r'.*location.*|.*place.*|.*address.*|.*where.*': {
                 'category': 'location',
-                'target_tags': ['XMP:Location'],
+                'target_tags_image': ['XMP:Location'],
                 'default_strategy': 'replace_all'
             },
             
             # Coordonnées GPS
-            r'.*lat.*|.*lng.*|.*long.*|.*geoData_altitude.*|.*coord.*': {
+            r'(^|[._])(lat(itude)?|lon(gitude)?|lng|alt(itude)?|coord(s)?)\\b': {
                 'category': 'gps',
-                'target_tags': ['GPS:GPSLatitude', 'GPS:GPSLongitude', 'GPS:GPSAltitude'],
+                'target_tags_image': ['GPS:GPSLatitude', 'GPS:GPSLongitude', 'GPS:GPSAltitude'],
                 'default_strategy': 'replace_all'
             },
             
             # Dates/Temps
             r'.*time.*|.*date.*|.*timestamp.*|.*when.*|.*taken.*|.*created.*': {
                 'category': 'datetime',
-                'target_tags': ['EXIF:DateTimeOriginal', 'EXIF:CreateDate'],
+                'target_tags_image': ['EXIF:DateTimeOriginal', 'EXIF:CreateDate'],
                 'default_strategy': 'replace_all',
                 'format': '%Y:%m:%d %H:%M:%S'
             },
@@ -84,7 +84,7 @@ class FieldDiscoverer:
             # Albums/Collections
             r'.*album.*|.*collection.*|.*folder.*|.*group.*': {
                 'category': 'keywords',
-                'target_tags': ['XMP-dc:Subject', 'IPTC:Keywords'],
+                'target_tags_image': ['XMP-dc:Subject', 'IPTC:Keywords'],
                 'default_strategy': 'clean_duplicates',
                 'processing': {'prefix': 'Album: ', 'normalize': 'keyword'}
             },
@@ -92,7 +92,7 @@ class FieldDiscoverer:
             # Tags/Mots-clés
             r'.*tag.*|.*keyword.*|.*label.*|.*category.*': {
                 'category': 'keywords',
-                'target_tags': ['XMP-dc:Subject', 'IPTC:Keywords'],
+                'target_tags_image': ['XMP-dc:Subject', 'IPTC:Keywords'],
                 'default_strategy': 'clean_duplicates',
                 'normalize': 'keyword'
             },
@@ -100,7 +100,7 @@ class FieldDiscoverer:
             # Rating/Favoris
             r'.*fav.*|.*star.*|.*rating.*|.*rank.*|.*like.*': {
                 'category': 'rating',
-                'target_tags': ['XMP:Rating'],
+                'target_tags_image': ['XMP:Rating'],
                 'default_strategy': 'preserve_existing',
                 'value_mapping': {'true': '5', 'false': None}
             },
@@ -108,7 +108,7 @@ class FieldDiscoverer:
             # Géolocalisation textuelle
             r'.*city.*|.*country.*|.*state.*|.*region.*': {
                 'category': 'location',
-                'target_tags': {
+                'target_tags_image': {
                     'city': ['XMP:City', 'IPTC:City'],
                     'country': ['XMP:Country', 'IPTC:Country-PrimaryLocationName']
                 },
@@ -118,14 +118,14 @@ class FieldDiscoverer:
             # Métadonnées techniques
             r'.*width.*|.*height.*|.*size.*|.*dimension.*': {
                 'category': 'technical',
-                'target_tags': ['EXIF:ImageWidth', 'EXIF:ImageHeight'],
+                'target_tags_image': ['EXIF:ImageWidth', 'EXIF:ImageHeight'],
                 'default_strategy': 'write_if_missing'
             },
             
             # Métadonnées de source
             r'.*source.*|.*app.*|.*device.*|.*camera.*|.*tool.*': {
                 'category': 'source',
-                'target_tags': ['EXIF:Software', 'XMP-xmp:CreatorTool'],
+                'target_tags_image': ['EXIF:Software', 'XMP-xmp:CreatorTool'],
                 'default_strategy': 'write_if_missing'
             }
         }
@@ -238,7 +238,7 @@ class FieldDiscoverer:
                 "video_extensions": [".mp4", ".mov", ".m4v", ".3gp"],
                 "common_args": ["-overwrite_original"],
                 "charset_args": [
-                    "-charset", "title=UTF8",
+                    "-charset", "filename=UTF8",
                     "-charset", "iptc=UTF8",
                     "-charset", "exif=UTF8",
                     "-codedcharacterset=utf8"
@@ -300,7 +300,7 @@ class FieldDiscoverer:
             "global_settings": {
                 "default_strategy": "write_if_missing",
                 "video_extensions": [".mp4", ".mov", ".m4v", ".3gp"],
-                "common_args": ["-charset", "title=UTF8"],
+                "common_args": ["-charset", "filename=UTF8"],
                 "backup_original": True
             }
         }
@@ -334,14 +334,37 @@ class FieldDiscoverer:
                 
             matched_pattern = {
                 'category': 'custom',
-                'target_tags': [f'XMP:Custom{field_name.replace(".", "").title()}'],
+                'target_tags_image': [f'XMP:Custom{field_name.replace(".", "").title()}'],
                 'default_strategy': 'write_if_missing'
             }
         
-        # Construction du mapping
+        # Résoudre target_tags_image selon le contexte
+        pattern_tt = matched_pattern['target_tags_image']
+        if isinstance(pattern_tt, dict):
+            lname = field_name.lower()
+            if 'city' in lname:
+                resolved_tt = pattern_tt.get('city', [])
+            elif 'country' in lname:
+                resolved_tt = pattern_tt.get('country', [])
+            else:
+                # fallback: concaténation de toutes les listes
+                resolved_tt = [t for v in pattern_tt.values() for t in v]
+        elif matched_pattern.get('category') == 'gps':
+            lname = field_name.lower()
+            if re.search(r'lat(itude)?\\b', lname):
+                resolved_tt = ['GPS:GPSLatitude']
+            elif re.search(r'(lon|long|lng)(gitude)?\\b', lname):
+                resolved_tt = ['GPS:GPSLongitude']
+            elif 'alt' in lname:
+                resolved_tt = ['GPS:GPSAltitude']
+            else:
+                resolved_tt = ['XMP:CustomGps']
+        else:
+            resolved_tt = pattern_tt
+
         mapping = {
             "source_fields": [field_name],
-            "target_tags": matched_pattern['target_tags'],
+            "target_tags_image": resolved_tt,
             "default_strategy": matched_pattern['default_strategy'],
             "_discovery_info": {
                 "frequency": field_info.frequency,
@@ -397,8 +420,8 @@ def main():
     parser.add_argument(
         "-o", "--output",
         type=Path,
-        default="discovered_config.json",
-        help="Fichier de sortie pour la configuration (défaut: discovered_config.json)"
+        default="exif_mapping_autogenerated.json",
+        help="Fichier de sortie pour la configuration (défaut: exif_mapping_autogenerated.json)"
     )
     parser.add_argument(
         "-s", "--summary",

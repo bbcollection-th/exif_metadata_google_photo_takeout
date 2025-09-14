@@ -2,52 +2,56 @@
   "exif_mapping": {
     "description": {
       "source_fields": ["description"],
-      "target_tags": [
+      "target_tags_image": [
         "EXIF:ImageDescription",
         "XMP-dc:Description", 
         "IPTC:Caption-Abstract"
       ],
+      "target_tags_video": [
+        "Keys:Description",
+        "QuickTime:Description"
+      ],  
       "default_strategy": "preserve_existing"
     },
     "people": {
       "source_fields": ["people"],
-      "target_tags": ["XMP-iptcExt:PersonInImage"],
+      "target_tags_image": ["XMP-iptcExt:PersonInImage"],
       "default_strategy": "clean_duplicates",
       "normalize": "person_name"
     },
     "photoTakenTime_timestamp": {
       "source_fields": ["photoTakenTime.timestamp"],
-      "target_tags": ["EXIF:DateTimeOriginal"],
+      "target_tags_image": ["EXIF:DateTimeOriginal"],
       "default_strategy": "replace_all"
     },
     "createdTime_timestamp": {
       "source_fields": ["creationTime.timestamp"],
-      "target_tags": ["EXIF:CreateDate"],
+      "target_tags_image": ["EXIF:CreateDate"],
       "default_strategy": "replace_all"
     },
     "geoData_latitude": {
       "source_fields": ["geoData.latitude"],
-      "target_tags": ["GPS:GPSLatitude"],
+      "target_tags_image": ["GPS:GPSLatitude"],
       "default_strategy": "replace_all"
     },
-    "geodata_longitude": {
+    "geoData_longitude": {
       "source_fields": ["geoData.longitude"], 
-      "target_tags": ["GPS:GPSLongitude"],
+      "target_tags_image": ["GPS:GPSLongitude"],
       "default_strategy": "replace_all"
     },
     "geoData_altitude": {
       "source_fields": ["geoData.altitude"],
-      "target_tags": ["GPS:GPSAltitude"],
+      "target_tags_image": ["GPS:GPSAltitude"],
       "default_strategy": "replace_all"
     },
     "albums": {
       "source_fields": ["albums"],
-      "target_tags": ["XMP-lr:HierarchicalSubject"],
+      "target_tags_image": ["XMP-lr:HierarchicalSubject"],
       "default_strategy": "clean_duplicates"
     },
     "favorited": {
       "source_fields": ["favorited"],
-      "target_tags": ["XMP:Rating"],
+      "target_tags_image": ["XMP:Rating"],
       "default_strategy": "write_if_missing",
       "transform": "boolean_to_rating"
     }
@@ -74,7 +78,7 @@
   "global_settings": {
     "default_strategy": "write_if_missing",
     "video_extensions": [".mp4", ".mov", ".m4v", ".3gp"],
-    "common_args": ["-charset", "title=UTF8"],
+    "common_args": ["-charset", "filename=UTF8", "-charset", "iptc=UTF8", "-charset", "exif=UTF8"],
     "backup_original": true
   }
 }

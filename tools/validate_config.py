@@ -110,7 +110,7 @@ class ConfigValidator:
                 continue
                 
             # Validation des champs requis
-            required_fields = ['source_fields', 'target_tags', 'default_strategy']
+            required_fields = ['source_fields', 'target_tags_image', 'default_strategy']
             missing_fields = [f for f in required_fields if f not in mapping]
             if missing_fields:
                 self.issues.append(f"❌ Mapping {name} manque : {missing_fields}")
@@ -122,10 +122,21 @@ class ConfigValidator:
             if strategy not in self.valid_strategies:
                 self.issues.append(f"⚠️ Mapping {name} : stratégie inconnue '{strategy}'")
                 
-            # Validation des tags cibles
-            target_tags = mapping.get('target_tags', [])
-            if isinstance(target_tags, list):
-                for tag in target_tags:
+            # Validation des types de champs
+            source_fields = mapping.get('source_fields', [])
+            target_tags_image = mapping.get('target_tags_image', [])
+            if not isinstance(source_fields, list) or not source_fields or not all(isinstance(s, str) for s in source_fields):
+                self.issues.append(f"❌ Mapping {name} : 'source_fields' doit être une liste non vide de chaînes")
+                is_valid = False
+                continue
+            if not isinstance(target_tags_image, list) or not target_tags_image or not all(isinstance(t, str) for t in target_tags_image):
+                self.issues.append(f"❌ Mapping {name} : 'target_tags_image' doit être une liste non vide de chaînes")
+                is_valid = False
+                continue
+
+            # Validation des tags cibles           
+            if isinstance(target_tags_image, list):
+                for tag in target_tags_image:
                     if tag not in self.known_tags and not self._is_custom_tag(tag):
                         self.suggestions.append(f"💡 Tag possiblement incorrect : {tag} (mapping {name})")
                         
@@ -191,9 +202,9 @@ class ConfigValidator:
                 logger.debug(f"Suppression de {name} : champ technique")
                 
             # Tags cibles invalides
-            target_tags = mapping.get('target_tags', [])
-            if isinstance(target_tags, list):
-                valid_tags = [tag for tag in target_tags if tag in self.known_tags or self._is_custom_tag(tag)]
+            target_tags_image = mapping.get('target_tags_image', [])
+            if isinstance(target_tags_image, list):
+                valid_tags = [tag for tag in target_tags_image if tag in self.known_tags or self._is_custom_tag(tag)]
                 if not valid_tags:
                     should_remove = True
                     logger.debug(f"Suppression de {name} : aucun tag valide")

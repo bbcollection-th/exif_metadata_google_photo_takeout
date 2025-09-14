@@ -52,15 +52,16 @@ def test_googlePhotosOrigin_localFolderName_integration():
         
         print("🔧 Arguments ExifTool générés:")
         for arg in args:
-            if "Album:" in str(arg) or "Alice" in str(arg):
+            if "Album:" in str(arg) or "Alice" in str(arg) or "Instagram" in str(arg) or "Software" in str(arg) or "CreatorTool" in str(arg):
                 print(f"   {arg}")
         
         # 4. Vérifications
         assert meta.googlePhotosOrigin_localFolderName == "Instagram", f"Attendu 'Instagram', obtenu {meta.googlePhotosOrigin_localFolderName}"
         
-        # Chercher l'argument pour Alice (personnes)
+        # Chercher les arguments pour Alice (personnes) et Instagram (application source)
         alice_found = False
         instagram_as_album_found = False
+        instagram_as_software_found = False
         
         for arg in args:
             if isinstance(arg, str):
@@ -69,6 +70,9 @@ def test_googlePhotosOrigin_localFolderName_integration():
                 # googlePhotosOrigin_localFolderName ne devrait PAS être traité comme un album
                 if "Album: Instagram" in arg:
                     instagram_as_album_found = True
+                # googlePhotosOrigin_localFolderName DEVRAIT être traité comme application source
+                if ("EXIF:Software=Instagram" in arg or "XMP-xmp:CreatorTool=Instagram" in arg):
+                    instagram_as_software_found = True
         
         # Alice devrait être présente (personne)
         assert alice_found, "L'argument 'Alice' devrait être présent"
@@ -76,10 +80,12 @@ def test_googlePhotosOrigin_localFolderName_integration():
         # Instagram ne devrait PAS être traité comme un album
         assert not instagram_as_album_found, "googlePhotosOrigin_localFolderName ne devrait PAS être traité comme un album avec préfixe 'Album:'"
         
-        # Pour le moment, acceptons que googlePhotosOrigin_localFolderName ne soit pas utilisé dans les métadonnées
-        # (selon la logique métier expliquée par l'utilisateur)
+        # Instagram DEVRAIT être traité comme application source
+        assert instagram_as_software_found, "googlePhotosOrigin_localFolderName devrait être traité comme application source (EXIF:Software ou XMP-xmp:CreatorTool)"
+        
         print(f"✅ googlePhotosOrigin_localFolderName extrait correctement: {meta.googlePhotosOrigin_localFolderName}")
         print("✅ googlePhotosOrigin_localFolderName correctement non traité comme album")
+        print("✅ googlePhotosOrigin_localFolderName correctement traité comme application source")
 
 
 if __name__ == "__main__":

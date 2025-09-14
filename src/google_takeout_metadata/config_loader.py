@@ -28,7 +28,7 @@ class MappingConfig:
     """Configuration d'un mapping de métadonnée"""
     name: str
     source_fields: list
-    target_tags: list
+    target_tags_image: list
     default_strategy: str
     video_tags: list = None
     normalize: str = None
@@ -135,7 +135,7 @@ class ConfigLoader:
                     
                     self.config.setdefault('exif_mapping', {})[custom_name] = {
                         'source_fields': [source_field],
-                        'target_tags': [target_tag],
+                        'target_tags_image': [target_tag],
                         'default_strategy': strategy
                     }
     
@@ -167,7 +167,7 @@ class ConfigLoader:
             self.mappings[name] = MappingConfig(
                 name=name,
                 source_fields=config.get('source_fields', []),
-                target_tags=config.get('target_tags', []),
+                target_tags_image=config.get('target_tags_image', []),
                 default_strategy=strategy,
                 video_tags=config.get('video_tags', []),
                 normalize=config.get('normalize'),
@@ -183,7 +183,7 @@ class ConfigLoader:
             "exif_mapping": {
                 "description": {
                     "source_fields": ["description"],
-                    "target_tags": ["EXIF:ImageDescription", "XMP-dc:Description", "IPTC:Caption-Abstract"],
+                    "target_tags_image": ["EXIF:ImageDescription", "XMP-dc:Description", "IPTC:Caption-Abstract"],
                     "default_strategy": "preserve_existing"
                 }
             },

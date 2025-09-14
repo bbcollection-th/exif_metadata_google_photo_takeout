@@ -132,7 +132,7 @@ def parse_sidecar(path: Path) -> SidecarData:
 
     # Extraire les données géographiques - préférer geoData, repli sur geoDataExif
     geo = data.get("geoData", {})
-    if not geo or not geo.get("latitude"):
+    if (not geo) or ((geo.get("latitude") is None) and (geo.get("longitude") is None)):
         geo = data.get("geoDataExif", {})
     
     geoData_latitude = geo.get("latitude")

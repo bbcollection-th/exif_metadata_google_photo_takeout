@@ -12,9 +12,9 @@ from google_takeout_metadata.processor_batch import process_batch, process_direc
 from google_takeout_metadata.sidecar import SidecarData
 
 
-def test_process_batch_empty_batch():
+def test_process_batch_empty_batch(tmp_path):
     """Tester que process_batch retourne 0 pour un lot vide."""
-    result = process_batch([], immediate_delete=False, efile_dir=Path("/tmp"))
+    result = process_batch([], immediate_delete=False, efile_dir=tmp_path)
     assert result == 0
 
 
@@ -31,7 +31,7 @@ def test_process_batch_success(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Exécution
-    result = process_batch(batch, immediate_delete=False, efile_dir=Path("/tmp"))
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Vérification
     assert result == 1
@@ -66,7 +66,7 @@ def test_process_batch_with_argfile_content(mock_subprocess_run, tmp_path):
     ]
     
     # Execute
-    result = process_batch(batch, immediate_delete=False, efile_dir=Path("/tmp"))
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Assert
     assert result == 2
@@ -95,7 +95,7 @@ def test_process_batch_immediate_delete_sidecars(mock_subprocess_run, tmp_path):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, immediate_delete=True, efile_dir=Path("/tmp"))
+    result = process_batch(batch, immediate_delete=True, efile_dir=tmp_path)
     
     # Assert
     assert result == 1
@@ -103,7 +103,7 @@ def test_process_batch_immediate_delete_sidecars(mock_subprocess_run, tmp_path):
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
-def test_process_batch_exiftool_not_found(mock_subprocess_run):
+def test_process_batch_exiftool_not_found(mock_subprocess_run, tmp_path):
     """Vérifier la gestion d'erreurs lorsque exiftool n'est pas trouvé."""
     # Setup
     mock_subprocess_run.side_effect = FileNotFoundError("exiftool introuvable")
@@ -116,11 +116,11 @@ def test_process_batch_exiftool_not_found(mock_subprocess_run):
     
     # Execute & Assert
     with pytest.raises(RuntimeError, match="exiftool introuvable"):
-        process_batch(batch, immediate_delete=False, efile_dir=Path("/tmp"))
+        process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
 
 
 @patch('google_takeout_metadata.processor_batch.subprocess.run')
-def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
+def test_process_batch_exiftool_error(mock_subprocess_run, caplog, tmp_path):
     """Vérifier la gestion d'erreurs lorsque exiftool retourne une erreur."""
     # Setup
     mock_subprocess_run.side_effect = subprocess.CalledProcessError(
@@ -134,7 +134,7 @@ def test_process_batch_exiftool_error(mock_subprocess_run, caplog):
     batch = [(media_path, json_path, args)]
     
     # Execute
-    result = process_batch(batch, immediate_delete=False, efile_dir=Path("/tmp"))
+    result = process_batch(batch, immediate_delete=False, efile_dir=tmp_path)
     
     # Assert
     assert result == 0
