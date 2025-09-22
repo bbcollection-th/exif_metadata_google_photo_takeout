@@ -43,10 +43,10 @@ def test_parse_geocode_to_exif_args(tmp_path, monkeypatch):
     # Générer les arguments exiftool
     args = build_exiftool_args(meta, json_path, False, config_loader=config_loader)
 
-    # Vérifier les balises de localisation
-    assert "-XMP:City=Paris" in args
+    # Vérifier les balises de localisation avec les bons noms de tags
+    assert "-XMP-photoshop:City=Paris" in args
     assert "-IPTC:Country-PrimaryLocationName=France" in args
-    assert "-XMP:Location=Paris, France" in args
+    assert "-XMP-iptcCore:Location=Paris, France" in args
 
 
 def test_reverse_geocode_uses_cache(monkeypatch, tmp_path):

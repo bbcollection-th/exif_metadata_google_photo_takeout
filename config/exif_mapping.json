@@ -280,7 +280,9 @@
   },
   "strategies": {
     "preserve_existing": {
-      "description": "Préserver les métadonnées existantes"
+      "description": "Préserver les métadonnées existantes - ne jamais écraser ce qui existe",
+      "condition_template": "-if not defined $${tag} or not length($${tag})",
+      "pattern": ["-${tag}=${value}"]
     },
     "replace_all": {
       "description": "Remplacer inconditionnellement la valeur",

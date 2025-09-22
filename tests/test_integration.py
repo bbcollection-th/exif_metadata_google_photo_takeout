@@ -4,23 +4,36 @@ from pathlib import Path
 import json
 import subprocess
 import pytest
-import shutil
 from google_takeout_metadata.processor import process_sidecar_file
 from google_takeout_metadata.config_loader import ConfigLoader
 from google_takeout_metadata.exif_writer import _run_exiftool_command, write_metadata
 from google_takeout_metadata.sidecar import SidecarData
 
-def _get_test_assets_dir() -> Path:
-    """Retourne le chemin vers le dossier des assets de test."""
-    return Path(__file__).parent.parent / "test_assets"
+from test_asset_manager import test_asset_manager
 
 def _copy_test_asset(asset_name: str, dest_path: Path) -> None:
-    """Copie un asset de test vers le chemin de destination."""
-    assets_dir = _get_test_assets_dir()
-    asset_path = assets_dir / asset_name
-    if not asset_path.exists():
-        pytest.skip(f"Asset de test {asset_name} introuvable dans {assets_dir}")
-    shutil.copy2(asset_path, dest_path)
+    """
+    Fonction de compatibilité qui utilise le nouveau gestionnaire d'assets.
+    Copie un asset de test propre vers le chemin de destination.
+    """
+    # S'assurer que l'asset source est propre
+    test_asset_manager.ensure_clean_asset(asset_name)
+    
+    # Copier vers l'environnement de test  
+    test_asset_manager.copy_clean_asset(asset_name, dest_path)
+    
+    # Vérifier que la copie est propre
+    if not test_asset_manager.verify_asset_is_clean(dest_path):
+        raise AssertionError(f"Asset copié {dest_path} n'est pas propre")
+
+def _create_clean_test_environment(temp_dir: Path, asset_name: str = "test_clean.jpg") -> Path:
+    """
+    Crée un environnement de test propre avec l'asset spécifié.
+    Vérifie que l'asset est vraiment propre avant de le copier.
+    """
+    dest_path = temp_dir / asset_name  
+    _copy_test_asset(asset_name, dest_path)
+    return dest_path
 
 def _run_exiftool_read(media_path: Path) -> dict:
     """Exécuter exiftool pour lire les métadonnées depuis un fichier image."""
@@ -335,7 +348,8 @@ def test_preserve_positive_rating_strategy_pure(tmp_path: Path) -> None:
     assert config_loader.config['exif_mapping']['favorited']['default_strategy'] == 'preserve_positive_rating'
 
     # Test 1: favorited=true sur image vierge → doit créer Rating=5
-    meta1 = SidecarData(title="test.jpg", favorited=True)
+    # Utiliser un titre unique pour éviter les conflits avec d'autres tests
+    meta1 = SidecarData(title="test_rating.jpg", favorited=True)
     write_metadata(media_path, meta1, use_localTime=False, config_loader=config_loader)
     
     metadata_after_1 = _run_exiftool_read(media_path)
@@ -343,7 +357,7 @@ def test_preserve_positive_rating_strategy_pure(tmp_path: Path) -> None:
     assert metadata_after_1.get("Rating") == 5
 
     # Test 2: favorited=true à nouveau → doit préserver Rating=5 (pas de changement)
-    meta2 = SidecarData(title="test.jpg", favorited=True)
+    meta2 = SidecarData(title="test_rating.jpg", favorited=True)
     write_metadata(media_path, meta2, use_localTime=False, config_loader=config_loader)
     
     metadata_after_2 = _run_exiftool_read(media_path)
@@ -356,14 +370,14 @@ def test_preserve_positive_rating_strategy_pure(tmp_path: Path) -> None:
     assert metadata_check.get("Rating") == 0
     
     # Puis favorited=true → doit changer à 5
-    meta3 = SidecarData(title="test.jpg", favorited=True)
+    meta3 = SidecarData(title="test_rating.jpg", favorited=True)
     write_metadata(media_path, meta3, use_localTime=False, config_loader=config_loader)
     
     metadata_after_3 = _run_exiftool_read(media_path)
     assert metadata_after_3.get("Rating") == 5  # Changed from 0 to 5
 
     # Test 4: favorited=false → ne doit jamais toucher à Rating
-    meta4 = SidecarData(title="test.jpg", favorited=False)
+    meta4 = SidecarData(title="test_rating.jpg", favorited=False)
     write_metadata(media_path, meta4, use_localTime=False, config_loader=config_loader)
     
     final_metadata = _run_exiftool_read(media_path)

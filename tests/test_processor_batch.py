@@ -291,11 +291,12 @@ def test_process_directory_batch_with_albums(tmp_path):
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         metadata = json.loads(result.stdout)[0]
         
-        keywords = metadata.get("Keywords", [])
-        if isinstance(keywords, str):
-            keywords = [keywords]
+        # Les albums sont écrits dans XMP-dc:Subject selon la configuration
+        subjects = metadata.get("Subject", [])
+        if isinstance(subjects, str):
+            subjects = [subjects]
         
-        assert "Album: Test Album" in keywords
+        assert "Album: Test Album" in subjects
         
     except FileNotFoundError:
         pytest.skip("Exiftool non trouvé - ignore les tests d'intégration")
