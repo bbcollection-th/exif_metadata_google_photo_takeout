@@ -28,6 +28,8 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass, field
+
 @dataclass
 class FieldInfo:
     """Information sur un champ découvert"""
@@ -37,8 +39,7 @@ class FieldInfo:
     frequency: int
     max_length: int = 0
     is_list: bool = False
-    nested_fields: Dict[str, 'FieldInfo'] = None
-
+    nested_fields: Dict[str, 'FieldInfo'] = field(default_factory=dict)
 class FieldDiscoverer:
     """Découverte automatique des champs JSON"""
     
