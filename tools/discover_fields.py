@@ -6,6 +6,12 @@ Scanne récursivement les fichiers .json Google Photos pour découvrir tous les 
 possibles et génère automatiquement un fichier de configuration avec des stratégies
 par défaut intelligentes.
 
+Fonctionnalités incluses automatiquement :
+- Mappings de métadonnées découverts automatiquement
+- Stratégies optimisées (preserve_existing, replace_all, etc.)
+- Configuration de correction de fuseau horaire (timezone_correction)
+- Paramètres globaux avec encodage UTF-8
+
 Usage:
     python discover_fields.py /path/to/google/photos/folder
     python discover_fields.py /path/to/google/photos/folder --output custom_config.json
@@ -243,6 +249,13 @@ class FieldDiscoverer:
                     "-charset", "exif=UTF8",
                     "-codedcharacterset=utf8"
                 ]
+            },
+            "timezone_correction": {
+                "enabled": False,
+                "description": "Correction automatique des fuseaux horaires basée sur les coordonnées GPS",
+                "use_absolute_values": True,
+                "fallback_to_utc": False,
+                "note": "Nécessite timezonefinder: pip install timezonefinder"
             }
         }
         

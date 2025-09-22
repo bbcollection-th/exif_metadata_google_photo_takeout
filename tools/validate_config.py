@@ -30,19 +30,28 @@ class ConfigValidator:
         self.known_tags = {
             'EXIF:ImageDescription', 'EXIF:Software', 'EXIF:DateTimeOriginal',
             'EXIF:CreateDate', 'EXIF:ModifyDate', 'EXIF:ImageWidth', 'EXIF:ImageHeight',
-            'XMP-dc:Description', 'XMP-dc:Subject', 'XMP-dc:Creator',
+            'EXIF:OffsetTimeOriginal', 'EXIF:OffsetTimeDigitized', 'EXIF:OffsetTime',
+            'XMP-dc:Description', 'XMP-dc:Subject', 'XMP-dc:Creator', 'XMP-dc:Title',
             'XMP-iptcExt:PersonInImage', 'XMP:Rating', 'XMP:City', 'XMP:Country',
-            'XMP:Location', 'XMP-xmp:CreatorTool',
+            'XMP:Location', 'XMP-xmp:CreatorTool', 'XMP-xmp:CreateDate',
+            'XMP-lr:HierarchicalSubject', 'XMP-photoshop:DateCreated',
+            'XMP-photoshop:City', 'XMP-photoshop:State', 'XMP-photoshop:Country',
+            'XMP-iptcCore:Location',
+            'XMP-exif:GPSLatitude', 'XMP-exif:GPSLongitude', 'XMP-exif:GPSAltitude', 'XMP-exif:GPSAltitudeRef',
             'IPTC:Caption-Abstract', 'IPTC:Keywords', 'IPTC:City', 'IPTC:Country-PrimaryLocationName',
-            'GPS:GPSLatitude', 'GPS:GPSLongitude', 'GPS:GPSAltitude',
-            'GPS:GPSLatitudeRef', 'GPS:GPSLongitudeRef',
+            'IPTC:ObjectName', 'IPTC:Province-State', 'IPTC:Sub-location', 'MWG:Description',
+            'GPSLatitude', 'GPSLongitude', 'GPSAltitude', 'GPSAltitudeRef',
+            'GPSLatitudeRef', 'GPSLongitudeRef',
             'Keys:Description', 'Keys:Location',
-            'QuickTime:CreateDate', 'QuickTime:ModifyDate', 'QuickTime:GPSCoordinates'
+            'QuickTime:CreateDate', 'QuickTime:ModifyDate', 'QuickTime:GPSCoordinates',
+            'QuickTime:TrackCreateDate', 'QuickTime:TrackModifyDate',
+            'QuickTime:MediaCreateDate', 'QuickTime:MediaModifyDate'
         }
         
         # Stratégies valides
         self.valid_strategies = {
-            'preserve_existing', 'replace_all', 'write_if_missing', 'clean_duplicates'
+            'preserve_existing', 'replace_all', 'write_if_missing', 'clean_duplicates',
+            'write_if_blank_or_missing', 'preserve_positive_rating'
         }
         
     def validate_config(self, config: Dict[str, Any]) -> bool:

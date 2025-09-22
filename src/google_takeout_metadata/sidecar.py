@@ -33,6 +33,9 @@ class SidecarData:
     geoData_latitudeSpan: Optional[float] = None
     geoData_longitudeSpan: Optional[float] = None
     
+    # Références GPS calculées
+    geoData_altitude_ref: Optional[int] = None
+    
     # États/flags (champs JSON directs)
     favorited: bool = False
     archived: bool = False
@@ -147,6 +150,11 @@ def parse_sidecar(path: Path) -> SidecarData:
     if ((geoData_latitude in (0, 0.0, None)) and (geoData_longitude in (0, 0.0, None))) or \
        (geoData_latitude is None or geoData_longitude is None):
         geoData_latitude = geoData_longitude = geoData_altitude = None
+    
+    # Calculer GPSAltitudeRef (0 = au-dessus du niveau de la mer, 1 = en dessous)
+    geoData_altitude_ref = None
+    if geoData_altitude is not None:
+        geoData_altitude_ref = 0 if geoData_altitude >= 0 else 1
 
     # Extraire le statut favori - format booléen Google Takeout
     # Note : "favorited": true si favori, champ absent si pas favori (pas false)
@@ -184,6 +192,7 @@ def parse_sidecar(path: Path) -> SidecarData:
         geoData_altitude=geoData_altitude,
         geoData_latitudeSpan=geoData_latitudeSpan,
         geoData_longitudeSpan=geoData_longitudeSpan,
+        geoData_altitude_ref=geoData_altitude_ref,
         favorited=favorited,
         archived=archived,
         trashed=trashed,

@@ -36,7 +36,12 @@
       ],
       "target_tags_video": [
         "XMP-photoshop:DateCreated",
-        "QuickTime:CreateDate"
+        "QuickTime:CreateDate",
+        "QuickTime:ModifyDate",
+        "QuickTime:TrackCreateDate",
+        "QuickTime:TrackModifyDate",
+        "QuickTime:MediaCreateDate",
+        "QuickTime:MediaModifyDate"
       ],
       "default_strategy": "replace_all",
       "format": "%Y:%m:%d %H:%M:%S"
@@ -90,6 +95,70 @@
       ],
       "default_strategy": "replace_all"
     },
+    "geoData_altitude_ref": {
+      "source_fields": [
+        "geoData.altitude_ref"
+      ],
+      "target_tags_image": [
+        "GPSAltitudeRef"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSAltitudeRef"
+      ],
+      "default_strategy": "replace_all"
+    },
+    "city": {
+      "source_fields": [
+        "city"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:City",
+        "IPTC:City"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:City"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "state": {
+      "source_fields": [
+        "state"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:State",
+        "IPTC:Province-State"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:State"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "country": {
+      "source_fields": [
+        "country"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:Country",
+        "IPTC:Country-PrimaryLocationName"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:Country"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "place_name": {
+      "source_fields": [
+        "place_name"
+      ],
+      "target_tags_image": [
+        "XMP-iptcCore:Location",
+        "IPTC:Sub-location"
+      ],
+      "target_tags_video": [
+        "XMP-iptcCore:Location"
+      ],
+      "default_strategy": "write_if_missing"
+    },
     "people_name": {
       "source_fields": [
         "people.name"
@@ -102,6 +171,22 @@
       ],
       "default_strategy": "clean_duplicates",
       "normalize": "person_name"
+    },
+    "people_hierarchical": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags_image": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "target_tags_video": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "People|",
+        "normalize": "person_name"
+      }
     },
     "people_keywords": {
       "source_fields": [
@@ -132,12 +217,28 @@
         "normalize": "keyword"
       }
     },
+    "albums_hierarchical": {
+      "source_fields": [
+        "albums"
+      ],
+      "target_tags_image": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "target_tags_video": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "Albums|",
+        "normalize": "keyword"
+      }
+    },
     "localFolderName": {
       "source_fields": [
         "googlePhotosOrigin.mobileUpload.deviceFolder.localFolderName"
       ],
       "target_tags_image": [
-        "EXIF:Software"
+        "XMP-xmp:CreatorTool"
       ],
       "target_tags_video": [
         "XMP-xmp:CreatorTool"
@@ -163,11 +264,7 @@
   },
   "strategies": {
     "preserve_existing": {
-      "description": "Préserver les métadonnées existantes",
-      "exiftool_args": [
-        "-wm",
-        "cg"
-      ]
+      "description": "Préserver les métadonnées existantes"
     },
     "replace_all": {
       "description": "Remplacer inconditionnellement la valeur",
@@ -212,8 +309,15 @@
       "iptc=UTF8",
       "-charset",
       "exif=UTF8",
-      "-overwrite_original"
+      "-n"
     ],
     "backup_original": true
+  },
+  "timezone_correction": {
+    "enabled": false,
+    "description": "Correction automatique des fuseaux horaires basée sur les coordonnées GPS",
+    "use_absolute_values": true,
+    "fallback_to_utc": false,
+    "note": "Nécessite timezonefinder: pip install timezonefinder"
   }
 }

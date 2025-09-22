@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, TYPE_CHECKING
 
 from .sidecar import SidecarData
+from .timezone_calculator import create_timezone_calculator, TimezoneExifArgsGenerator
 
 if TYPE_CHECKING:
     from .config_loader import ConfigLoader
@@ -191,10 +192,15 @@ def build_exiftool_args(meta: SidecarData, media_path: Path, use_localTime: bool
     # Récupérer la configuration
     mappings = config_loader.config.get('exif_mapping', {})
     strategies = config_loader.config.get('strategies', {})
+    global_settings = config_loader.config.get('global_settings', {})
     
-    # Arguments globaux (SANS les ajouter via common_args pour éviter les doublons)
-    # common_args = global_settings.get('common_args', [])
-    # args.extend(common_args)
+    # Arguments globaux
+    common_args = global_settings.get('common_args', [])
+    args.extend(common_args)
+    
+    # Ajouter l'API QuickTime UTC pour les vidéos
+    if is_video:
+        args.extend(['-api', 'QuickTimeUTC=1'])
     
     # Traiter chaque mapping configuré
     for mapping_config in mappings.values():
@@ -212,6 +218,11 @@ def build_exiftool_args(meta: SidecarData, media_path: Path, use_localTime: bool
         for tag in target_tags:
             tag_args = _build_tag_args(tag, value, strategy_config, mapping_config, is_video, use_localTime)
             args.extend(tag_args)
+    
+    # Appliquer la correction de fuseau horaire si activée
+    timezone_config = config_loader.config.get('timezone_correction', {})
+    if timezone_config.get('enabled', False):
+        args = enhance_args_with_timezone_correction(args, meta, media_path, timezone_config)
     
     return args
 
@@ -247,6 +258,8 @@ def _extract_value_from_meta(meta: SidecarData, source_fields: list) -> any:
             return meta.geoData_longitude
         elif field_path == "geoData.altitude" and meta.geoData_altitude is not None:
             return meta.geoData_altitude
+        elif field_path == "geoData.altitude_ref" and meta.geoData_altitude_ref is not None:
+            return meta.geoData_altitude_ref
         # Gérer les références GPS (N/S, E/W) basées sur le signe
         elif field_path == "geoData.latitude.ref" and hasattr(meta, 'geoData_latitude') and meta.geoData_latitude is not None:
             return "positive" if meta.geoData_latitude >= 0 else "negative"
@@ -486,4 +499,94 @@ def _build_tag_args(tag: str, value: any, strategy_config: dict, mapping_config:
         args.extend(simple_args)
     
     return args
+
+def enhance_args_with_timezone_correction(args: list[str], meta: SidecarData, 
+                                        media_path: Path, timezone_config: dict) -> list[str]:
+    """
+    Enrichit les arguments ExifTool avec la correction de timezone si activée.
+    
+    Args:
+        args: Arguments ExifTool existants
+        meta: Métadonnées sidecar
+        media_path: Chemin du fichier média
+        timezone_config: Configuration timezone directe
+        
+    Returns:
+        Arguments ExifTool enrichis avec correction timezone
+    """
+    # Vérifier si la correction timezone est activée
+    if not timezone_config.get('enabled', False):
+        return args
+    
+    # Vérifier si on a les données nécessaires (GPS + timestamp)
+    if not (meta.geoData_latitude and meta.geoData_longitude and meta.photoTakenTime_timestamp):
+        logger.debug(f"Données GPS ou timestamp manquantes pour {media_path}")
+        return args
+    
+    try:
+        calc = create_timezone_calculator()
+        if not calc:
+            logger.warning("Calculateur timezone non disponible")
+            return args
+        
+        # Calculer timezone info
+        tz_info = calc.get_timezone_info(
+            meta.geoData_latitude,
+            meta.geoData_longitude, 
+            meta.photoTakenTime_timestamp
+        )
+        
+        if not tz_info:
+            logger.warning(f"Impossible de calculer timezone pour {media_path}")
+            return args
+        
+        # Générer les arguments de correction
+        generator = TimezoneExifArgsGenerator(calc)
+        is_video = _is_video_file(media_path)
+        
+        if is_video:
+            # Pour les vidéos, ajouter les args UTC spécifiques
+            tz_args = generator.generate_video_args(media_path, meta.photoTakenTime_timestamp)
+            logger.info(f"Correction timezone vidéo pour {media_path}: UTC (offset {tz_info.offset_string})")
+        else:
+            # Pour les images, utiliser valeurs absolues ou shift
+            use_absolute = timezone_config.get('use_absolute_values', True)
+            tz_args = generator.generate_image_args(media_path, tz_info, use_absolute)
+            logger.info(f"Correction timezone image pour {media_path}: {tz_info.timezone_name} ({tz_info.offset_string})")
+        
+        # Filtrer les arguments de fichier (déjà dans args principal)
+        filtered_tz_args = [arg for arg in tz_args if str(media_path) not in arg and '-overwrite_original' not in arg]
+        
+        # Fusionner intelligemment avec les args existants
+        enhanced_args = _merge_timezone_args(args, filtered_tz_args)
+        return enhanced_args
+        
+    except Exception as e:
+        logger.error(f"Erreur correction timezone pour {media_path}: {e}")
+        return args
+
+def _merge_timezone_args(base_args: list[str], tz_args: list[str]) -> list[str]:
+    """
+    Fusionne intelligemment les arguments timezone avec les arguments de base.
+    Les arguments timezone ont priorité sur les arguments de dates existants.
+    """
+    # Tags de dates qui peuvent être écrasés par timezone
+    date_tags = {
+        'DateTimeOriginal', 'CreateDate', 'OffsetTimeOriginal', 
+        'OffsetTimeDigitized', 'OffsetTime', 'QuickTime:CreateDate',
+        'QuickTime:ModifyDate', 'TrackCreateDate', 'MediaCreateDate'
+    }
+    
+    # Filtrer les arguments de base qui seraient en conflit
+    filtered_base = []
+    for arg in base_args:
+        if arg.startswith('-') and '=' in arg:
+            tag_part = arg.split('=')[0][1:]  # Enlever le '-' et prendre la partie avant '='
+            if any(date_tag in tag_part for date_tag in date_tags):
+                logger.debug(f"Remplacement argument date: {arg}")
+                continue
+        filtered_base.append(arg)
+    
+    # Combiner les arguments filtrés avec les nouveaux
+    return filtered_base + tz_args
 
