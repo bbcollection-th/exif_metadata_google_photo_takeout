@@ -59,7 +59,8 @@ def test_config_driven_argument_generation():
             condition = args[rating_if_index + 1]
             # La condition devrait contenir $Rating (nom court) pas $XMP:Rating
             if "Rating" in condition:
-                assert "$Rating" in condition, f"La condition devrait utiliser $Rating, pas $XMP:Rating: {condition}"    # favorited -> write_if_missing : condition + assignation
+                # favorited -> write_if_missing : condition + assignation
+                assert "$Rating" in condition, f"La condition devrait utiliser $Rating, pas $XMP:Rating: {condition}"
     # La transformation boolean_to_rating devrait convertir True → 5 (5 étoiles)
     rating_assignments = [a for a in args if a.startswith("-XMP:Rating=")]
     assert rating_assignments, "L'assignation de XMP:Rating devrait être présente"
