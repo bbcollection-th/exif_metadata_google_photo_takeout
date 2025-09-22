@@ -90,9 +90,19 @@ class ConfigValidator:
         if missing_sections:
             self.issues.append(f"❌ Sections manquantes : {missing_sections}")
             return False
-            
+
+        # Vérification des types de sections (attendues: objets/dicts)
+        expected_types = {
+            'exif_mapping': dict,
+            'strategies': dict,
+            'global_settings': dict,
+        }
+        invalid_types = [k for k, t in expected_types.items() if not isinstance(config.get(k), t)]
+        if invalid_types:
+            self.issues.append(f"❌ Sections au type invalide (attendu dict) : {invalid_types}")
+            return False
+
         return True
-    
     def _validate_strategies(self, strategies: Dict[str, Any]) -> bool:
         """Valide les définitions de stratégies"""
         is_valid = True
@@ -316,8 +326,8 @@ def main():
     try:
         with open(args.config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Erreur JSON : {e}")
+    except json.JSONDecodeError:
+        logger.exception("❌ Erreur JSON lors du chargement de la configuration")
         return 1
     
     # Validation
