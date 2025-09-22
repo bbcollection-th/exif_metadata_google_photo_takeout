@@ -1,0 +1,339 @@
+{
+  "exif_mapping": {
+    "title": {
+      "source_fields": [
+        "title"
+      ],
+      "target_tags_image": [
+        "IPTC:ObjectName",
+        "XMP-dc:Title"
+      ],
+      "target_tags_video": [
+        "XMP-dc:Title"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "description": {
+      "source_fields": [
+        "description"
+      ],
+      "target_tags_image": [
+        "MWG:Description"
+      ],
+      "target_tags_video": [
+        "XMP-dc:Description"
+      ],
+      "default_strategy": "write_if_blank_or_missing",
+      "sanitize": true
+    },
+    "photoTakenTime_timestamp": {
+      "source_fields": [
+        "photoTakenTime.timestamp"
+      ],
+      "target_tags_image": [
+        "EXIF:DateTimeOriginal",
+        "EXIF:CreateDate"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:DateCreated",
+        "QuickTime:CreateDate",
+        "QuickTime:ModifyDate",
+        "QuickTime:TrackCreateDate",
+        "QuickTime:TrackModifyDate",
+        "QuickTime:MediaCreateDate",
+        "QuickTime:MediaModifyDate"
+      ],
+      "default_strategy": "replace_all",
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "creationTime_timestamp": {
+      "source_fields": [
+        "creationTime.timestamp"
+      ],
+      "target_tags_image": [
+        "XMP-xmp:CreateDate"
+      ],
+      "target_tags_video": [
+        "XMP-xmp:CreateDate"
+      ],
+      "default_strategy": "write_if_missing",
+      "format": "%Y:%m:%d %H:%M:%S"
+    },
+    "geoData_latitude": {
+      "source_fields": [
+        "geoData.latitude"
+      ],
+      "target_tags_image": [
+        "GPSLatitude"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSLatitude"
+      ],
+      "default_strategy": "replace_all"
+    },
+    "geoData_longitude": {
+      "source_fields": [
+        "geoData.longitude"
+      ],
+      "target_tags_image": [
+        "GPSLongitude"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSLongitude"
+      ],
+      "default_strategy": "replace_all"
+    },
+    "geoData_altitude": {
+      "source_fields": [
+        "geoData.altitude"
+      ],
+      "target_tags_image": [
+        "GPSAltitude"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSAltitude"
+      ],
+      "default_strategy": "replace_all"
+    },
+    "geoData_altitude_ref": {
+      "source_fields": [
+        "geoData.altitude_ref"
+      ],
+      "target_tags_image": [
+        "GPSAltitudeRef"
+      ],
+      "target_tags_video": [
+        "XMP-exif:GPSAltitudeRef"
+      ],
+      "default_strategy": "replace_all"
+    },
+    "city": {
+      "source_fields": [
+        "city"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:City",
+        "IPTC:City"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:City"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "state": {
+      "source_fields": [
+        "state"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:State",
+        "IPTC:Province-State"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:State"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "country": {
+      "source_fields": [
+        "country"
+      ],
+      "target_tags_image": [
+        "XMP-photoshop:Country",
+        "IPTC:Country-PrimaryLocationName"
+      ],
+      "target_tags_video": [
+        "XMP-photoshop:Country"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "place_name": {
+      "source_fields": [
+        "place_name"
+      ],
+      "target_tags_image": [
+        "XMP-iptcCore:Location",
+        "IPTC:Sub-location"
+      ],
+      "target_tags_video": [
+        "XMP-iptcCore:Location"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "people_name": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags_image": [
+        "XMP-iptcExt:PersonInImage"
+      ],
+      "target_tags_video": [
+        "XMP-iptcExt:PersonInImage"
+      ],
+      "default_strategy": "clean_duplicates",
+      "normalize": "person_name"
+    },
+    "people_hierarchical": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags_image": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "target_tags_video": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "People|",
+        "normalize": "person_name"
+      }
+    },
+    "people_keywords": {
+      "source_fields": [
+        "people.name"
+      ],
+      "target_tags_image": [
+        "IPTC:Keywords"
+      ],
+      "target_tags_video": [
+        "XMP-dc:Subject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "normalize": "person_name"
+    },
+    "albums": {
+      "source_fields": [
+        "albums"
+      ],
+      "target_tags_image": [
+        "XMP-dc:Subject"
+      ],
+      "target_tags_video": [
+        "XMP-dc:Subject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "Album: ",
+        "normalize": "keyword"
+      }
+    },
+    "albums_hierarchical": {
+      "source_fields": [
+        "albums"
+      ],
+      "target_tags_image": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "target_tags_video": [
+        "XMP-lr:HierarchicalSubject"
+      ],
+      "default_strategy": "clean_duplicates",
+      "processing": {
+        "prefix": "Albums|",
+        "normalize": "keyword"
+      }
+    },
+    "localFolderName": {
+      "source_fields": [
+        "googlePhotosOrigin.mobileUpload.deviceFolder.localFolderName"
+      ],
+      "target_tags_image": [
+        "XMP-xmp:CreatorTool"
+      ],
+      "target_tags_video": [
+        "XMP-xmp:CreatorTool"
+      ],
+      "default_strategy": "write_if_missing"
+    },
+    "favorited": {
+      "source_fields": [
+        "favorited"
+      ],
+      "target_tags_image": [
+        "XMP:Rating"
+      ],
+      "target_tags_video": [
+        "XMP:Rating"
+      ],
+      "default_strategy": "preserve_positive_rating",
+      "value_mapping": {
+        "true": "5",
+        "false": null
+      }
+    },
+    "favorited_label": {
+      "source_fields": [
+        "favorited"
+      ],
+      "target_tags_image": [
+        "XMP:Label"
+      ],
+      "target_tags_video": [
+        "XMP:Label"
+      ],
+      "default_strategy": "preserve_positive_rating",
+      "value_mapping": {
+        "true": "Favorite",
+        "false": null
+      }
+    }
+  },
+  "strategies": {
+    "preserve_existing": {
+      "description": "Préserver les métadonnées existantes"
+    },
+    "replace_all": {
+      "description": "Remplacer inconditionnellement la valeur",
+      "pattern": ["-${tag}=${value}"]
+    },
+    "write_if_blank_or_missing": {
+      "description": "Écrit seulement si le tag est inexistant ou vide (robuste multi-valué / lang-alt)",
+      "condition_template": "-if not defined $${tag} or not length($${tag}) or not length($${tag}[0])",
+      "pattern": ["-${tag}=${value}"]
+    },
+    "write_if_missing": {
+      "description": "Écrire seulement si absent (ancienne version moins robuste)",
+      "condition_template": "-if not $${tag}"
+    },
+    "clean_duplicates": {
+      "description": "Nettoyer les doublons avant écriture",
+      "pattern": [
+        "${tag}-=${value}",
+        "${tag}+=${value}"
+      ]
+    },
+    "preserve_positive_rating": {
+      "description": "Pour favorited: écrire Rating=5 si favorited=true ET (Rating absent OU Rating=0), ne jamais toucher si favorited=false",
+      "condition_template": "-if not defined $${tag} or $${tag} eq '0'",
+      "pattern": ["-${tag}=${value}"],
+      "special_logic": "favorited_rating"
+    }
+  },
+  "global_settings": {
+    "default_strategy": "write_if_missing",
+    "efile_output_dir": "logs",
+    "video_extensions": [
+      ".mp4",
+      ".mov",
+      ".m4v",
+      ".3gp"
+    ],
+    "common_args": [
+      "-charset",
+      "filename=utf8",
+      "-charset",
+      "iptc=UTF8",
+      "-charset",
+      "exif=UTF8",
+      "-n"
+    ],
+    "backup_original": true
+  },
+  "timezone_correction": {
+    "enabled": false,
+    "description": "Correction automatique des fuseaux horaires basée sur les coordonnées GPS",
+    "use_absolute_values": true,
+    "fallback_to_utc": false,
+    "note": "Nécessite timezonefinder: pip install timezonefinder"
+  }
+}

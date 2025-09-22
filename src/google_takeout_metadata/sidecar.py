@@ -13,28 +13,60 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SidecarData:
-    """Métadonnées sélectionnées extraites d'un JSON annexe Google Photos."""
-
-    filename: str
-    description: Optional[str]
-    people: List[str]
-    taken_at: Optional[int]
-    created_at: Optional[int]
-    latitude: Optional[float]
-    longitude: Optional[float]
-    altitude: Optional[float]
+    """Métadonnées extraites du sidecar JSON - noms mappés aux champs JSON réels."""
+    
+    # Identité du fichier (champ JSON direct)
+    title: str
+    
+    # Métadonnées de base (champs JSON directs)
+    description: Optional[str] = None
+    people_name: List[str] = field(default_factory=list)  # Extrait de people[].name
+    
+    # Timestamps (sous-champs JSON)
+    photoTakenTime_timestamp: Optional[int] = None
+    creationTime_timestamp: Optional[int] = None
+    
+    # Géolocalisation (sous-champs de geoData)
+    geoData_latitude: Optional[float] = None
+    geoData_longitude: Optional[float] = None
+    geoData_altitude: Optional[float] = None
+    geoData_latitudeSpan: Optional[float] = None
+    geoData_longitudeSpan: Optional[float] = None
+    
+    # Références GPS calculées
+    geoData_altitude_ref: Optional[int] = None
+    
+    # États/flags (champs JSON directs)
+    favorited: bool = False
+    archived: bool = False
+    trashed: bool = False
+    inLockedFolder: bool = False
+    
+    # Métadonnées d'origine (chemin JSON complexe : googlePhotosOrigin.mobileUpload.deviceFolder.localFolderName)
+    googlePhotosOrigin_localFolderName: Optional[str] = None
+    
+    # Données organisationnelles (calculées séparément)
+    albums: List[str] = field(default_factory=list)
+    
+    # Données calculées par géocodage (à déplacer vers EnrichedSidecarData)
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
     place_name: Optional[str] = None
-    favorite: bool = False
-    lat_span: Optional[float] = None
-    lon_span: Optional[float] = None
+
+@dataclass
+class EnrichedSidecarData:
+    """Données sidecar enrichies par géocodage et analyse"""
+    sidecar: SidecarData
+    
+    # Données calculées par géocodage
+    city: Optional[str] = None
+    state: Optional[str] = None  
+    country: Optional[str] = None
+    place_name: Optional[str] = None
+    
+    # Données organisationnelles (calculées)
     albums: List[str] = field(default_factory=list)
-    archived: bool = False
-    trashed: bool = False
-    locked: bool = False
-    local_folder_name: Optional[str] = None  # Nom du dossier source (appareil)
 
 
 def parse_sidecar(path: Path) -> SidecarData:
@@ -61,23 +93,17 @@ def parse_sidecar(path: Path) -> SidecarData:
         raise ValueError(f"Champ 'title' manquant dans {path}")
     
     # Extraire le nom de fichier attendu depuis le chemin du sidecar
-    # Pour le nouveau format : IMG_001.jpg.supplemental-metadata.json -> titre attendu : IMG_001.jpg
-    # Pour le format hérité : IMG_001.jpg.json -> titre attendu : IMG_001.jpg
+    # Pour le nouveau format : IMG_001.jpg.supplemental-metadata.json -> filename attendu : IMG_001.jpg
+    # Pour le format hérité : IMG_001.jpg.json -> filename attendu : IMG_001.jpg
     if path.name.lower().endswith(".supplemental-metadata.json"):
-        expected_title = path.name[:-len(".supplemental-metadata.json")]
-    elif path.name.lower().endswith(".supplemental-metadat.json"):
-        expected_title = path.name[:-len(".supplemental-metadat.json")]
-    elif path.name.lower().endswith(".supplemental-me.json"):
-        expected_title = path.name[:-len(".supplemental-me.json")]
-    elif path.name.lower().endswith(".supplemental-meta.json"):
-        expected_title = path.name[:-len(".supplemental-meta.json")]
+        expected_filename = path.name[:-len(".supplemental-metadata.json")]
     elif path.name.lower().endswith(".json"):
-        expected_title = path.stem
+        expected_filename = path.stem
     else:
-        expected_title = path.stem
-    if expected_title != title:
+        expected_filename = path.stem
+    if expected_filename != title:
         raise ValueError(
-            f"Le titre du sidecar {title!r} ne correspond pas au nom de fichier attendu {expected_title!r} provenant de {path.name!r}"
+            f"Le titre du sidecar {title!r} ne correspond pas au nom de fichier attendu {expected_filename!r} provenant de {path.name!r}"
         )
 
     description = data.get("description")
@@ -85,14 +111,14 @@ def parse_sidecar(path: Path) -> SidecarData:
     # Gère plusieurs formats :
     # - [{ "name": "X" }]
     raw_people = data.get("people", []) or []
-    people = []
+    people_name = []
     for p in raw_people:
         if isinstance(p, dict):
             # Format standard : {"name": "X"}
             if isinstance(p.get("name"), str):
-                people.append(p["name"].strip())
+                people_name.append(p["name"].strip())
     # déduplication
-    people = sorted(set(filter(None, people)))
+    people_name = sorted(set(filter(None, people_name)))
 
 
     def get_ts(key: str) -> Optional[int]:
@@ -104,30 +130,35 @@ def parse_sidecar(path: Path) -> SidecarData:
         except (TypeError, ValueError):
             return None
 
-    taken_at = get_ts("photoTakenTime")
-    created_at = get_ts("creationTime")
+    photoTakenTime_timestamp = get_ts("photoTakenTime")
+    creationTime_timestamp = get_ts("creationTime")
 
     # Extraire les données géographiques - préférer geoData, repli sur geoDataExif
     geo = data.get("geoData", {})
-    if not geo or not geo.get("latitude"):
+    if (not geo) or ((geo.get("latitude") is None) and (geo.get("longitude") is None)):
         geo = data.get("geoDataExif", {})
     
-    latitude = geo.get("latitude")
-    longitude = geo.get("longitude")
-    altitude = geo.get("altitude")
-    lat_span = geo.get("latitudeSpan")
-    lon_span = geo.get("longitudeSpan")
+    geoData_latitude = geo.get("latitude")
+    geoData_longitude = geo.get("longitude")
+    geoData_altitude = geo.get("altitude")
+    geoData_latitudeSpan = geo.get("latitudeSpan")
+    geoData_longitudeSpan = geo.get("longitudeSpan")
     
     # Nettoyer les coordonnées seulement si les DEUX sont à 0/None
     # Conserver les vraies coordonnées 0.0 car elles peuvent être valides (équateur/méridien de Greenwich)
     # Google met parfois 0/0 quand pas de géo fiable → on nettoie uniquement dans ce cas
-    if ((latitude in (0, 0.0, None)) and (longitude in (0, 0.0, None))) or \
-       (latitude is None or longitude is None):
-        latitude = longitude = altitude = None
+    if ((geoData_latitude in (0, 0.0, None)) and (geoData_longitude in (0, 0.0, None))) or \
+       (geoData_latitude is None or geoData_longitude is None):
+        geoData_latitude = geoData_longitude = geoData_altitude = None
+    
+    # Calculer GPSAltitudeRef (0 = au-dessus du niveau de la mer, 1 = en dessous)
+    geoData_altitude_ref = None
+    if geoData_altitude is not None:
+        geoData_altitude_ref = 0 if geoData_altitude >= 0 else 1
 
     # Extraire le statut favori - format booléen Google Takeout
     # Note : "favorited": true si favori, champ absent si pas favori (pas false)
-    favorite = bool(data.get("favorited", False))
+    favorited = bool(data.get("favorited", False))
 
     # Extraire le statut archivé
     archived = bool(data.get("archived", False))
@@ -136,10 +167,10 @@ def parse_sidecar(path: Path) -> SidecarData:
     trashed = bool(data.get("trashed", False))
 
     # Extraire le statut d'album vérouillé
-    locked = bool(data.get("inLockedFolder", False))
+    inLockedFolder = bool(data.get("inLockedFolder", False))
 
     # Extraire le nom du dossier local de l'appareil
-    local_folder_name = None
+    googlePhotosOrigin_localFolderName = None
     google_photos_origin = data.get("googlePhotosOrigin", {})
     if isinstance(google_photos_origin, dict):
         mobile_upload = google_photos_origin.get("mobileUpload", {})
@@ -148,36 +179,61 @@ def parse_sidecar(path: Path) -> SidecarData:
             if isinstance(device_folder, dict):
                 folder_name = device_folder.get("localFolderName")
                 if isinstance(folder_name, str) and folder_name.strip():
-                    local_folder_name = folder_name.strip()
+                    googlePhotosOrigin_localFolderName = folder_name.strip()
 
     return SidecarData(
-        filename=title,
+        title=title,
         description=description,
-        people=people,
-        taken_at=taken_at,
-        created_at=created_at,
-        latitude=latitude,
-        longitude=longitude,
-        altitude=altitude,
+        people_name=people_name,
+        photoTakenTime_timestamp=photoTakenTime_timestamp,
+        creationTime_timestamp=creationTime_timestamp,
+        geoData_latitude=geoData_latitude,
+        geoData_longitude=geoData_longitude,
+        geoData_altitude=geoData_altitude,
+        geoData_latitudeSpan=geoData_latitudeSpan,
+        geoData_longitudeSpan=geoData_longitudeSpan,
+        geoData_altitude_ref=geoData_altitude_ref,
+        favorited=favorited,
+        archived=archived,
+        trashed=trashed,
+        inLockedFolder=inLockedFolder,
+        googlePhotosOrigin_localFolderName=googlePhotosOrigin_localFolderName,
+        albums=[],  # Les albums sont gérés séparément
         city=None,
         state=None,
         country=None,
         place_name=None,
-        favorite=favorite,
-        lat_span=lat_span,
-        lon_span=lon_span,
-        archived=archived,
-        trashed=trashed,
-        locked=locked,
-        albums=[],  # Les albums sont gérés séparément
-        local_folder_name=local_folder_name,
     )
 
 
-def parse_album_metadata(path: Path) -> List[str]:
-    """Analyser un fichier metadata.json d'album et retourner la liste des noms d'albums.
+def _is_image_sidecar(json_path: Path) -> bool:
+    """Détermine si un fichier JSON est un sidecar d'image plutôt qu'un fichier d'album.
     
-    Les fichiers metadata.json d'albums (Google Takeout) contiennent généralement :
+    Les sidecars d'images ont des motifs de noms spécifiques :
+    - photo.jpg.supplemental-metadata.json (nouveau format)
+    - photo.jpg.json (ancien format)
+    """
+    name_lower = json_path.name.lower()
+    
+    # Nouveau format : *.supplemental-metadata.json
+    if name_lower.endswith(".supplemental-metadata.json"):
+        return True
+    
+    # Ancien format : *.jpg.json, *.png.json, etc.
+    if name_lower.endswith(".json"):
+        # Extraire le nom sans .json
+        stem = name_lower[:-5]  # Enlever ".json"
+        # Vérifier si c'est un nom de fichier image
+        image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".mp4", ".mov", ".avi"]
+        return any(stem.endswith(ext) for ext in image_extensions)
+    
+    return False
+
+
+def parse_album_metadata(path: Path) -> List[str]:
+    """Analyser les fichiers metadata.json, métadonnées.json, métadonnées(i).json d'album et retourner la liste des noms d'albums.
+
+    Les fichiers metadata.json, métadonnées.json, métadonnées(i).json d'albums (Google Takeout) contiennent généralement :
     {
         "title": "halloween",
         "description": "",
@@ -188,7 +244,7 @@ def parse_album_metadata(path: Path) -> List[str]:
         }
     }
     
-    Un seul album par fichier metadata.json.
+    Un seul album par fichier metadata.json/métadonnées.json/métadonnées(i).json.
     Retourne une liste avec le nom de l'album (ou liste vide si erreur).
     """
     try:
@@ -221,15 +277,17 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
     - metadata.json (anglais)
     - métadonnées.json (français)  
     - métadonnées(1).json, métadonnées(2).json, etc. (français avec doublons)
-    - album_metadata.json, folder_metadata.json (hérités)
     """
     albums = []
     
     metadata_patterns = [
         "metadata.json",
         "métadonnées.json", 
-        "album_metadata.json", 
-        "folder_metadata.json"
+        "métadonnées(1).json", 
+        "métadonnées(2).json", 
+        "métadonnées(3).json", 
+        "métadonnées(4).json", 
+        "métadonnées(5).json"
     ]
     
     # Rechercher dans le répertoire courant et ses parents avec limite de profondeur
@@ -265,18 +323,28 @@ def find_albums_for_directory(directory: Path, max_depth: int = 5) -> List[str]:
                     logger.debug(f"Impossible d'accéder au répertoire {current_dir}")
         
         # Vérifier les variations numérotées comme métadonnées(1).json, métadonnées(2).json, etc.
-        # (recherche insensible à la casse)
+        # ET les autres fichiers contenant metadata/métadonnées (recherche insensible à la casse)
         try:
             for metadata_file in current_dir.iterdir():
                 if (metadata_file.is_file() and 
-                    metadata_file.name.lower().startswith("métadonnées") and 
-                    metadata_file.name.lower().endswith(".json") and
-                    metadata_file.name.lower() not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
-                    try:
-                        albums.extend(parse_album_metadata(metadata_file))
-                    except (OSError, PermissionError) as e:
-                        # Ignorer les erreurs de parsing et continuer
-                        logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+                    metadata_file.name.lower().endswith(".json")):
+                    name_lower = metadata_file.name.lower()
+                    # Variations numérotées de métadonnées
+                    if (name_lower.startswith("métadonnées") and 
+                        name_lower not in ["métadonnées.json"]):  # déjà vérifié ci-dessus
+                        try:
+                            albums.extend(parse_album_metadata(metadata_file))
+                        except (OSError, PermissionError) as e:
+                            logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
+                    # Autres fichiers contenant metadata (album_metadata.json, folder_metadata.json, etc.)  
+                    # MAIS PAS les sidecars d'images
+                    elif ("metadata" in name_lower and 
+                          name_lower not in ["metadata.json"] and
+                          not _is_image_sidecar(metadata_file)):  # Exclure les sidecars
+                        try:
+                            albums.extend(parse_album_metadata(metadata_file))
+                        except (OSError, PermissionError) as e:
+                            logger.debug(f"Erreur lors du parsing de {metadata_file}: {e}")
         except (OSError, PermissionError):
             # Ignorer les erreurs d'accès au répertoire et continuer
             logger.debug(f"Impossible d'accéder au répertoire {current_dir}")

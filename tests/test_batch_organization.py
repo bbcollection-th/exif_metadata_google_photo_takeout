@@ -18,7 +18,7 @@ def test_batch_organization():
     """Test d'organisation de fichiers en mode batch."""
     with tempfile.TemporaryDirectory() as temp_dir:
         test_dir = Path(temp_dir)
-        
+         
         # 1. Créer un fichier média (vraie image JPEG)
         media_file = test_dir / "test_image.jpg"
         # Créer une vraie image JPEG avec PIL
@@ -31,7 +31,7 @@ def test_batch_organization():
         sidecar_data = {
             "title": "test_image.jpg",
             "description": "Une photo test",
-            "photoTakenTime": {"timestamp": "1640995200"},
+            "photoTakenTime_timestamp": {"timestamp": "1640995200"},
             "trashed": True,
             "archived": False,
             "inLockedFolder": False
@@ -43,10 +43,10 @@ def test_batch_organization():
         # 3. Lancer le traitement batch avec organisation
         process_directory_batch(
             root=test_dir,
-            use_localtime=False,
-            append_only=True,
+            use_localTime=False,
             immediate_delete=False,
-            organize_files=True
+            organize_files=True,
+            geocode=False
         )
         
         # 4. Vérifier que les fichiers ont été déplacés

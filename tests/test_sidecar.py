@@ -19,11 +19,11 @@ def test_parse_sidecar(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sample), encoding="utf-8")
 
     meta = parse_sidecar(json_path)
-    assert meta.filename == "1729436788572.jpg"
+    assert meta.title == "1729436788572.jpg"
     assert meta.description == "Magicien en or"
-    assert meta.people == ["anthony vincent"]
-    assert meta.taken_at == 1736719606
-    assert meta.created_at == 1736719606
+    assert meta.people_name == ["anthony vincent"]
+    assert meta.photoTakenTime_timestamp == 1736719606
+    assert meta.creationTime_timestamp == 1736719606
 
 
 def test_title_mismatch(tmp_path: Path) -> None:
@@ -48,11 +48,11 @@ def test_parse_sidecar_supplemental_metadata_format(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sample), encoding="utf-8")
 
     meta = parse_sidecar(json_path)
-    assert meta.filename == "IMG_001.jpg"
+    assert meta.title == "IMG_001.jpg"
     assert meta.description == "Test photo with new format"
-    assert meta.people == ["test user"]
-    assert meta.taken_at == 1736719606
-    assert meta.created_at == 1736719606
+    assert meta.people_name == ["test user"]
+    assert meta.photoTakenTime_timestamp == 1736719606
+    assert meta.creationTime_timestamp == 1736719606
 
 
 def test_title_mismatch_supplemental_metadata(tmp_path: Path) -> None:
@@ -80,12 +80,12 @@ def test_zero_coordinates(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
     # Les coordonnées 0/0 doivent être filtrées car peu fiables
-    assert meta.latitude is None
-    assert meta.longitude is None
-    assert meta.altitude is None
+    assert meta.geoData_latitude is None
+    assert meta.geoData_longitude is None
+    assert meta.geoData_altitude is None
 
 
-def test_people_deduplication(tmp_path: Path) -> None:
+def test_people_name_deduplication(tmp_path: Path) -> None:
     """Tester que les noms de personnes sont dédupliqués et nettoyés."""
     sample = {
         "title": "a.jpg",
@@ -103,22 +103,22 @@ def test_people_deduplication(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
     # Devrait avoir dédupliqué et nettoyé : ["alice", "bob", "charlie"]
-    assert meta.people == ["alice", "bob", "charlie"]
+    assert meta.people_name == ["alice", "bob", "charlie"]
 
 
-def test_parse_favorite_true(tmp_path: Path) -> None:
-    """Tester l'analyse d'une photo favorite avec le format Google Takeout réel."""
+def test_parse_favorited_true(tmp_path: Path) -> None:
+    """Tester l'analyse d'une photo favorited avec le format Google Takeout réel."""
     sample = {
-        "title": "favorite.jpg",
+        "title": "favorited.jpg",
         "favorited": True
     }
-    json_path = tmp_path / "favorite.jpg.json"
+    json_path = tmp_path / "favorited.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.favorite is True
+    assert meta.favorited is True
 
 
-def test_parse_favorite_false(tmp_path: Path) -> None:
+def test_parse_favorited_false(tmp_path: Path) -> None:
     """Tester l'analyse d'une photo non favorite avec le format Google Takeout réel."""
     sample = {
         "title": "not_favorite.jpg",
@@ -127,10 +127,10 @@ def test_parse_favorite_false(tmp_path: Path) -> None:
     json_path = tmp_path / "not_favorite.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.favorite is False
+    assert meta.favorited is False
 
 
-def test_parse_no_favorite_field(tmp_path: Path) -> None:
+def test_parse_no_favorited_field(tmp_path: Path) -> None:
     """Tester l'analyse d'une photo sans champ favori."""
     sample = {
         "title": "no_fav.jpg",
@@ -139,7 +139,7 @@ def test_parse_no_favorite_field(tmp_path: Path) -> None:
     json_path = tmp_path / "no_fav.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.favorite is False
+    assert meta.favorited is False
 
 
 def test_parse_zero_geo_coordinates(tmp_path: Path) -> None:
@@ -152,9 +152,9 @@ def test_parse_zero_geo_coordinates(tmp_path: Path) -> None:
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
     # Les coordonnées 0/0 doivent être filtrées
-    assert meta.latitude is None
-    assert meta.longitude is None
-    assert meta.altitude is None
+    assert meta.geoData_latitude is None
+    assert meta.geoData_longitude is None
+    assert meta.geoData_altitude is None
 
 
 def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
@@ -166,9 +166,9 @@ def test_parse_valid_geo_coordinates(tmp_path: Path) -> None:
     json_path = tmp_path / "geo_valid.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.latitude == 48.8566
-    assert meta.longitude == 2.3522
-    assert meta.altitude == 35.0
+    assert meta.geoData_latitude == 48.8566
+    assert meta.geoData_longitude == 2.3522
+    assert meta.geoData_altitude == 35.0
 
 
 def test_parse_missing_timestamps(tmp_path: Path) -> None:
@@ -180,11 +180,11 @@ def test_parse_missing_timestamps(tmp_path: Path) -> None:
     json_path = tmp_path / "no_dates.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.taken_at is None
-    assert meta.created_at is None
+    assert meta.photoTakenTime_timestamp is None
+    assert meta.creationTime_timestamp is None
 
 
-def test_parse_local_folder_name(tmp_path: Path) -> None:
+def test_parse_googlePhotosOrigin_localFolderName(tmp_path: Path) -> None:
     """Tester l'extraction du nom du dossier local de l'appareil."""
     sample = {
         "title": "messenger_photo.jpg",
@@ -201,10 +201,10 @@ def test_parse_local_folder_name(tmp_path: Path) -> None:
     json_path = tmp_path / "messenger_photo.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.local_folder_name == "Messenger"
+    assert meta.googlePhotosOrigin_localFolderName == "Messenger"
 
 
-def test_parse_no_local_folder_name(tmp_path: Path) -> None:
+def test_parse_no_googlePhotosOrigin_localFolderName(tmp_path: Path) -> None:
     """Tester quand il n'y a pas de dossier local."""
     sample = {
         "title": "normal_photo.jpg",
@@ -213,7 +213,7 @@ def test_parse_no_local_folder_name(tmp_path: Path) -> None:
     json_path = tmp_path / "normal_photo.jpg.json"
     json_path.write_text(json.dumps(sample), encoding="utf-8")
     meta = parse_sidecar(json_path)
-    assert meta.local_folder_name is None
+    assert meta.googlePhotosOrigin_localFolderName is None
 
 
 def test_parse_album_metadata(tmp_path: Path) -> None:

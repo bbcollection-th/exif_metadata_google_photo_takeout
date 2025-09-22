@@ -1,0 +1,43 @@
+# ExifTool Arguments Export - Auto-generated
+# Generated on: C:\Users\anthony\Documents\PROJETS\exif_metadata_google_photo_takeout
+# Configuration: Google Photos Takeout Metadata
+
+# Global Arguments
+-charset
+filename=utf8
+-charset
+iptc=UTF8
+-charset
+exif=UTF8
+-n
+
+# Strategy Examples
+
+# Strategy: preserve_existing
+# Description: Préserver les métadonnées existantes
+
+# Strategy: replace_all
+# Description: Remplacer inconditionnellement la valeur
+# Pattern: -${tag}=${value}
+
+# Strategy: write_if_blank_or_missing
+# Description: Écrit seulement si le tag est inexistant ou vide (robuste multi-valué / lang-alt)
+# Condition: -if not defined $${tag} or not length($${tag}) or not length($${tag}[0])
+# Pattern: -${tag}=${value}
+
+# Strategy: write_if_missing
+# Description: Écrire seulement si absent (ancienne version moins robuste)
+# Condition: -if not $${tag}
+
+# Strategy: clean_duplicates
+# Description: Nettoyer les doublons avant écriture
+# Pattern: ${tag}-=${value}
+# Pattern: ${tag}+=${value}
+
+# Strategy: preserve_positive_rating
+# Description: Pour favorited: écrire Rating=5 si favorited=true ET (Rating absent OU Rating=0), ne jamais toucher si favorited=false
+# Condition: -if not defined $${tag} or $${tag} eq '0'
+# Pattern: -${tag}=${value}
+
+# Sample Usage
+# exiftool @exiftool_args_export.txt your_files/

@@ -62,7 +62,7 @@ def test_main_normal_mode(mock_process_directory, tmp_path):
         main([str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -73,7 +73,7 @@ def test_main_batch_mode(mock_process_directory_batch, tmp_path):
         main(["--batch", str(tmp_path)])
 
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -84,7 +84,7 @@ def test_main_localtime_option(mock_process_directory, tmp_path):
         main(["--localtime", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=True, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=True, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -95,7 +95,7 @@ def test_main_overwrite_option(mock_process_directory, tmp_path):
         main(["--overwrite", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=False, immediate_delete=False, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=False
     )
 
 
@@ -106,7 +106,7 @@ def test_main_immediate_delete_option(mock_process_directory, tmp_path):
         main(["--immediate-delete", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=True, organize_files=False, geocode=False
+        tmp_path, use_localTime=False, immediate_delete=True, organize_files=False, geocode=False
     )
 
 
@@ -117,7 +117,7 @@ def test_main_batch_with_all_options(mock_process_directory_batch, tmp_path):
         main(["--batch", "--localtime", "--overwrite", "--immediate-delete", "--geocode", str(tmp_path)])
 
     mock_process_directory_batch.assert_called_once_with(
-        tmp_path, use_localtime=True, append_only=False, immediate_delete=True, organize_files=False, geocode=True
+        tmp_path, use_localTime=True, immediate_delete=True, organize_files=False, geocode=True
     )
 
 
@@ -128,7 +128,7 @@ def test_main_geocode_option(mock_process_directory, tmp_path):
         main(["--geocode", str(tmp_path)])
 
     mock_process_directory.assert_called_once_with(
-        tmp_path, use_localtime=False, append_only=True, immediate_delete=False, organize_files=False, geocode=True
+        tmp_path, use_localTime=False, immediate_delete=False, organize_files=False, geocode=True
     )
 
 
@@ -173,18 +173,18 @@ def test_main_integration_batch_mode(tmp_path):
         ("batch1.jpg", "CLI batch test 1"),
         ("batch2.jpg", "CLI batch test 2"),
     ]
-    for filename, description in files_data:
-        media_path = tmp_path / filename
+    for title, description in files_data:
+        media_path = tmp_path / title
         img = Image.new('RGB', (100, 100), color='orange')
         img.save(media_path)
-        sidecar_data = {"title": filename, "description": description}
-        json_path = tmp_path / f"{filename}.json"
+        sidecar_data = {"title": title, "description": description}
+        json_path = tmp_path / f"{title}.json"
         json_path.write_text(json.dumps(sidecar_data), encoding="utf-8")
 
     main(["--batch", str(tmp_path)])
 
-    for filename, description in files_data:
-        cmd = ["exiftool", "-j", "-EXIF:ImageDescription", str(tmp_path / filename)]
+    for title, description in files_data:
+        cmd = ["exiftool", "-j", "-EXIF:ImageDescription", str(tmp_path / title)]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
         metadata = json.loads(result.stdout)[0]
         assert metadata.get("ImageDescription") == description
