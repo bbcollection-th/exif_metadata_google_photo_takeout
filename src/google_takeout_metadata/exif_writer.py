@@ -420,28 +420,32 @@ def _build_simple_tag_args(tag: str, value: any) -> list[str]:
         return [f"-{tag}={value}"]
 
 def _build_preserve_positive_rating_args(tag: str, value: any) -> list[str]:
-    """Logique spéciale pour preserve_positive_rating (favorited/Rating).
+    """Logique spéciale pour preserve_positive_rating (favorited/Rating et favorited/Label).
     
-    Si favorited=true ET Rating>0 existant → ne pas toucher (preserve)
-    Si favorited=true ET Rating=0 → changer à Rating=5 
-    Si favorited=true ET Rating absent → créer Rating=5
-    Si favorited=false ET Rating>0 → ne pas changer
-    Si favorited=false ET Rating=0 → ne pas changer  
-    Si favorited=false ET Rating absent → ne pas ajouter
+    Si favorited=true ET tag>0 existant → ne pas toucher (preserve)
+    Si favorited=true ET tag=0 → changer à valeur mappée
+    Si favorited=true ET tag absent → créer avec valeur mappée
+    Si favorited=false → ne jamais toucher
+    
+    Note: La valeur arrive ici déjà mappée (True->5 pour Rating, True->Favorite pour Label)
     """
-    if not value or str(value).lower() == 'false':
-        # favorited=false → ne jamais toucher à Rating
+    if not value or value is None:
+        # Valeur nulle ou fausse → ne jamais toucher au tag
         return []
     
-    if str(value).lower() == 'true' or str(value) == '5':
-        # favorited=true → écrire Rating=5 seulement si absent ou =0
-        # Note: Testing both string and numeric 0 for ExifTool compatibility
+    # Si nous avons une valeur mappée valide, écrire avec conditions de préservation
+    if 'Rating' in tag:
+        # Pour Rating, tester les conditions 0 et absence
         return [
             "-if", f"not defined ${tag} or ${tag} eq '0' or ${tag} eq 0",
-            f"-{tag}=5"
+            f"-{tag}={value}"
         ]
-    
-    return []
+    else:
+        # Pour Label et autres, tester seulement l'absence ou vide
+        return [
+            "-if", f"not defined ${tag} or not length(${tag}) or ${tag} eq ''",
+            f"-{tag}={value}"
+        ]
 
 def _build_tag_args(tag: str, value: any, strategy_config: dict, mapping_config: dict, is_video: bool = False, use_localTime: bool = False) -> list[str]:
     """Construit les arguments pour un tag spécifique selon la stratégie."""
@@ -472,10 +476,13 @@ def _build_tag_args(tag: str, value: any, strategy_config: dict, mapping_config:
         return []
     value = mapped_value
     
-    # 5.5. Logique spéciale pour preserve_positive_rating (favorited/Rating)
+    # 5.5. Logique spéciale pour preserve_positive_rating (favorited/Rating et Label)
+    # Détecter la stratégie preserve_positive_rating directement
+    default_strategy = mapping_config.get('default_strategy', '')
     special_logic = strategy_config.get('special_logic')
-    if special_logic == 'favorited_rating':
-        logger.debug(f"Utilisation de la logique spéciale favorited_rating pour {tag} avec valeur {value}")
+    
+    if default_strategy == 'preserve_positive_rating' or special_logic == 'favorited_rating':
+        logger.debug(f"Utilisation de la logique spéciale preserve_positive_rating pour {tag} avec valeur {value}")
         special_args = _build_preserve_positive_rating_args(tag, value)
         logger.debug(f"Arguments spéciaux générés: {special_args}")
         return special_args

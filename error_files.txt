@@ -1,2 +1,0 @@
-C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-271/test_batch_sidecar_cleanup_wit0/non_existent.jpg
-C:/Users/anthony/AppData/Local/Temp/pytest-of-anthony/pytest-271/test_process_directory_batch_f0/test.jpeg

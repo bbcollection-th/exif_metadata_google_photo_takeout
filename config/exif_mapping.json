@@ -260,6 +260,22 @@
         "true": "5",
         "false": null
       }
+    },
+    "favorited_label": {
+      "source_fields": [
+        "favorited"
+      ],
+      "target_tags_image": [
+        "XMP:Label"
+      ],
+      "target_tags_video": [
+        "XMP:Label"
+      ],
+      "default_strategy": "preserve_positive_rating",
+      "value_mapping": {
+        "true": "Favorite",
+        "false": null
+      }
     }
   },
   "strategies": {

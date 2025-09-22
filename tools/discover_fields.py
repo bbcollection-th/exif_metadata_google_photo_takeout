@@ -107,7 +107,8 @@ class FieldDiscoverer:
             r'.*fav.*|.*star.*|.*rating.*|.*rank.*|.*like.*': {
                 'category': 'rating',
                 'target_tags_image': ['XMP:Rating'],
-                'default_strategy': 'preserve_existing',
+                'target_tags_video': ['XMP:Rating'],
+                'default_strategy': 'preserve_positive_rating',
                 'value_mapping': {'true': '5', 'false': None}
             },
             
@@ -237,6 +238,12 @@ class FieldDiscoverer:
                     "description": "Supprime puis ajoute pour éviter doublons",
                     "pattern": ["${tag}-=${value}", "${tag}+=${value}"],
                     "icon": "✨"
+                },
+                "preserve_positive_rating": {
+                    "description": "Pour favorited: écrire Rating/Label=valeur si favorited=true ET (tag absent OU tag=0), ne jamais toucher si favorited=false",
+                    "condition_template": "-if not defined $${tag} or $${tag} eq '0'",
+                    "pattern": ["-${tag}=${value}"],
+                    "special_logic": "favorited_rating"
                 }
             },
             "global_settings": {
@@ -272,6 +279,29 @@ class FieldDiscoverer:
                 # Nom sécurisé pour la configuration
                 safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', field_name).lower()
                 config["exif_mapping"][safe_name] = mapping
+                
+                # LOGIQUE SPÉCIALE: Si c'est "favorited", ajouter automatiquement "favorited_label"
+                if field_name == "favorited":
+                    logger.info("🏷️ Ajout automatique de favorited_label pour XMP:Label")
+                    favorited_label_mapping = {
+                        "source_fields": ["favorited"],
+                        "target_tags_image": ["XMP:Label"],
+                        "target_tags_video": ["XMP:Label"],
+                        "default_strategy": "preserve_positive_rating",
+                        "value_mapping": {
+                            "true": "Favorite",
+                            "false": None
+                        },
+                        "_discovery_info": {
+                            "frequency": field_info.frequency,
+                            "data_types": list(field_info.data_types),
+                            "sample_values": field_info.sample_values[:3],
+                            "is_list": field_info.is_list,
+                            "max_length": field_info.max_length,
+                            "auto_generated": "Generated automatically when favorited field detected"
+                        }
+                    }
+                    config["exif_mapping"]["favorited_label"] = favorited_label_mapping
         
         if output_file:
             # Générer le fichier de configuration épuré
@@ -308,6 +338,12 @@ class FieldDiscoverer:
                 "clean_duplicates": {
                     "description": "Nettoyer les doublons avant écriture",
                     "pattern": ["${tag}-=${value}", "${tag}+=${value}"]
+                },
+                "preserve_positive_rating": {
+                    "description": "Pour favorited: écrire Rating/Label si favorited=true ET (tag absent OU tag=0), ne jamais toucher si favorited=false",
+                    "condition_template": "-if not defined $${tag} or $${tag} eq '0'",
+                    "pattern": ["-${tag}=${value}"],
+                    "special_logic": "favorited_rating"
                 }
             },
             "global_settings": {
