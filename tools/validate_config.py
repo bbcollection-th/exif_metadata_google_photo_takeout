@@ -12,7 +12,7 @@ Usage:
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 import re
 import logging
 
@@ -25,6 +25,7 @@ class ConfigValidator:
     def __init__(self):
         self.issues: List[str] = []
         self.suggestions: List[str] = []
+        self.available_strategies: Set[str] = set()
         
         # Tags EXIF/XMP valides connus
         self.known_tags = {
@@ -65,8 +66,11 @@ class ConfigValidator:
             is_valid = False
             
         # Validation des stratégies
-        if not self._validate_strategies(config.get('strategies', {})):
+        strategies = config.get('strategies', {})
+        if not self._validate_strategies(strategies):
             is_valid = False
+        # Capturer les stratégies réellement définies pour les croisements
+        self.available_strategies = set(strategies.keys()) if isinstance(strategies, dict) else set()
             
         # Validation des mappings
         if not self._validate_mappings(config.get('exif_mapping', {})):
@@ -130,6 +134,9 @@ class ConfigValidator:
             strategy = mapping.get('default_strategy')
             if strategy not in self.valid_strategies:
                 self.issues.append(f"⚠️ Mapping {name} : stratégie inconnue '{strategy}'")
+            # Vérifier qu'elle est bien définie dans la section 'strategies'
+            if self.available_strategies and strategy not in self.available_strategies:
+                self.issues.append(f"❌ Mapping {name} : stratégie '{strategy}' non définie dans 'strategies'")
                 
             # Validation des types de champs
             source_fields = mapping.get('source_fields', [])
@@ -173,6 +180,10 @@ class ConfigValidator:
             default_strategy = settings['default_strategy']
             if default_strategy not in self.valid_strategies:
                 self.issues.append(f"❌ Stratégie par défaut inconnue : {default_strategy}")
+                return False
+            # Vérifier qu'elle est bien définie dans la section 'strategies'
+            if self.available_strategies and default_strategy not in self.available_strategies:
+                self.issues.append(f"❌ Paramètre global 'default_strategy' : stratégie '{default_strategy}' non définie dans 'strategies'")
                 return False
                 
         return True
