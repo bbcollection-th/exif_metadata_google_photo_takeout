@@ -315,8 +315,8 @@ def main():
     try:
         with open(args.config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Erreur JSON : {e}")
+    except json.JSONDecodeError:
+        logger.exception("❌ Erreur JSON lors du chargement de la configuration")
         return 1
     
     # Validation
