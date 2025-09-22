@@ -74,12 +74,11 @@ class FieldDiscoverer:
             },
             
             # Coordonnées GPS
-            r'(^|[._])(lat(itude)?|lon(gitude)?|lng|alt(itude)?|coord(s)?)\\b': {
+            r'(^|[._])(lat(itude)?|lon(gitude)?|lng|alt(itude)?|coord(s)?)\b': {
                 'category': 'gps',
                 'target_tags_image': ['GPS:GPSLatitude', 'GPS:GPSLongitude', 'GPS:GPSAltitude'],
                 'default_strategy': 'replace_all'
             },
-            
             # Dates/Temps
             r'.*time.*|.*date.*|.*timestamp.*|.*when.*|.*taken.*|.*created.*': {
                 'category': 'datetime',
