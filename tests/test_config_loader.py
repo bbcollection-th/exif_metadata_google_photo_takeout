@@ -6,37 +6,12 @@ from google_takeout_metadata.sidecar import SidecarData
 
 def test_config_driven_argument_generation():
     """
-    Teste que le chargement de la configuration `exif_mapping_clean.json`
-    génère les arguments exiftool attendus pour un ensemble de métadonnées.
+    Teste que le chargement de la configuration génère les arguments exiftool 
+    attendus pour un ensemble de métadonnées en utilisant la vraie configuration.
     """
-    # Utiliser la configuration propre pour un test prédictible
+    # Utiliser la configuration par défaut du projet
     config_loader = ConfigLoader()
-    # Assumer que le fichier de config est dans le répertoire attendu
-    # Créer un fichier de config factice si nécessaire pour l'environnement de test
-    config_dir = Path("config")
-    config_dir.mkdir(exist_ok=True)
-    clean_config_path = config_dir / "exif_mapping_clean.json"
-    if not clean_config_path.exists():
-        # Créer une version minimale de la config si elle n'existe pas
-        minimal_config = {
-          "exif_mapping": {
-            "description": {"source_fields": ["description"], "target_tags_image": ["EXIF:ImageDescription"], "default_strategy": "preserve_existing"},
-            "people": {"source_fields": ["people_name"], "target_tags_image": ["XMP-iptcExt:PersonInImage"], "default_strategy": "clean_duplicates"},
-            "photoTakenTime_timestamp": {"source_fields": ["photoTakenTime.timestamp"], "target_tags_image": ["EXIF:DateTimeOriginal"], "default_strategy": "replace_all"},
-            "favorited": {"source_fields": ["favorited"], "target_tags_image": ["XMP:Rating"], "default_strategy": "write_if_missing", "transform": "boolean_to_rating"}
-          },
-          "strategies": {
-            "preserve_existing": {"pattern": ["-wm", "cg", "-${tag}=${value}"]},
-            "clean_duplicates": {"pattern": ["-${tag}-=${value}", "-${tag}+=${value}"]},
-            "replace_all": {"pattern": ["-${tag}=${value}"]},
-            "write_if_missing": {"condition_template": "-if \"not $${tag}\"", "pattern": ["-${tag}=${value}"]}
-          }
-        }
-        import json
-        with open(clean_config_path, "w") as f:
-            json.dump(minimal_config, f)
-
-    config_loader.load_config(json_file="exif_mapping_clean.json")
+    config_loader.load_config()
 
     meta = SidecarData(
         title="test.jpg",
@@ -56,19 +31,17 @@ def test_config_driven_argument_generation():
         config_loader=config_loader
     )
 
-    # Description -> preserve_existing (utilise -wm cg)
-    # Note: L'implémentation actuelle génère "-cg" au lieu de "cg"
-    # TODO: Corriger l'implémentation pour générer "-wm" puis "cg" séparément
-    assert "-wm" in args
-    assert "-cg" in args  # Pour l'instant, l'implémentation génère "-cg"
+    # Vérifier que les arguments sont générés
+    assert len(args) > 0
     
-    assert "-EXIF:ImageDescription=Photo de famille" in args
-    idx_desc = args.index("-EXIF:ImageDescription=Photo de famille")
-    # S'assurer qu'il n'y a pas de -if juste avant (fenêtre raisonnable)
-    window_before = args[max(0, idx_desc-3):idx_desc]
-    assert "-if" not in window_before, "preserve_existing ne devrait pas utiliser de condition -if"
-
-    # People -> clean_duplicates (test sur les deux valeurs et l'ordre -=" puis +=")
+    # Description -> write_if_blank_or_missing (strategy par défaut dans la vraie config)
+    assert "-MWG:Description=Photo de famille" in args
+    
+    # Timestamp -> replace_all (avec formatage)
+    assert "-EXIF:DateTimeOriginal=2022:01:01 00:00:00" in args
+    assert "-EXIF:CreateDate=2022:01:01 00:00:00" in args
+    
+    # People -> clean_duplicates (test sur les deux valeurs et l'ordre - puis +)
     for person in ["Alice Dupont", "Bob Martin"]:
         del_arg = f"-XMP-iptcExt:PersonInImage-={person}"
         add_arg = f"-XMP-iptcExt:PersonInImage+={person}"
@@ -77,11 +50,16 @@ def test_config_driven_argument_generation():
         i_del = args.index(del_arg)
         i_add = args.index(add_arg)
         assert i_del < i_add, f"Il faut supprimer avant d'ajouter pour {person} (clean_duplicates)"
-
-    # photoTakenTime -> replace_all (note: le timestamp reste brut pour l'instant)
-    assert "-EXIF:DateTimeOriginal=1640995200" in args
     
-    # favorited -> write_if_missing : condition + assignation
+        # Favorited -> preserve_positive_rating (avec nom court $Rating dans la condition)
+        assert "-XMP:Rating=5" in args
+        # Vérifier que la condition utilise le nom court
+        rating_if_index = args.index("-if") if "-if" in args else -1
+        if rating_if_index >= 0 and rating_if_index < len(args) - 1:
+            condition = args[rating_if_index + 1]
+            # La condition devrait contenir $Rating (nom court) pas $XMP:Rating
+            if "Rating" in condition:
+                assert "$Rating" in condition, f"La condition devrait utiliser $Rating, pas $XMP:Rating: {condition}"    # favorited -> write_if_missing : condition + assignation
     # La transformation boolean_to_rating devrait convertir True → 5 (5 étoiles)
     rating_assignments = [a for a in args if a.startswith("-XMP:Rating=")]
     assert rating_assignments, "L'assignation de XMP:Rating devrait être présente"

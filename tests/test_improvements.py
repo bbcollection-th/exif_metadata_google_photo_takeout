@@ -10,9 +10,9 @@ Test rapide des améliorations apportées à la configuration :
 import tempfile
 from pathlib import Path
 
-from src.google_takeout_metadata.sidecar import SidecarData
-from src.google_takeout_metadata.exif_writer import build_exiftool_args
-from src.google_takeout_metadata.config_loader import ConfigLoader
+from google_takeout_metadata.sidecar import SidecarData
+from google_takeout_metadata.exif_writer import build_exiftool_args
+from google_takeout_metadata.config_loader import ConfigLoader
 
 def test_quicktime_utc_api():
     """Test que l'API QuickTimeUTC=1 est ajoutée pour les vidéos"""

@@ -76,8 +76,7 @@ def _run_exiftool_command(media_path: Path, args: list[str]) -> None:
     cmd = [
         "exiftool", 
         "-overwrite_original", 
-        "-charset", "utf8",
-        "-codedcharacterset=utf8"
+        "-charset", "utf8"
     ]
     
     cmd.extend(args)
@@ -162,7 +161,7 @@ def _group_args_by_strategy(meta: SidecarData, media_path: Path, use_localTime: 
             tag_args = _build_tag_args(tag, value, strategy_config, mapping_config, is_video, use_localTime)
             
             # Classer les arguments selon leur type
-            if strategy_config.get('special_logic'):
+            if default_strategy == 'preserve_positive_rating' or strategy_config.get('special_logic'):
                 # Logique spéciale exécutée séparément pour éviter les conflits
                 grouped_args['special_logic'].extend(tag_args)
             elif any('-if' in str(arg) for arg in tag_args):
@@ -433,17 +432,21 @@ def _build_preserve_positive_rating_args(tag: str, value: any) -> list[str]:
         # Valeur nulle ou fausse → ne jamais toucher au tag
         return []
     
+    # Extraire le nom court du tag pour les conditions ExifTool
+    # Ex: "XMP:Rating" -> "Rating", "XMP:Label" -> "Label"
+    short_tag = tag.split(':')[-1]
+    
     # Si nous avons une valeur mappée valide, écrire avec conditions de préservation
     if 'Rating' in tag:
         # Pour Rating, tester les conditions 0 et absence
         return [
-            "-if", f"not defined ${tag} or ${tag} eq '0' or ${tag} eq 0",
+            "-if", f"not defined ${short_tag} or ${short_tag} eq '0' or ${short_tag} eq 0",
             f"-{tag}={value}"
         ]
     else:
         # Pour Label et autres, tester seulement l'absence ou vide
         return [
-            "-if", f"not defined ${tag} or not length(${tag}) or ${tag} eq ''",
+            "-if", f"not defined ${short_tag} or not length(${short_tag}) or ${short_tag} eq ''",
             f"-{tag}={value}"
         ]
 

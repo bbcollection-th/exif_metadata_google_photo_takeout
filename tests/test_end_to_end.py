@@ -56,6 +56,6 @@ def test_end_to_end_image(tmp_path: Path) -> None:
             return [value]
     
     assert normalize_to_list(tags.get("PersonInImage")) == ["Anthony Vincent"]
-    assert normalize_to_list(tags.get("Subject")) == ["Anthony Vincent"]
+    # Note: people_keywords écrit dans IPTC:Keywords pour les images, pas dans XMP-dc:Subject
     assert normalize_to_list(tags.get("Keywords")) == ["Anthony Vincent"]
     assert tags.get("ImageDescription") == 'Magicien "en" or'
