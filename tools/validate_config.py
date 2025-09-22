@@ -86,9 +86,19 @@ class ConfigValidator:
         if missing_sections:
             self.issues.append(f"❌ Sections manquantes : {missing_sections}")
             return False
-            
+
+        # Vérification des types de sections (attendues: objets/dicts)
+        expected_types = {
+            'exif_mapping': dict,
+            'strategies': dict,
+            'global_settings': dict,
+        }
+        invalid_types = [k for k, t in expected_types.items() if not isinstance(config.get(k), t)]
+        if invalid_types:
+            self.issues.append(f"❌ Sections au type invalide (attendu dict) : {invalid_types}")
+            return False
+
         return True
-    
     def _validate_strategies(self, strategies: Dict[str, Any]) -> bool:
         """Valide les définitions de stratégies"""
         is_valid = True
