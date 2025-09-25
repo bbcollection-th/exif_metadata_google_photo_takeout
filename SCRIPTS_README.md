@@ -23,7 +23,7 @@ Ces scripts permettent un traitement simple par **glisser-déposer** de vos doss
 | **Géocodage** | Ajoute la géolocalisation | `--geocode` |
 | **Complet** | Organisation + géocodage | `--batch --geocode` |
 | **Test** | Aperçu sans modification | `--dry-run` |
-| **Heure locale** | Utilise l'heure locale | `--local-time` |
+| **Heure locale** | Utilise l'heure locale | `--localtime` |
 
 ## 💻 Utilisation en Ligne de Commande
 

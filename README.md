@@ -39,7 +39,7 @@ python -m google_takeout_metadata "data/Google Photos/"
 # Avec options avancées
 python -m google_takeout_metadata "data/Google Photos/" \
     --batch \
-    --local-time \
+    --localtime \
     --overwrite
 ```
 
@@ -210,7 +210,7 @@ python -m pytest tests/test_integration.py -k "strategy_pure" -v
 python -m google_takeout_metadata \
     "data/Google Photos/" \
     --batch \
-    --local-time \
+    --localtime \
     --overwrite \
     --immediate-delete \
     --organize-files \
@@ -218,7 +218,7 @@ python -m google_takeout_metadata \
 
 # Options principales expliquées
 --batch                # Traitement par lots (plus rapide)
---local-time          # Conversion heure locale (vs UTC)
+--localtime           # Conversion heure locale (vs UTC)
 --overwrite           # Écraser métadonnées existantes
 --immediate-delete    # Supprimer JSON après succès (vs préfixe OK_)
 --organize-files      # Organiser fichiers archivés/supprimés

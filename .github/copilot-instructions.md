@@ -69,7 +69,7 @@ python -m pytest tests/test_integration.py -k "strategy_pure" -v
 python -m google_takeout_metadata "data/Google Photos/"
 
 # With advanced options
-python -m google_takeout_metadata "data/" --batch --local-time --overwrite
+python -m google_takeout_metadata "data/" --batch --localtime --overwrite
 ```
 
 ### Discovery Tools
