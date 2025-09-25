@@ -10,6 +10,7 @@ LICENSE
 repomix.config.json
 src/google_takeout_metadata.egg-info/
 .repomixignore
+essai/
 CORRECTION_SIGNATURES_FONCTION.md
 .history/
 exiftool_test/

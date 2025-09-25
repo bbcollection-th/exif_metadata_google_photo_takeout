@@ -226,7 +226,7 @@ function Start-Processing {
     if ($Batch) { $args += "--batch" }
     if ($Geocode) { $args += "--geocode" }
     if ($DryRun) { $args += "--dry-run" }
-    if ($LocalTime) { $args += "--local-time" }
+    if ($LocalTime) { $args += "--localtime" }
     
     Write-Host ""
     Write-Host "🚀 Démarrage du traitement..." -ForegroundColor Green

@@ -23,6 +23,65 @@ from .file_organizer import FileOrganizer
 logger = logging.getLogger(__name__)
 
 
+def _retry_batch_with_format_correction(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool, efile_dir: Union[str, Path]) -> int:
+    """Retraiter un lot en forçant la correction des extensions de fichiers incorrectes.
+    
+    Cette fonction est appelée quand ExifTool détecte des incohérences de format
+    (ex: fichier .PNG qui est en réalité un JPEG).
+    """
+    corrected_batch = []
+    config_loader = ConfigLoader()
+    
+    for media_path, json_path, original_args in batch:
+        try:
+            # Forcer la correction d'extension même si elle n'a pas été détectée avant
+            from .processor import detect_file_type
+            actual_ext = detect_file_type(media_path)
+            
+            if actual_ext and actual_ext != media_path.suffix.lower():
+                # Extension incorrecte détectée, corriger
+                new_media_path = media_path.with_suffix(actual_ext)
+                new_json_path = json_path.with_name(new_media_path.name + ".supplemental-metadata.json")
+                
+                logger.info(f"🔧 Correction forcée d'extension : {media_path.name} → {new_media_path.name}")
+                
+                # Renommer les fichiers
+                media_path.rename(new_media_path)
+                
+                # Mettre à jour le JSON
+                import json
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    json_data = json.load(f)
+                json_data['title'] = new_media_path.name
+                
+                with open(new_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=2, ensure_ascii=False)
+                json_path.unlink()
+                
+                # Regénérer les arguments ExifTool avec le nouveau chemin
+                meta = parse_sidecar(new_json_path)
+                new_args = build_exiftool_args(meta, media_path=new_media_path, use_localTime=False, config_loader=config_loader)
+                
+                corrected_batch.append((new_media_path, new_json_path, new_args))
+                statistics.stats.add_fixed_extension(media_path.name, new_media_path.name)
+                
+            else:
+                # Pas de correction nécessaire, garder tel quel
+                corrected_batch.append((media_path, json_path, original_args))
+                
+        except Exception as e:
+            logger.warning(f"❌ Échec de la correction d'extension pour {media_path.name}: {e}")
+            # En cas d'échec de correction, marquer comme échoué
+            statistics.stats.add_failed_file(media_path, "format_correction_failed", str(e))
+            continue
+    
+    if corrected_batch:
+        logger.info(f"🔄 Nouvelle tentative de traitement avec {len(corrected_batch)} fichier(s) corrigé(s)...")
+        return process_batch(corrected_batch, immediate_delete, efile_dir)
+    else:
+        logger.warning("❌ Aucun fichier n'a pu être corrigé pour un nouveau traitement")
+        return 0
+
 
 def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: bool, efile_dir: Union[str, Path] = "logs") -> int:
     """Traiter un lot de fichiers avec exiftool via un fichier d'arguments."""
@@ -198,6 +257,13 @@ def process_batch(batch: List[Tuple[Path, Path, List[str]]], immediate_delete: b
             error_type = "encoding_error"
             error_msg = "Problème d'encodage de caractères (émojis, accents)"
             logger.warning(f"⚠️ {error_msg}. Détails: {stderr_msg.strip()}")
+        elif "not a valid png" in stderr_msg.lower() and "looks more like a jpeg" in stderr_msg.lower():
+            error_type = "file_format_mismatch"
+            error_msg = "Extension de fichier incorrecte (PNG qui est en réalité un JPEG)"
+            logger.warning(f"⚠️ {error_msg}. Réessai avec correction automatique d'extension...")
+            
+            # Tentative de retraitement avec correction forcée des extensions
+            return _retry_batch_with_format_correction(batch, immediate_delete, efile_dir)
         else:
             error_type = "exiftool_error"
             error_msg = f"Erreur exiftool (code {exc.returncode}): {stderr_msg.strip() or 'Erreur inconnue'}"
